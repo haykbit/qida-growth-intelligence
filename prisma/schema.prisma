@@ -1,0 +1,355 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LandingLanguage {
+  es
+  ca
+}
+
+enum LandingOrigin {
+  manual
+  generada
+}
+
+enum LandingWorkflowStatus {
+  draft
+  pending_review
+  approved
+  published
+  rejected
+}
+
+enum ExperimentStatus {
+  draft
+  running
+  completed
+  cancelled
+}
+
+enum RecommendationStatus {
+  proposed
+  accepted
+  dismissed
+  completed
+}
+
+model MotorMunicipio {
+  municipioId              String   @id @map("municipio_id")
+  nombre                   String
+  provincia                String
+  comunidadAutonoma        String   @map("comunidad_autonoma")
+  tieneCobertura           Boolean  @map("tiene_cobertura")
+  serviciosCubiertos       String[] @map("servicios_cubiertos")
+  cuidadorasDisponibles30d Int      @map("cuidadoras_disponibles_30d")
+  oficinaMasCercanaKm      Float    @map("oficina_mas_cercana_km")
+  familiasActivas          Int      @map("familias_activas")
+  mesesMediosServicio      Float    @map("meses_medios_servicio")
+  nps12m                   Float?   @map("nps_12m")
+  datosPropios             Boolean  @map("datos_propios")
+
+  demanda         MotorDemandaBusqueda[]
+  vozCliente      MotorVozCliente[]
+  competencia     MotorCompetencia[]
+  landings        Landing[]
+  ads             AdsDiario[]
+  leads           Lead[]
+  opportunities   CareOpportunity[]
+  assignments     ExperimentAssignment[]
+  recommendations GrowthRecommendation[]
+
+  @@index([provincia])
+  @@map("motor_municipio")
+}
+
+model MotorDemandaBusqueda {
+  municipioId    String         @map("municipio_id")
+  tema           String
+  mes            DateTime       @db.Date
+  busquedas      Int
+  competenciaAds Float          @map("competencia_ads")
+  cpcEstimadoEur Decimal        @map("cpc_estimado_eur") @db.Decimal(10, 2)
+  municipio      MotorMunicipio @relation(fields: [municipioId], references: [municipioId], onDelete: Cascade)
+
+  @@id([municipioId, tema, mes])
+  @@index([mes, tema])
+  @@map("motor_demanda_busqueda")
+}
+
+model MotorVozCliente {
+  municipioId     String         @map("municipio_id")
+  mes             DateTime       @db.Date
+  tema            String
+  tipo            String
+  llamadas        Int
+  llamadasTotales Int            @map("llamadas_totales")
+  pctQidaDijoSi   Float          @map("pct_qida_dijo_si")
+  expresiones     String[]
+  municipio       MotorMunicipio @relation(fields: [municipioId], references: [municipioId], onDelete: Cascade)
+
+  @@id([municipioId, mes, tema, tipo])
+  @@index([mes, tema])
+  @@map("motor_voz_cliente")
+}
+
+model MotorCompetencia {
+  municipioId       String         @map("municipio_id")
+  competidor        String
+  servicios         String[]
+  tieneLandingLocal Boolean        @map("tiene_landing_local")
+  fechaRevision     DateTime       @map("fecha_revision") @db.Date
+  municipio         MotorMunicipio @relation(fields: [municipioId], references: [municipioId], onDelete: Cascade)
+
+  @@id([municipioId, competidor])
+  @@map("motor_competencia")
+}
+
+model Landing {
+  url                    String               @id
+  municipioId            String?              @map("municipio_id")
+  idioma                 LandingLanguage
+  origen                 LandingOrigin
+  fechaPublicacion       DateTime?            @map("fecha_publicacion")
+  fechaPrimeraIndexacion DateTime?            @map("fecha_primera_indexacion")
+  municipio              MotorMunicipio?      @relation(fields: [municipioId], references: [municipioId], onDelete: SetNull)
+  gsc                    GscDiario[]
+  sessions               WebSesionesDiarias[]
+  leads                  Lead[]
+  workflow               LandingWorkflow?
+  journeyEvents          JourneyEvent[]
+
+  @@index([municipioId, idioma])
+  @@map("landing")
+}
+
+model GscDiario {
+  fecha         DateTime @db.Date
+  url           String
+  consulta      String
+  impresiones   Int
+  clics         Int
+  posicionMedia Float    @map("posicion_media")
+  landing       Landing  @relation(fields: [url], references: [url], onDelete: Cascade)
+
+  @@id([fecha, url, consulta])
+  @@index([url, fecha])
+  @@map("gsc_diario")
+}
+
+model WebSesionesDiarias {
+  fecha       DateTime @db.Date
+  urlEntrada  String   @map("url_entrada")
+  canal       String
+  dispositivo String
+  sesiones    Int
+  formularios Int
+  clicsLlamar Int      @map("clics_llamar")
+  landing     Landing  @relation(fields: [urlEntrada], references: [url], onDelete: Cascade)
+
+  @@id([fecha, urlEntrada, canal, dispositivo])
+  @@index([canal, fecha])
+  @@map("web_sesiones_diarias")
+}
+
+model AdsDiario {
+  adsId                  String          @id @map("ads_id")
+  fecha                  DateTime        @db.Date
+  plataforma             String
+  campania               String
+  municipioId            String?         @map("municipio_id")
+  impresiones            Int
+  clics                  Int
+  costeEur               Decimal         @map("coste_eur") @db.Decimal(12, 2)
+  conversionesPlataforma Int             @map("conversiones_plataforma")
+  municipio              MotorMunicipio? @relation(fields: [municipioId], references: [municipioId], onDelete: SetNull)
+
+  @@unique([fecha, plataforma, campania, municipioId])
+  @@index([fecha, plataforma])
+  @@map("ads_diario")
+}
+
+model Lead {
+  leadId         String           @id @map("lead_id")
+  fechaCreacion  DateTime         @map("fecha_creacion")
+  municipioId    String?          @map("municipio_id")
+  canal          String
+  urlEntrada     String?          @map("url_entrada")
+  tipoContacto   String           @map("tipo_contacto")
+  esSql          Boolean          @map("es_sql")
+  fechaSql       DateTime?        @map("fecha_sql")
+  esAlta         Boolean          @map("es_alta")
+  fechaAlta      DateTime?        @map("fecha_alta")
+  servicio       String
+  motivoDescarte String?          @map("motivo_descarte")
+  municipio      MotorMunicipio?  @relation(fields: [municipioId], references: [municipioId], onDelete: SetNull)
+  landing        Landing?         @relation(fields: [urlEntrada], references: [url], onDelete: SetNull)
+  opportunity    CareOpportunity?
+
+  @@index([fechaCreacion, canal])
+  @@index([municipioId, servicio])
+  @@index([esSql, fechaSql])
+  @@map("lead")
+}
+
+model IdentityMap {
+  identityId       String   @id @map("identity_id")
+  personId         String   @map("person_id")
+  sourceSystem     String   @map("source_system")
+  sourceIdentifier String   @map("source_identifier")
+  matchMethod      String   @map("match_method")
+  confidence       Float
+  ambiguous        Boolean  @default(false)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@unique([sourceSystem, sourceIdentifier])
+  @@index([personId])
+  @@map("identity_map")
+}
+
+model CareOpportunity {
+  opportunityId String         @id @map("opportunity_id")
+  personId      String         @map("person_id")
+  municipioId   String         @map("municipio_id")
+  servicio      String
+  createdAt     DateTime       @map("created_at")
+  status        String
+  leadId        String?        @unique @map("lead_id")
+  sqlAt         DateTime?      @map("sql_at")
+  altaAt        DateTime?      @map("alta_at")
+  municipio     MotorMunicipio @relation(fields: [municipioId], references: [municipioId], onDelete: Restrict)
+  lead          Lead?          @relation(fields: [leadId], references: [leadId], onDelete: SetNull)
+  events        JourneyEvent[]
+
+  @@index([personId, createdAt])
+  @@index([municipioId, servicio, status])
+  @@map("care_opportunity")
+}
+
+model JourneyEvent {
+  eventId            String           @id @map("event_id")
+  personId           String?          @map("person_id")
+  opportunityId      String?          @map("opportunity_id")
+  sessionId          String?          @map("session_id")
+  eventType          String           @map("event_type")
+  sourceSystem       String           @map("source_system")
+  occurredAt         DateTime         @map("occurred_at")
+  channel            String?
+  campaign           String?
+  landingUrl         String?          @map("landing_url")
+  metadata           Json
+  identityConfidence Float?           @map("identity_confidence")
+  opportunity        CareOpportunity? @relation(fields: [opportunityId], references: [opportunityId], onDelete: SetNull)
+  landing            Landing?         @relation(fields: [landingUrl], references: [url], onDelete: SetNull)
+
+  @@index([personId, occurredAt])
+  @@index([opportunityId, occurredAt])
+  @@index([sessionId])
+  @@map("journey_event")
+}
+
+model GrowthExperiment {
+  experimentId  String                 @id @map("experiment_id")
+  name          String
+  hypothesis    String
+  startDate     DateTime               @map("start_date") @db.Date
+  endDate       DateTime?              @map("end_date") @db.Date
+  status        ExperimentStatus
+  primaryMetric String                 @map("primary_metric")
+  methodology   String
+  assignments   ExperimentAssignment[]
+
+  @@map("growth_experiment")
+}
+
+model ExperimentAssignment {
+  experimentId String           @map("experiment_id")
+  municipioId  String           @map("municipio_id")
+  variant      String
+  assignedAt   DateTime         @map("assigned_at")
+  experiment   GrowthExperiment @relation(fields: [experimentId], references: [experimentId], onDelete: Cascade)
+  municipio    MotorMunicipio   @relation(fields: [municipioId], references: [municipioId], onDelete: Cascade)
+
+  @@id([experimentId, municipioId])
+  @@index([municipioId])
+  @@map("experiment_assignment")
+}
+
+model GrowthRecommendation {
+  recommendationId String               @id @map("recommendation_id")
+  municipioId      String               @map("municipio_id")
+  servicio         String
+  score            Float
+  expectedImpact   String               @map("expected_impact")
+  confidence       Float
+  explanation      Json
+  status           RecommendationStatus
+  rulesVersion     String               @map("rules_version")
+  createdAt        DateTime             @map("created_at")
+  municipio        MotorMunicipio       @relation(fields: [municipioId], references: [municipioId], onDelete: Cascade)
+
+  @@index([status, score])
+  @@index([municipioId, servicio])
+  @@map("growth_recommendation")
+}
+
+model LandingWorkflow {
+  url              String                @id
+  service          String
+  status           LandingWorkflowStatus
+  blocks           Json
+  content          Json
+  validationIssues Json                  @map("validation_issues")
+  reviewedAt       DateTime?             @map("reviewed_at")
+  approvedAt       DateTime?             @map("approved_at")
+  publishedAt      DateTime?             @map("published_at")
+  approvedBy       String?               @map("approved_by")
+  updatedAt        DateTime              @map("updated_at")
+  landing          Landing               @relation(fields: [url], references: [url], onDelete: Cascade)
+
+  @@index([status, updatedAt])
+  @@map("landing_workflow")
+}
+
+model AuditLog {
+  auditId    String   @id @map("audit_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  actorRole  String   @map("actor_role")
+  requestId  String?  @map("request_id")
+  metadata   Json
+  createdAt  DateTime @map("created_at")
+
+  @@index([entityType, entityId, createdAt])
+  @@index([requestId])
+  @@map("audit_log")
+}
+
+model SyntheticScenario {
+  code        String   @id
+  name        String
+  description String
+  subjectType String   @map("subject_type")
+  subjectId   String   @map("subject_id")
+  metadata    Json
+  createdAt   DateTime @map("created_at")
+
+  @@index([subjectType, subjectId])
+  @@map("synthetic_scenario")
+}
+
+model SeedRun {
+  runId            String   @id @map("run_id")
+  seed             Int
+  simulationDate   DateTime @map("simulation_date") @db.Date
+  generatorVersion String   @map("generator_version")
+  datasetChecksum  String   @map("dataset_checksum")
+  createdAt        DateTime @map("created_at")
+
+  @@map("seed_run")
+}
