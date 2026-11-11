@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: qida_growth
+      POSTGRES_USER: qida
+      POSTGRES_PASSWORD: qida_local
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qida -d qida_growth"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "5432:5432"
+    volumes:
+      - qida-postgres:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/docker/api.Dockerfile
+    environment:
+      DATABASE_URL: postgresql://qida:qida_local@postgres:5432/qida_growth?schema=public
+      PORT: "3000"
+      CORS_ORIGIN: http://localhost:5173
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "pnpm db:migrate && pnpm db:seed && pnpm --filter @qida/api dev"
+    ports:
+      - "3000:3000"
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/docker/web.Dockerfile
+    environment:
+      VITE_API_URL: http://localhost:3000/api/v1
+    depends_on:
+      - api
+    ports:
+      - "5173:5173"
+
+volumes:
+  qida-postgres:
+
