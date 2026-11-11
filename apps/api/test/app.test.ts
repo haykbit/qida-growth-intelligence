@@ -35,7 +35,7 @@ function repositoryMock(): GrowthRepository {
         base: { demandCaptureRate: 0.025, leadToSqlRate: 0.42, sqlToAltaRate: 0.18, capacityUtilization: 0.7 },
         optimistic: { demandCaptureRate: 0.04, leadToSqlRate: 0.5, sqlToAltaRate: 0.24, capacityUtilization: 0.85 },
       },
-      portfolioEstimate: { incrementalSql: 0, incrementalAltas: 0, periodMonths: assumptions.months },
+      scenarioProjection: { sql: 0, altas: 0, periodMonths: assumptions.months },
       prioritizedBets: [], rejectedBets: [], milestones: { first90Days: [], sixMonths: [] }, caveats: [],
     })),
     workbench: vi.fn(async () => ({ executionMode: "curated_read_only" as const, generatedAt: new Date(0).toISOString(), queries: [], warning: "No user SQL" })),
@@ -85,7 +85,9 @@ describe("Qida API", () => {
   });
 
   it("applies named strategy scenario defaults and bounded overrides", async () => {
-    await request(app()).get("/api/v1/strategy?scenario=conservative&months=3&leadToSqlRate=0.4").expect(200);
+    const response = await request(app()).get("/api/v1/strategy?scenario=conservative&months=3&leadToSqlRate=0.4").expect(200);
+    expect(response.body).toHaveProperty("scenarioProjection");
+    expect(response.body).not.toHaveProperty("portfolioEstimate");
     expect(repository.strategy).toHaveBeenCalledWith(expect.objectContaining({ scenario: "conservative", months: 3, demandCaptureRate: 0.015, leadToSqlRate: 0.4 }));
     await request(app()).get("/api/v1/strategy?demandCaptureRate=0.9").expect(400);
   });

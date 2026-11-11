@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import type {
+  IdentityStatus,
   JourneyDetail,
   JourneySummary,
   LandingDraftRequest,
@@ -67,7 +68,6 @@ function leadWhere(filters: Filters, builder: SqlBuilder, aliases: LeadAliases =
 function opportunityFromRow(row: Record<string, unknown>): OpportunityRow {
   const coverage = booleanValue(row.coverage);
   const caregivers = numberValue(row.caregivers_available);
-  const confidence = round(numberValue(row.confidence, 0.5), 3);
   const eligibility: OpportunityRow["eligibility"] = !coverage ? "ineligible" : caregivers < 8 ? "constrained" : "eligible";
   return {
     municipalityId: stringValue(row.municipio_id),
@@ -85,8 +85,12 @@ function opportunityFromRow(row: Record<string, unknown>): OpportunityRow {
     competitors: Math.round(numberValue(row.competitors)),
     score: round(numberValue(row.score), 1),
     eligibility,
-    confidence,
   };
+}
+
+function identityStatus(value: unknown): IdentityStatus {
+  if (value === "confirmed" || value === "ambiguous") return value;
+  return "unlinked";
 }
 
 function funnelFromRow(row: Record<string, unknown>): FunnelBreakdown {
@@ -163,11 +167,15 @@ export class PrismaGrowthRepository implements GrowthRepository {
     const municipalityWhere = leadWhere(filters, municipalityBuilder);
     const discardBuilder = new SqlBuilder();
     const discardWhere = leadWhere(filters, discardBuilder);
-    const [summaryRows, monthlyRows, channelRows, municipalityRows, discardRows, opportunities] = await Promise.all([
+    const paidBuilder = new SqlBuilder();
+    const paidWhere = leadWhere(filters, paidBuilder, { lead: "pl", municipality: "pm" });
+    const [summaryRows, paidRows, monthlyRows, channelRows, municipalityRows, discardRows, opportunities] = await Promise.all([
       this.query(
         `SELECT COUNT(*)::int AS leads,
           COUNT(*) FILTER (WHERE l.es_sql)::int AS sql_count,
           COUNT(*) FILTER (WHERE l.es_alta)::int AS alta_count,
+          COUNT(*) FILTER (WHERE l.es_sql AND l.fecha_creacion <= CURRENT_DATE - interval '90 days')::int AS mature_sql_count,
+          COUNT(*) FILTER (WHERE l.es_alta AND l.fecha_creacion <= CURRENT_DATE - interval '90 days')::int AS mature_alta_count,
           COUNT(DISTINCT l.lead_id) FILTER (WHERE EXISTS (
             SELECT 1 FROM care_opportunity co JOIN journey_event je ON je.opportunity_id = co.opportunity_id
             WHERE co.lead_id = l.lead_id
@@ -182,6 +190,19 @@ export class PrismaGrowthRepository implements GrowthRepository {
             WHERE ${spendFrom} AND ${spendTo}), 0) AS spend
         FROM lead l LEFT JOIN motor_municipio m ON m.municipio_id = l.municipio_id WHERE ${summaryWhere}`,
         summaryBuilder.values,
+      ),
+      this.query(
+        `WITH campaign_leads AS (
+           SELECT DISTINCT co.lead_id
+           FROM journey_event je JOIN care_opportunity co ON co.opportunity_id = je.opportunity_id
+           WHERE je.campaign IS NOT NULL AND co.lead_id IS NOT NULL
+         )
+         SELECT COUNT(*) FILTER (WHERE pl.es_sql)::int AS paid_sql_count,
+                COUNT(*) FILTER (WHERE pl.es_alta)::int AS paid_alta_count
+         FROM campaign_leads cl JOIN lead pl ON pl.lead_id = cl.lead_id
+         LEFT JOIN motor_municipio pm ON pm.municipio_id = pl.municipio_id
+         WHERE ${paidWhere}`,
+        paidBuilder.values,
       ),
       this.aggregateFunnel(filters, "to_char(date_trunc('month', l.fecha_creacion), 'YYYY-MM')", "period"),
       this.aggregateFunnel(filters, "l.canal", "channel"),
@@ -205,15 +226,18 @@ export class PrismaGrowthRepository implements GrowthRepository {
     const sql = numberValue(summary.sql_count);
     const altas = numberValue(summary.alta_count);
     const spend = numberValue(summary.spend);
+    const paid = paidRows[0] ?? {};
+    const matureSql = numberValue(summary.mature_sql_count);
+    const matureAltas = numberValue(summary.mature_alta_count);
     return {
       kpis: {
         leads,
         sql,
         altas,
         leadToSql: round(rate(sql, leads)),
-        sqlToAlta: round(rate(altas, sql)),
-        costPerSql: round(rate(spend, sql), 2),
-        costPerAttributedAlta: round(rate(spend, altas), 2),
+        sqlToAlta: round(rate(matureAltas, matureSql)),
+        costPerSql: round(rate(spend, numberValue(paid.paid_sql_count)), 2),
+        costPerAttributedAlta: round(rate(spend, numberValue(paid.paid_alta_count)), 2),
         traceabilityCoverage: round(rate(numberValue(summary.traced), leads)),
         duplicates: numberValue(summary.duplicates),
         opportunityMunicipalities: numberValue(summary.opportunity_municipalities),
@@ -230,7 +254,8 @@ export class PrismaGrowthRepository implements GrowthRepository {
       discardReasons: discardRows.map((row) => ({ name: stringValue(row.name), value: numberValue(row.value) })),
       caveats: [
         "Channel views are descriptive attribution and do not establish causal impact.",
-        "SQL to alta conversion should be interpreted on mature cohorts.",
+        "SQL-to-alta uses opportunities created at least 90 days ago; headline SQL and altas remain period totals.",
+        "Paid cost ratios use only CRM outcomes linked to an observed campaign event; they remain attribution ratios, not incrementality.",
       ],
     };
   }
@@ -286,8 +311,7 @@ export class PrismaGrowthRepository implements GrowthRepository {
                 m.cuidadoras_disponibles_30d AS caregivers_available,
                 (m.tiene_cobertura AND d.tema = ANY(m.servicios_cubiertos)) AS coverage,
                 COALESCE(v.voice_signals, 0)::int AS voice_signals,
-                COALESCE(c.competitors, 0)::int AS competitors,
-                LEAST(1.0, 0.45 + CASE WHEN m.datos_propios THEN 0.35 ELSE 0 END + CASE WHEN v.voice_signals > 0 THEN 0.2 ELSE 0 END)::double precision AS confidence
+                COALESCE(c.competitors, 0)::int AS competitors
          FROM demand d JOIN motor_municipio m ON m.municipio_id = d.municipio_id
          LEFT JOIN lead_stats ls ON ls.municipio_id = d.municipio_id AND ls.servicio = d.tema
          LEFT JOIN voice v ON v.municipio_id = d.municipio_id AND v.tema = d.tema
@@ -302,7 +326,7 @@ export class PrismaGrowthRepository implements GrowthRepository {
              + LEAST(voice_signals / 10.0, 10)
              + CASE WHEN sql_count = 0 THEN 5 ELSE (1 - alta_count::double precision / NULLIF(sql_count, 0)) * 10 END
              - CASE WHEN caregivers_available < 8 THEN 20 ELSE 0 END
-           )) * confidence END::double precision AS score
+           )) END::double precision AS score
          FROM base
        )
        SELECT *, COUNT(*) OVER()::int AS total FROM scored
@@ -339,7 +363,6 @@ export class PrismaGrowthRepository implements GrowthRepository {
     const constraints = [
       ...(!row.coverage ? ["Service is not covered in this municipality"] : []),
       ...(row.caregiversAvailable < 8 ? ["Caregiver capacity is constrained"] : []),
-      ...(row.confidence < 0.7 ? ["Limited first-party evidence lowers confidence"] : []),
     ];
     return {
       ...row,
@@ -372,8 +395,10 @@ export class PrismaGrowthRepository implements GrowthRepository {
     const rows = await this.query(
       `SELECT co.opportunity_id, co.person_id, m.nombre AS municipality, co.servicio AS service,
               co.status, co.created_at,
-              GREATEST(COUNT(DISTINCT im.identity_id) - 1, 0)::int AS duplicate_count,
-              COALESCE(MIN(im.confidence), 0)::double precision AS identity_confidence,
+              GREATEST(COUNT(DISTINCT im.identity_id) - 1, 0)::int AS linked_identity_count,
+              CASE WHEN COUNT(im.identity_id) = 0 THEN 'unlinked'
+                   WHEN BOOL_OR(im.ambiguous) THEN 'ambiguous'
+                   ELSE 'confirmed' END AS identity_status,
               COUNT(*) OVER()::int AS total
        FROM care_opportunity co JOIN motor_municipio m ON m.municipio_id = co.municipio_id
        LEFT JOIN identity_map im ON im.person_id = co.person_id
@@ -390,8 +415,8 @@ export class PrismaGrowthRepository implements GrowthRepository {
         service: stringValue(row.service),
         status: stringValue(row.status),
         createdAt: isoValue(row.created_at),
-        duplicateCount: numberValue(row.duplicate_count),
-        identityConfidence: round(numberValue(row.identity_confidence), 3),
+        linkedIdentityCount: numberValue(row.linked_identity_count),
+        identityStatus: identityStatus(row.identity_status),
       })),
       page: input.page,
       pageSize: input.pageSize,
@@ -405,13 +430,17 @@ export class PrismaGrowthRepository implements GrowthRepository {
     if (summary === undefined) return null;
     const [eventRows, identityRows] = await Promise.all([
       this.query(
-        `SELECT event_id, event_type, occurred_at, channel, campaign, landing_url, source_system,
-                identity_confidence, metadata
-         FROM journey_event WHERE opportunity_id = $1 ORDER BY occurred_at, event_id`,
+        `SELECT je.event_id, je.event_type, je.occurred_at, je.channel, je.campaign, je.landing_url,
+                je.source_system, je.metadata,
+                CASE WHEN je.person_id IS NULL THEN 'unlinked'
+                     WHEN EXISTS (SELECT 1 FROM identity_map im WHERE im.person_id = je.person_id AND im.ambiguous) THEN 'ambiguous'
+                     WHEN EXISTS (SELECT 1 FROM identity_map im WHERE im.person_id = je.person_id) THEN 'confirmed'
+                     ELSE 'unlinked' END AS identity_status
+         FROM journey_event je WHERE je.opportunity_id = $1 ORDER BY je.occurred_at, je.event_id`,
         [opportunityId],
       ),
       this.query(
-        `SELECT source_system, source_identifier, match_method, confidence, ambiguous
+        `SELECT source_system, source_identifier, match_method, ambiguous
          FROM identity_map WHERE person_id = $1 ORDER BY source_system, identity_id`,
         [summary.personId],
       ),
@@ -427,12 +456,14 @@ export class PrismaGrowthRepository implements GrowthRepository {
         landingUrl: nullableString(row.landing_url),
         sourceSystem: stringValue(row.source_system),
         observed: metadata.inferred !== true,
-        identityConfidence: row.identity_confidence === null ? null : round(numberValue(row.identity_confidence), 3),
+        identityStatus: identityStatus(row.identity_status),
         metadata,
       };
     });
+    const attributableEventTypes = new Set(["ad_click", "landing_view", "page_view", "form_submit", "phone_call"]);
+    const touchEvents = events.filter((event) => event.channel !== null && attributableEventTypes.has(event.eventType));
     const touches = new Map<string, number>();
-    for (const event of events) {
+    for (const event of touchEvents) {
       if (event.channel !== null) touches.set(event.channel, (touches.get(event.channel) ?? 0) + 1);
     }
     return {
@@ -442,12 +473,11 @@ export class PrismaGrowthRepository implements GrowthRepository {
         sourceSystem: stringValue(row.source_system),
         pseudonym: createHash("sha256").update(stringValue(row.source_identifier)).digest("hex").slice(0, 12),
         method: stringValue(row.match_method),
-        confidence: round(numberValue(row.confidence), 3),
         ambiguous: booleanValue(row.ambiguous),
       })),
       attribution: {
-        firstTouch: events.find((event) => event.channel !== null)?.channel ?? null,
-        lastTouch: [...events].reverse().find((event) => event.channel !== null)?.channel ?? null,
+        firstTouch: touchEvents[0]?.channel ?? null,
+        lastTouch: touchEvents.at(-1)?.channel ?? null,
         multiTouch: [...touches.entries()].map(([channel, count]) => ({ channel, touches: count })),
       },
       warning: "First-touch, last-touch and multi-touch are descriptive attribution views; they do not demonstrate causality.",
@@ -758,7 +788,7 @@ export class PrismaGrowthRepository implements GrowthRepository {
     const clauses: string[] = [];
     const gscClauses: string[] = [];
     const webClauses = ["canal = 'organic'"];
-    const leadClauses = ["tipo_contacto <> 'cuidadora_empleo'"];
+    const leadClauses = ["tipo_contacto <> 'cuidadora_empleo'", "LOWER(canal) IN ('organic', 'seo')"];
     if (filters.from !== undefined) {
       gscClauses.push(`fecha >= ${builder.add(filters.from)}::date`);
       webClauses.push(`fecha >= ${builder.add(filters.from)}::date`);
@@ -837,17 +867,26 @@ export class PrismaGrowthRepository implements GrowthRepository {
          FROM ads_diario a LEFT JOIN motor_municipio m ON m.municipio_id = a.municipio_id
          ${where} GROUP BY a.plataforma, a.campania, a.municipio_id
        ), campaign_leads AS (
-         SELECT DISTINCT je.campaign, co.lead_id
+         SELECT DISTINCT je.campaign, co.municipio_id, co.lead_id
          FROM journey_event je JOIN care_opportunity co ON co.opportunity_id = je.opportunity_id
          WHERE je.campaign IS NOT NULL AND co.lead_id IS NOT NULL
-       ), crm AS (
+       ), crm_local AS (
+         SELECT cl.campaign, cl.municipio_id, COUNT(*) FILTER (WHERE l.es_sql)::int AS crm_sql,
+                COUNT(*) FILTER (WHERE l.es_alta)::int AS crm_altas
+         FROM campaign_leads cl JOIN lead l ON l.lead_id = cl.lead_id
+         WHERE l.tipo_contacto <> 'cuidadora_empleo' GROUP BY cl.campaign, cl.municipio_id
+       ), crm_campaign AS (
          SELECT cl.campaign, COUNT(*) FILTER (WHERE l.es_sql)::int AS crm_sql,
                 COUNT(*) FILTER (WHERE l.es_alta)::int AS crm_altas
          FROM campaign_leads cl JOIN lead l ON l.lead_id = cl.lead_id
          WHERE l.tipo_contacto <> 'cuidadora_empleo' GROUP BY cl.campaign
        )
-       SELECT p.*, COALESCE(c.crm_sql, 0)::int AS crm_sql, COALESCE(c.crm_altas, 0)::int AS crm_altas
-       FROM paid p LEFT JOIN crm c ON c.campaign = p.campania
+       SELECT p.*,
+              COALESCE(CASE WHEN p.municipio_id IS NULL THEN cc.crm_sql ELSE cl.crm_sql END, 0)::int AS crm_sql,
+              COALESCE(CASE WHEN p.municipio_id IS NULL THEN cc.crm_altas ELSE cl.crm_altas END, 0)::int AS crm_altas
+       FROM paid p
+       LEFT JOIN crm_campaign cc ON cc.campaign = p.campania AND p.municipio_id IS NULL
+       LEFT JOIN crm_local cl ON cl.campaign = p.campania AND cl.municipio_id = p.municipio_id
        ORDER BY p.spend DESC, p.plataforma, p.campania`,
       builder.values,
     );
@@ -904,14 +943,12 @@ export class PrismaGrowthRepository implements GrowthRepository {
   }
 
   private experimentSummaryFromRow(row: Record<string, unknown>, analysis: ExperimentAnalysis): ExperimentSummary {
-    const minimumSamplePass = analysis.treatmentSample >= 30 && analysis.controlSample >= 30;
-    const parallelTrendsPass = analysis.preTrendDifference === null ? null : Math.abs(analysis.preTrendDifference) <= 0.1;
-    const eligibleForDid = minimumSamplePass && parallelTrendsPass === true && analysis.didEstimate !== null;
+    const bothGroupsObserved = analysis.treatmentSample > 0 && analysis.controlSample > 0;
     const limitations = [
-      ...(!minimumSamplePass ? ["At least one variant has fewer than 30 mature opportunities"] : []),
-      ...(parallelTrendsPass === false ? ["Pre-period trends differ beyond the 10% diagnostic threshold"] : []),
+      ...(!bothGroupsObserved ? ["At least one variant has no observed landing sessions"] : []),
       ...(analysis.didEstimate === null ? ["Insufficient pre/post outcome data for Difference-in-Differences"] : []),
-      "No automatic claim of statistical significance or causality is made.",
+      "The reported Difference-in-Differences is descriptive: no inferential parallel-trends test or significance test is implemented.",
+      "No causal claim is made.",
     ];
     return {
       id: stringValue(row.experiment_id), name: stringValue(row.name), hypothesis: stringValue(row.hypothesis),
@@ -919,7 +956,7 @@ export class PrismaGrowthRepository implements GrowthRepository {
       status: stringValue(row.status), primaryMetric: stringValue(row.primary_metric), methodology: stringValue(row.methodology),
       treatmentMunicipalities: numberValue(row.treatment_count), controlMunicipalities: numberValue(row.control_count),
       observedDifference: analysis.observedDifference, didEstimate: analysis.didEstimate,
-      evidenceLevel: eligibleForDid ? "quasi_experimental" : "descriptive", limitations,
+      evidenceLevel: "descriptive", limitations,
     };
   }
 
@@ -944,12 +981,15 @@ export class PrismaGrowthRepository implements GrowthRepository {
         [id],
       ),
       this.query(
-        `SELECT to_char(date_trunc('month', l.fecha_creacion), 'YYYY-MM') AS period, ea.variant,
-                COUNT(*) FILTER (WHERE l.es_alta)::double precision / NULLIF(COUNT(*) FILTER (WHERE l.es_sql), 0) AS value,
-                COUNT(*) FILTER (WHERE l.es_sql)::int AS sample_size
+        `SELECT to_char(date_trunc('month', ws.fecha), 'YYYY-MM') AS period, ea.variant,
+                SUM(ws.formularios)::double precision / NULLIF(SUM(ws.sesiones), 0) AS value,
+                SUM(ws.sesiones)::int AS sample_size
          FROM growth_experiment ge JOIN experiment_assignment ea ON ea.experiment_id = ge.experiment_id
-         JOIN lead l ON l.municipio_id = ea.municipio_id AND l.tipo_contacto <> 'cuidadora_empleo'
+         JOIN landing l ON l.municipio_id = ea.municipio_id
+         JOIN web_sesiones_diarias ws ON ws.url_entrada = l.url
          WHERE ge.experiment_id = $1
+           AND ws.fecha >= ge.start_date - interval '90 days'
+           AND ws.fecha <= COALESCE(ge.end_date, CURRENT_DATE)
          GROUP BY 1, ea.variant ORDER BY 1, ea.variant`,
         [id],
       ),
@@ -966,8 +1006,8 @@ export class PrismaGrowthRepository implements GrowthRepository {
         period: stringValue(item.period), variant: stringValue(item.variant), value: round(numberValue(item.value)), sampleSize: numberValue(item.sample_size),
       })),
       diagnostics: {
-        parallelTrendsPass: analysis.preTrendDifference === null ? null : Math.abs(analysis.preTrendDifference) <= 0.1,
-        minimumSamplePass: analysis.treatmentSample >= 30 && analysis.controlSample >= 30,
+        parallelTrendsPass: null,
+        hasObservedDataInBothGroups: analysis.treatmentSample > 0 && analysis.controlSample > 0,
         preTrendDifference: analysis.preTrendDifference,
       },
     };
@@ -977,14 +1017,17 @@ export class PrismaGrowthRepository implements GrowthRepository {
     const rows = await this.query(
       `WITH outcomes AS (
          SELECT ea.variant,
-                CASE WHEN l.fecha_creacion < ge.start_date THEN 'pre' ELSE 'post' END AS period,
-                COUNT(*) FILTER (WHERE l.es_alta)::double precision / NULLIF(COUNT(*) FILTER (WHERE l.es_sql), 0) AS conversion,
-                COUNT(*) FILTER (WHERE l.es_sql)::int AS sample_size
+                CASE WHEN ws.fecha < ge.start_date - interval '45 days' THEN 'pre_early'
+                     WHEN ws.fecha < ge.start_date THEN 'pre_late'
+                     ELSE 'post' END AS period,
+                SUM(ws.formularios)::double precision / NULLIF(SUM(ws.sesiones), 0) AS conversion,
+                SUM(ws.sesiones)::int AS sample_size
          FROM growth_experiment ge JOIN experiment_assignment ea ON ea.experiment_id = ge.experiment_id
-         JOIN lead l ON l.municipio_id = ea.municipio_id AND l.tipo_contacto <> 'cuidadora_empleo'
+         JOIN landing l ON l.municipio_id = ea.municipio_id
+         JOIN web_sesiones_diarias ws ON ws.url_entrada = l.url
          WHERE ge.experiment_id = $1
-           AND l.fecha_creacion >= ge.start_date - interval '90 days'
-           AND l.fecha_creacion <= COALESCE(ge.end_date, CURRENT_DATE)
+           AND ws.fecha >= ge.start_date - interval '90 days'
+           AND ws.fecha <= COALESCE(ge.end_date, CURRENT_DATE)
          GROUP BY ea.variant, 2
        ) SELECT * FROM outcomes`,
       [id],
@@ -994,15 +1037,18 @@ export class PrismaGrowthRepository implements GrowthRepository {
       return row === undefined || row.conversion === null ? null : numberValue(row.conversion);
     };
     const sample = (variant: string): number => rows.filter((item) => item.variant === variant).reduce((sum, item) => sum + numberValue(item.sample_size), 0);
-    const treatmentPre = value("treatment", "pre");
+    const treatmentEarly = value("treatment", "pre_early");
+    const treatmentPre = value("treatment", "pre_late");
     const treatmentPost = value("treatment", "post");
-    const controlPre = value("control", "pre");
+    const controlEarly = value("control", "pre_early");
+    const controlPre = value("control", "pre_late");
     const controlPost = value("control", "post");
     return {
       observedDifference: treatmentPost === null || controlPost === null ? null : round(treatmentPost - controlPost),
       didEstimate: treatmentPre === null || treatmentPost === null || controlPre === null || controlPost === null
         ? null : round((treatmentPost - treatmentPre) - (controlPost - controlPre)),
-      preTrendDifference: treatmentPre === null || controlPre === null ? null : round(treatmentPre - controlPre),
+      preTrendDifference: treatmentEarly === null || treatmentPre === null || controlEarly === null || controlPre === null
+        ? null : round((treatmentPre - treatmentEarly) - (controlPre - controlEarly)),
       treatmentSample: sample("treatment"), controlSample: sample("control"),
     };
   }
@@ -1082,9 +1128,9 @@ export class PrismaGrowthRepository implements GrowthRepository {
       immatureCohorts: numberValue(immatureRows[0]?.count),
       limitations: ["Late events and intentionally incomplete attribution are retained rather than imputed."],
       monitoringSignals: [
-        { signal: "unlinked_event_rate", value: round(rate(numberValue(identity.unlinked_events), totalEvents)), threshold: 0.15, status: rate(numberValue(identity.unlinked_events), totalEvents) <= 0.15 ? "ok" : "attention" },
-        { signal: "integrity_failures", value: integrityRows.reduce((sum, row) => sum + numberValue(row.failures), 0), threshold: 0, status: integrityRows.every((row) => numberValue(row.failures) === 0) ? "ok" : "attention" },
-        { signal: "ambiguous_identity_rate", value: round(rate(numberValue(identity.ambiguous_identities), totalEvents)), threshold: 0.05, status: rate(numberValue(identity.ambiguous_identities), totalEvents) <= 0.05 ? "ok" : "attention" },
+        { signal: "unlinked_events", value: numberValue(identity.unlinked_events), unit: "count", source: "journey_event" },
+        { signal: "integrity_failures", value: integrityRows.reduce((sum, row) => sum + numberValue(row.failures), 0), unit: "count", source: "integrity_checks" },
+        { signal: "ambiguous_identities", value: numberValue(identity.ambiguous_identities), unit: "count", source: "identity_map" },
       ],
     };
   }
@@ -1102,27 +1148,26 @@ export class PrismaGrowthRepository implements GrowthRepository {
       const eligible = row.eligibility === "eligible";
       const potentialLeads = row.monthlySearches * assumptions.demandCaptureRate * assumptions.months;
       const capacityFactor = eligible ? assumptions.capacityUtilization : 0;
-      const incrementalSql = round(potentialLeads * assumptions.leadToSqlRate * capacityFactor, 1);
-      const incrementalAltas = round(incrementalSql * assumptions.sqlToAltaRate, 1);
-      const highImpact = incrementalSql >= 10;
+      const scenarioSql = round(potentialLeads * assumptions.leadToSqlRate * capacityFactor, 1);
+      const scenarioAltas = round(scenarioSql * assumptions.sqlToAltaRate, 1);
+      const highImpact = scenarioSql >= 10;
       return {
         rank, municipalityId: row.municipalityId, municipality: row.municipality, service: row.service,
         decision: eligible ? "prioritize" : "reject",
         reason: eligible ? "Coverage, capacity and persisted demand pass the v1 eligibility rules." : row.eligibility === "constrained" ? "Capacity constraint blocks responsible acquisition scaling." : "Coverage rule makes the municipality/service ineligible.",
-        impact: highImpact ? "high" : incrementalSql >= 4 ? "medium" : "low",
+        impact: highImpact ? "high" : scenarioSql >= 4 ? "medium" : "low",
         effort: row.competitors >= 5 || row.estimatedCpc >= 3 ? "high" : row.competitors >= 2 ? "medium" : "low",
-        confidence: row.confidence,
         dependencies: ["Landing policy review", "CRM campaign tagging", ...(row.caregiversAvailable < 12 ? ["Capacity confirmation"] : [])],
         owner: eligible ? "Growth + Local Operations" : "Local Operations",
-        estimatedIncrementalSql: incrementalSql, estimatedIncrementalAltas: incrementalAltas,
+        scenarioSql, scenarioAltas,
         hypothesis: `A local ${row.service} test in ${row.municipality} can convert a bounded share of observed demand into eligible SQL.`,
         mvp: "Launch one reviewed landing and one geo-targeted campaign with a capped budget and holdout comparison.",
         exclusions: ["Caregiver job contacts", "Immature cohorts", "Unlinked CRM conversions"],
-        successCriteria: ["Policy-safe published landing", "Traceability coverage at or above 85%", `At least ${Math.max(3, Math.ceil(incrementalSql))} incremental SQL over the test window`],
+        successCriteria: ["Policy-safe published landing", "Complete campaign-to-CRM tracking for observed conversions", "Predeclared experiment readout completed on a mature cohort"],
         decisionCriteria: {
-          continue: "Incremental SQL meets target, cohort matures, and capacity SLA remains healthy.",
+          continue: "Observed outcomes meet the predeclared experiment target, the cohort matures, and capacity remains healthy.",
           modify: "Demand is observed but conversion, traceability, or creative performance misses target.",
-          stop: "No incremental eligible SQL, policy failure, or sustained capacity constraint.",
+          stop: "No observed improvement in eligible SQL, policy failure, or sustained capacity constraint.",
         },
       };
     };
@@ -1138,9 +1183,9 @@ export class PrismaGrowthRepository implements GrowthRepository {
         base: { demandCaptureRate: 0.025, leadToSqlRate: 0.42, sqlToAltaRate: 0.18, capacityUtilization: 0.7 },
         optimistic: { demandCaptureRate: 0.04, leadToSqlRate: 0.5, sqlToAltaRate: 0.24, capacityUtilization: 0.85 },
       },
-      portfolioEstimate: {
-        incrementalSql: round(prioritizedBets.reduce((sum, bet) => sum + bet.estimatedIncrementalSql, 0), 1),
-        incrementalAltas: round(prioritizedBets.reduce((sum, bet) => sum + bet.estimatedIncrementalAltas, 0), 1),
+      scenarioProjection: {
+        sql: round(prioritizedBets.reduce((sum, bet) => sum + bet.scenarioSql, 0), 1),
+        altas: round(prioritizedBets.reduce((sum, bet) => sum + bet.scenarioAltas, 0), 1),
         periodMonths: assumptions.months,
       },
       prioritizedBets, rejectedBets,
@@ -1150,7 +1195,7 @@ export class PrismaGrowthRepository implements GrowthRepository {
       },
       caveats: [
         "Coefficients are editable, bounded planning assumptions applied to synthetic data; they are not learned model parameters.",
-        "Incremental estimates are scenario arithmetic, not causal forecasts. Experiments and holdouts are required for validation.",
+        "Scenario outputs are planning arithmetic, not incremental estimates or causal forecasts. Experiments and holdouts are required for validation.",
       ],
     };
   }
@@ -1229,7 +1274,7 @@ ORDER BY descartes DESC, sin_atribucion DESC LIMIT 20`;
       architectureStages: [
         { stage: 1, name: "Persist", purpose: "Store coherent synthetic source and extension data.", inputs: ["Deterministic seed"], outputs: ["PostgreSQL source of truth"] },
         { stage: 2, name: "Resolve and measure", purpose: "Link explicit identities and calculate governed metrics.", inputs: ["CRM, web, ads, SEO, operations"], outputs: ["Journeys, cohorts, attribution, quality"] },
-        { stage: 3, name: "Prioritize", purpose: "Rank eligible municipality/service opportunities with explanations.", inputs: ["Demand, capacity, conversion, confidence"], outputs: ["Versioned rule scores and constraints"] },
+        { stage: 3, name: "Prioritize", purpose: "Rank eligible municipality/service opportunities with explanations.", inputs: ["Demand", "capacity", "conversion", "data availability"], outputs: ["Versioned rule scores and constraints"] },
         { stage: 4, name: "Act safely", purpose: "Run bounded experiments and simulated landing publication.", inputs: ["Prioritized bets", "Human review"], outputs: ["Audited decisions and outcomes"] },
       ],
       ownership: [

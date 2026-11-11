@@ -138,7 +138,7 @@ export type ExperimentSummary = {
 export type ExperimentDetail = ExperimentSummary & {
   assignments: Array<{ municipalityId: string; municipality: string; variant: string; assignedAt: string }>;
   series: Array<{ period: string; variant: string; value: number; sampleSize: number }>;
-  diagnostics: { parallelTrendsPass: boolean | null; minimumSamplePass: boolean; preTrendDifference: number | null };
+  diagnostics: { parallelTrendsPass: null; hasObservedDataInBothGroups: boolean; preTrendDifference: number | null };
 };
 
 export type DataQualityResponse = {
@@ -151,7 +151,7 @@ export type DataQualityResponse = {
   discrepancies: Array<{ metric: string; platform: number; crm: number; difference: number }>;
   immatureCohorts: number;
   limitations: string[];
-  monitoringSignals?: Array<{ signal: string; value: number; threshold: number; status: "ok" | "attention" }>;
+  monitoringSignals?: Array<{ signal: string; value: number; unit: "count"; source: string }>;
 };
 
 export type StrategyAssumptions = {
@@ -172,11 +172,10 @@ export type StrategyBet = {
   reason: string;
   impact: "low" | "medium" | "high";
   effort: "low" | "medium" | "high";
-  confidence: number;
   dependencies: string[];
   owner: string;
-  estimatedIncrementalSql: number;
-  estimatedIncrementalAltas: number;
+  scenarioSql: number;
+  scenarioAltas: number;
   hypothesis: string;
   mvp: string;
   exclusions: string[];
@@ -189,7 +188,7 @@ export type StrategyResponse = {
   baseline: { sqlPerMonth: 2000; source: "planning_brief"; observedFilteredSql: number };
   assumptions: StrategyAssumptions;
   scenarios: Record<"conservative" | "base" | "optimistic", Omit<StrategyAssumptions, "scenario" | "months">>;
-  portfolioEstimate: { incrementalSql: number; incrementalAltas: number; periodMonths: number };
+  scenarioProjection: { sql: number; altas: number; periodMonths: number };
   prioritizedBets: StrategyBet[];
   rejectedBets: StrategyBet[];
   milestones: { first90Days: string[]; sixMonths: string[] };
