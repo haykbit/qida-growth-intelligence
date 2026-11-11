@@ -14,5 +14,7 @@ export function formatDateTime(value: string): string {
 }
 
 export function titleCase(value: string): string {
+  const labels: Record<string, string> = { ambiguous: "Ambigua", confirmed: "Confirmada", high: "Alto", low: "Bajo", medium: "Medio", unlinked: "Sin enlazar" };
+  if (labels[value]) return labels[value];
   return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

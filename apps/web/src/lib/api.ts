@@ -48,11 +48,11 @@ function queryString(filters: GlobalFilters, pagination?: { page?: number; pageS
 const seriesPointSchema = z.object({ period: z.string(), leads: z.number(), sql: z.number(), altas: z.number() });
 const breakdownSchema = z.object({ name: z.string(), value: z.number(), secondary: z.number().optional() });
 const opportunityRowSchema = z.object({
-  municipalityId: z.string(), municipality: z.string(), province: z.string(), service: z.string(), monthlySearches: z.number(), estimatedCpc: z.number(), sql: z.number(), altas: z.number(), sqlToAlta: z.number(), caregiversAvailable: z.number(), coverage: z.boolean(), voiceSignals: z.number(), competitors: z.number(), score: z.number(), eligibility: z.enum(["eligible", "constrained", "ineligible"]), confidence: z.number(),
+  municipalityId: z.string(), municipality: z.string(), province: z.string(), service: z.string(), monthlySearches: z.number(), estimatedCpc: z.number(), sql: z.number(), altas: z.number(), sqlToAlta: z.number(), caregiversAvailable: z.number(), coverage: z.boolean(), voiceSignals: z.number(), competitors: z.number(), score: z.number(), eligibility: z.enum(["eligible", "constrained", "ineligible"]),
 });
 
 export const overviewSchema = z.object({
-  kpis: z.object({ leads: z.number(), sql: z.number(), altas: z.number(), leadToSql: z.number(), sqlToAlta: z.number(), costPerSql: z.number(), costPerAttributedAlta: z.number(), traceabilityCoverage: z.number(), duplicates: z.number(), opportunityMunicipalities: z.number(), capacityConstrainedMunicipalities: z.number() }),
+  kpis: z.object({ leads: z.number(), sql: z.number(), altas: z.number(), leadToSql: z.number(), sqlToAlta: z.number(), costPerSql: z.number().nullable(), costPerAttributedAlta: z.number().nullable(), traceabilityCoverage: z.number(), duplicates: z.number(), opportunityMunicipalities: z.number(), capacityConstrainedMunicipalities: z.number() }),
   monthlyFunnel: z.array(seriesPointSchema),
   channelFunnel: z.array(seriesPointSchema.extend({ channel: z.string() })),
   altasByMunicipality: z.array(breakdownSchema),
@@ -72,12 +72,12 @@ export const opportunityDetailSchema = opportunityRowSchema.extend({
 });
 export type OpportunityDetailData = z.infer<typeof opportunityDetailSchema>;
 
-const journeySummarySchema = z.object({ opportunityId: z.string(), personId: z.string(), municipality: z.string(), service: z.string(), status: z.string(), createdAt: z.string(), duplicateCount: z.number(), identityConfidence: z.number() });
+const journeySummarySchema = z.object({ opportunityId: z.string(), personId: z.string(), municipality: z.string(), service: z.string(), status: z.string(), createdAt: z.string(), linkedIdentityCount: z.number(), identityStatus: z.enum(["confirmed", "ambiguous", "unlinked"]) });
 export const journeysSchema = paginated(journeySummarySchema);
 export type JourneySummaryData = z.infer<typeof journeySummarySchema>;
 export const journeyDetailSchema = journeySummarySchema.extend({
-  events: z.array(z.object({ eventId: z.string(), eventType: z.string(), occurredAt: z.string(), channel: z.string().nullable(), campaign: z.string().nullable(), landingUrl: z.string().nullable(), sourceSystem: z.string(), observed: z.boolean(), identityConfidence: z.number().nullable(), metadata: z.record(z.unknown()) })),
-  identities: z.array(z.object({ sourceSystem: z.string(), pseudonym: z.string(), method: z.string(), confidence: z.number(), ambiguous: z.boolean() })),
+  events: z.array(z.object({ eventId: z.string(), eventType: z.string(), occurredAt: z.string(), channel: z.string().nullable(), campaign: z.string().nullable(), landingUrl: z.string().nullable(), sourceSystem: z.string(), observed: z.boolean(), identityStatus: z.enum(["confirmed", "ambiguous", "unlinked"]), metadata: z.record(z.unknown()) })),
+  identities: z.array(z.object({ sourceSystem: z.string(), pseudonym: z.string(), method: z.string(), ambiguous: z.boolean() })),
   attribution: z.object({ firstTouch: z.string().nullable(), lastTouch: z.string().nullable(), multiTouch: z.array(z.object({ channel: z.string(), touches: z.number() })) }), warning: z.string(),
 });
 export type JourneyDetailData = z.infer<typeof journeyDetailSchema>;
@@ -112,7 +112,7 @@ const experimentListSchema = paginated(experimentSummarySchema).extend({ caveats
 export const experimentsSchema = experimentListSchema;
 export type ExperimentSummaryData = z.infer<typeof experimentSummarySchema>;
 export const experimentDetailSchema = experimentSummarySchema.extend({
-  assignments: z.array(z.object({ municipalityId: z.string(), municipality: z.string(), variant: z.string(), assignedAt: z.string() })), series: z.array(z.object({ period: z.string(), variant: z.string(), value: z.number(), sampleSize: z.number() })), diagnostics: z.object({ parallelTrendsPass: z.boolean().nullable(), minimumSamplePass: z.boolean(), preTrendDifference: z.number().nullable() }),
+  assignments: z.array(z.object({ municipalityId: z.string(), municipality: z.string(), variant: z.string(), assignedAt: z.string() })), series: z.array(z.object({ period: z.string(), variant: z.string(), value: z.number(), sampleSize: z.number() })), diagnostics: z.object({ parallelTrendsPass: z.null(), hasObservedDataInBothGroups: z.boolean(), preTrendDifference: z.number().nullable() }),
 });
 export type ExperimentDetailData = z.infer<typeof experimentDetailSchema>;
 
@@ -120,8 +120,8 @@ export const dataQualitySchema = z.object({ generatedAt: z.string(), freshness: 
 export type DataQualityData = z.infer<typeof dataQualitySchema>;
 
 const strategyAssumptionsSchema = z.object({ scenario: z.enum(["conservative", "base", "optimistic"]), demandCaptureRate: z.number(), leadToSqlRate: z.number(), sqlToAltaRate: z.number(), capacityUtilization: z.number(), months: z.number() });
-const strategyBetSchema = z.object({ rank: z.number(), municipalityId: z.string(), municipality: z.string(), service: z.string(), decision: z.enum(["prioritize", "reject"]), reason: z.string(), impact: z.enum(["low", "medium", "high"]), effort: z.enum(["low", "medium", "high"]), confidence: z.number(), dependencies: z.array(z.string()), owner: z.string(), estimatedIncrementalSql: z.number(), estimatedIncrementalAltas: z.number(), hypothesis: z.string(), mvp: z.string(), exclusions: z.array(z.string()), successCriteria: z.array(z.string()), decisionCriteria: z.object({ continue: z.string(), modify: z.string(), stop: z.string() }) });
-export const strategySchema = z.object({ label: z.literal("Synthetic planning demonstration — not a forecast"), baseline: z.object({ sqlPerMonth: z.literal(2000), source: z.literal("planning_brief"), observedFilteredSql: z.number() }), assumptions: strategyAssumptionsSchema, scenarios: z.object({ conservative: strategyAssumptionsSchema.omit({ scenario: true, months: true }), base: strategyAssumptionsSchema.omit({ scenario: true, months: true }), optimistic: strategyAssumptionsSchema.omit({ scenario: true, months: true }) }), portfolioEstimate: z.object({ incrementalSql: z.number(), incrementalAltas: z.number(), periodMonths: z.number() }), prioritizedBets: z.array(strategyBetSchema), rejectedBets: z.array(strategyBetSchema), milestones: z.object({ first90Days: z.array(z.string()), sixMonths: z.array(z.string()) }), caveats: z.array(z.string()) });
+const strategyBetSchema = z.object({ rank: z.number(), municipalityId: z.string(), municipality: z.string(), service: z.string(), decision: z.enum(["prioritize", "reject"]), reason: z.string(), impact: z.enum(["low", "medium", "high"]), effort: z.enum(["low", "medium", "high"]), dependencies: z.array(z.string()), owner: z.string(), scenarioSql: z.number(), scenarioAltas: z.number(), hypothesis: z.string(), mvp: z.string(), exclusions: z.array(z.string()), successCriteria: z.array(z.string()), decisionCriteria: z.object({ continue: z.string(), modify: z.string(), stop: z.string() }) });
+export const strategySchema = z.object({ label: z.literal("Synthetic planning demonstration — not a forecast"), baseline: z.object({ sqlPerMonth: z.literal(2000), source: z.literal("planning_brief"), observedFilteredSql: z.number() }), assumptions: strategyAssumptionsSchema, scenarios: z.object({ conservative: strategyAssumptionsSchema.omit({ scenario: true, months: true }), base: strategyAssumptionsSchema.omit({ scenario: true, months: true }), optimistic: strategyAssumptionsSchema.omit({ scenario: true, months: true }) }), scenarioProjection: z.object({ sql: z.number(), altas: z.number(), periodMonths: z.number() }), prioritizedBets: z.array(strategyBetSchema), rejectedBets: z.array(strategyBetSchema), milestones: z.object({ first90Days: z.array(z.string()), sixMonths: z.array(z.string()) }), caveats: z.array(z.string()) });
 export type StrategyData = z.infer<typeof strategySchema>;
 
 const workbenchQuerySchema = z.object({ id: z.enum(["municipality_prioritization", "landing_cohort_outcomes", "quality_and_losses"]), title: z.string(), objective: z.string(), sql: z.string(), dataUsed: z.array(z.string()), resultRows: z.array(z.record(z.union([z.string(), z.number(), z.boolean(), z.null()]))), interpretation: z.string(), recommendedDecision: z.string(), proposedExtensionsUsed: z.array(z.string()) });

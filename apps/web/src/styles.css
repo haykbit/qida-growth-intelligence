@@ -13,7 +13,7 @@
 }
 
 @layer components {
-  .metric-grid { @apply grid gap-3 sm:grid-cols-2 xl:grid-cols-4; }
+  .metric-grid { @apply grid overflow-hidden rounded-xl border border-slate-200 bg-slate-200 gap-px sm:grid-cols-2 xl:grid-cols-3 dark:border-slate-800 dark:bg-slate-800; }
   .chart-grid { @apply grid gap-4 xl:grid-cols-2; }
   .page-grid { @apply grid gap-5; }
   .data-table { @apply w-full min-w-[760px] text-left text-sm; }

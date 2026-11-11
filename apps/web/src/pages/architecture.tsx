@@ -1,12 +1,54 @@
 import { Badge, CardContent } from "@qida/ui";
-import { Activity, ArrowDown, ArrowRight, CheckCircle2, CloudCog, Database, Factory, GitBranch, HardDrive, ShieldCheck, UserCheck } from "lucide-react";
+import { Activity, ArrowDown, ArrowRight, CheckCircle2, CloudCog, GitBranch, HardDrive, ShieldCheck, UserCheck } from "lucide-react";
 import { PageTitle, Panel } from "../components/data-display";
 
-const flow = [
-  { name: "Databricks", detail: "Data products", mode: "Proposed" }, { name: "Growth Intelligence", detail: "Persistent model + API", mode: "Existing" }, { name: "Prioritization", detail: "Rules + evidence", mode: "Existing" }, { name: "Landing Factory", detail: "Activation asset", mode: "Existing" }, { name: "Validation", detail: "Coverage + content", mode: "Existing" }, { name: "Human approval", detail: "Required gate", mode: "Simulated" }, { name: "Strapi", detail: "CMS publication", mode: "Proposed" }, { name: "Acquisition", detail: "SEO + Ads", mode: "Existing" }, { name: "CRM", detail: "SQL + altas", mode: "Proposed" }, { name: "Measurement", detail: "Cohorts + attribution", mode: "Existing" }, { name: "Learning", detail: "Continue / modify / stop", mode: "Existing" },
+type Mode = "Existente" | "Propuesto" | "Simulado";
+const modeTone = { Existente: "success", Propuesto: "info", Simulado: "warning" } as const;
+
+const flow: Array<{ name: string; detail: string; mode: Mode }> = [
+  { name: "Databricks", detail: "Productos de datos", mode: "Propuesto" },
+  { name: "Growth Intelligence", detail: "Modelo persistido y API", mode: "Existente" },
+  { name: "Priorización", detail: "Reglas y evidencia", mode: "Existente" },
+  { name: "Fábrica de landings", detail: "Activo de activación", mode: "Existente" },
+  { name: "Validación", detail: "Cobertura y contenido", mode: "Existente" },
+  { name: "Aprobación humana", detail: "Paso obligatorio", mode: "Simulado" },
+  { name: "Strapi", detail: "Publicación CMS", mode: "Propuesto" },
+  { name: "Adquisición", detail: "SEO y medios", mode: "Existente" },
+  { name: "CRM", detail: "SQL y altas", mode: "Propuesto" },
+  { name: "Medición", detail: "Cohortes y atribución", mode: "Existente" },
+  { name: "Aprendizaje", detail: "Continuar, modificar o parar", mode: "Existente" },
 ];
-const modeTone = { Existing: "success", Proposed: "info", Simulated: "warning" } as const;
+
+const ownership = [
+  ["Datos fuente", "Plataforma de datos", "Databricks"],
+  ["Métricas y reglas", "Analítica de Growth", "PostgreSQL + API"],
+  ["Activación", "Growth + operaciones locales", "Fábrica de landings"],
+  ["Publicación", "Operaciones de contenido", "Aprobación + Strapi"],
+  ["Resultado comercial", "Ventas + Care Ops", "CRM"],
+];
 
 export function ArchitecturePage() {
-  return <div className="page-grid"><PageTitle title="Architecture & governance" description="How data becomes a governed growth decision, activation, measurement and reusable learning loop." /><Panel title="End-to-end operating flow" description="Production boundaries are explicit; local simulation never masquerades as a live integration."><CardContent><div className="flex flex-col items-stretch gap-2 xl:flex-row xl:flex-wrap xl:items-center">{flow.map((step, index) => <div key={step.name} className="contents"><div className="min-w-40 flex-1 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800"><div className="flex items-center justify-between gap-2"><p className="text-sm font-semibold">{step.name}</p><Badge tone={modeTone[step.mode as keyof typeof modeTone]}>{step.mode}</Badge></div><p className="mt-1 text-xs text-slate-500">{step.detail}</p></div>{index < flow.length - 1 ? <ArrowRight className="hidden size-4 shrink-0 text-slate-300 xl:block" /> : null}{index < flow.length - 1 ? <ArrowDown className="mx-auto size-4 text-slate-300 xl:hidden" /> : null}</div>)}</div></CardContent></Panel><div className="grid gap-4 xl:grid-cols-2"><Panel title="Ownership model" description="Clear seams prevent silent handoffs."><CardContent className="overflow-x-auto p-0"><table className="data-table"><thead><tr><th>Layer</th><th>Accountable team</th><th>Tool / contract</th><th>Decision rights</th></tr></thead><tbody><tr><td>Source data products</td><td>Data Platform</td><td>Databricks contracts</td><td>Freshness, semantics, access</td></tr><tr><td>Growth intelligence</td><td>Growth Analytics</td><td>PostgreSQL + API</td><td>Metrics, cohorts, score rules</td></tr><tr><td>Activation</td><td>Growth / Local Ops</td><td>Landing Factory</td><td>Brief, validation, prioritization</td></tr><tr><td>Publication</td><td>Content Operations</td><td>Human gate + Strapi</td><td>Approve, reject, publish</td></tr><tr><td>Commercial outcome</td><td>Sales / Care Operations</td><td>CRM</td><td>SQL, alta, discard reason</td></tr><tr><td>Experiment review</td><td>Growth Council</td><td>Experiment registry</td><td>Continue, modify, stop</td></tr></tbody></table></CardContent></Panel><Panel title="Production vs local simulation"><CardContent className="space-y-3">{[{ icon: HardDrive, title: "Runs locally", text: "PostgreSQL, deterministic seed, REST API, opportunity rules, dashboards, validation and audit records.", badge: "Existing" }, { icon: UserCheck, title: "Approval is represented", text: "A local role gate simulates the mandatory human transition before publication.", badge: "Simulated" }, { icon: CloudCog, title: "External adapters", text: "Databricks, Strapi, advertising APIs and enterprise CRM use documented boundaries but no cloud credentials in MVP.", badge: "Proposed" }].map((item) => <div key={item.title} className="flex gap-3 rounded-xl border border-slate-100 p-4 dark:border-slate-800"><div className="grid size-9 shrink-0 place-items-center rounded-lg bg-slate-100 dark:bg-slate-800"><item.icon className="size-4" /></div><div><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold">{item.title}</p><Badge tone={modeTone[item.badge as keyof typeof modeTone]}>{item.badge}</Badge></div><p className="mt-1 text-xs leading-5 text-slate-500">{item.text}</p></div></div>)}</CardContent></Panel></div><Panel title="Governance & monitoring"><CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{[{ icon: Activity, title: "Pipeline health", items: ["Freshness by source", "Seed / migration version", "Late-event rate"] }, { icon: ShieldCheck, title: "Data controls", items: ["Referential integrity", "Missingness", "Identity ambiguity"] }, { icon: GitBranch, title: "Decision lineage", items: ["Rules version", "Query + metric source", "Audit ID per mutation"] }, { icon: CheckCircle2, title: "Activation safety", items: ["Coverage eligibility", "Capacity guardrails", "Human approval"] }].map((group) => <section key={group.title} className="rounded-xl bg-slate-50 p-4 dark:bg-slate-800"><group.icon className="size-5 text-brand-600" /><h3 className="mt-3 text-sm font-semibold">{group.title}</h3><ul className="mt-2 space-y-1 text-xs text-slate-500">{group.items.map((item) => <li key={item}>• {item}</li>)}</ul></section>)}</CardContent></Panel></div>;
+  const integrations = [
+    { icon: HardDrive, title: "Ejecución local", text: "PostgreSQL, datos deterministas, API, reglas, validaciones y auditoría.", badge: "Existente" as const },
+    { icon: UserCheck, title: "Aprobación", text: "El rol local simula la transición humana previa a publicar.", badge: "Simulado" as const },
+    { icon: CloudCog, title: "Sistemas externos", text: "Databricks, Strapi, plataformas publicitarias y CRM mantienen fronteras documentadas.", badge: "Propuesto" as const },
+  ];
+  const monitoring = [
+    { icon: Activity, title: "Pipelines", items: ["Frescura por fuente", "Versión de carga", "Eventos tardíos"] },
+    { icon: ShieldCheck, title: "Datos", items: ["Integridad referencial", "Campos incompletos", "Identidad ambigua"] },
+    { icon: GitBranch, title: "Decisiones", items: ["Versión de reglas", "Fuente de métrica", "ID de auditoría"] },
+    { icon: CheckCircle2, title: "Activación", items: ["Cobertura", "Capacidad", "Aprobación humana"] },
+  ];
+
+  return <div className="page-grid">
+    <PageTitle title="Arquitectura y gobierno" />
+    <Panel title="Flujo operativo"><CardContent><div className="flex flex-col items-stretch gap-2 xl:flex-row xl:flex-wrap xl:items-center">
+      {flow.map((step, index) => <div key={step.name} className="contents"><div className="min-w-40 flex-1 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800"><div className="flex items-center justify-between gap-2"><p className="text-sm font-semibold">{step.name}</p><Badge tone={modeTone[step.mode]}>{step.mode}</Badge></div><p className="mt-1 text-xs text-slate-500">{step.detail}</p></div>{index < flow.length - 1 ? <ArrowRight className="hidden size-4 shrink-0 text-slate-300 xl:block" /> : null}{index < flow.length - 1 ? <ArrowDown className="mx-auto size-4 text-slate-300 xl:hidden" /> : null}</div>)}
+    </div></CardContent></Panel>
+    <div className="grid gap-4 xl:grid-cols-2">
+      <Panel title="Responsabilidades"><CardContent className="overflow-x-auto p-0"><table className="data-table"><thead><tr><th>Ámbito</th><th>Equipo</th><th>Herramienta</th></tr></thead><tbody>{ownership.map(([scope, team, tool]) => <tr key={scope}><td>{scope}</td><td>{team}</td><td>{tool}</td></tr>)}</tbody></table></CardContent></Panel>
+      <Panel title="Integraciones"><CardContent className="space-y-3">{integrations.map((item) => <div key={item.title} className="flex gap-3 rounded-xl border border-slate-100 p-4 dark:border-slate-800"><div className="grid size-9 shrink-0 place-items-center rounded-lg bg-slate-100 dark:bg-slate-800"><item.icon className="size-4" /></div><div><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold">{item.title}</p><Badge tone={modeTone[item.badge]}>{item.badge}</Badge></div><p className="mt-1 text-xs leading-5 text-slate-500">{item.text}</p></div></div>)}</CardContent></Panel>
+    </div>
+    <Panel title="Gobierno y monitorización"><CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{monitoring.map((group) => <section key={group.title} className="rounded-xl bg-slate-50 p-4 dark:bg-slate-800"><group.icon className="size-5 text-brand-600" /><h3 className="mt-3 text-sm font-semibold">{group.title}</h3><ul className="mt-2 space-y-1 text-xs text-slate-500">{group.items.map((item) => <li key={item}>• {item}</li>)}</ul></section>)}</CardContent></Panel>
+  </div>;
 }
