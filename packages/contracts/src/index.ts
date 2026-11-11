@@ -34,7 +34,7 @@ export type OpportunityDetail = OpportunityRow & { factors: OpportunityFactor[];
 
 export type IdentityStatus = "confirmed" | "ambiguous" | "unlinked";
 export type JourneyEventDto = { eventId: string; eventType: string; occurredAt: string; channel: string | null; campaign: string | null; landingUrl: string | null; sourceSystem: string; observed: boolean; identityStatus: IdentityStatus; metadata: Record<string, unknown> };
-export type JourneySummary = { opportunityId: string; personId: string; municipality: string; service: string; status: string; createdAt: string; duplicateCount: number; identityStatus: IdentityStatus };
+export type JourneySummary = { opportunityId: string; personId: string; municipality: string; service: string; status: string; createdAt: string; linkedIdentityCount: number; identityStatus: IdentityStatus };
 export type JourneyDetail = JourneySummary & { events: JourneyEventDto[]; identities: Array<{ sourceSystem: string; pseudonym: string; method: string; ambiguous: boolean }>; attribution: { firstTouch: string | null; lastTouch: string | null; multiTouch: Array<{ channel: string; touches: number }> }; warning: string };
 
 export type LandingStatus = "draft" | "pending_review" | "approved" | "published" | "rejected";
