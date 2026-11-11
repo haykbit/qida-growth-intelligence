@@ -195,7 +195,6 @@ export function generateSyntheticDataset(config: SeedConfig): SyntheticDataset {
       const campaign = badCampaign ? "META-CAPTACION-INEFICIENTE" : `${platform === "Google Ads" ? "SEA" : "SOC"}-LOCAL-${String(campaignIndex).padStart(2, "0")}`;
       const municipality = municipalityRows[campaignIndex % Math.min(config.demandMunicipalityCount, municipalityRows.length)];
       ads.push({
-        adsId: `ads-${String(monthIndex).padStart(2, "0")}-${String(campaignIndex).padStart(2, "0")}`,
         fecha: timestampInMonth(month, 15, 0),
         plataforma: platform,
         campania: campaign,

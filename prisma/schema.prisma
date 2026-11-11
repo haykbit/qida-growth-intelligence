@@ -157,7 +157,6 @@ model WebSesionesDiarias {
 }
 
 model AdsDiario {
-  adsId                  String          @id @map("ads_id")
   fecha                  DateTime        @db.Date
   plataforma             String
   campania               String
@@ -168,7 +167,7 @@ model AdsDiario {
   conversionesPlataforma Int             @map("conversiones_plataforma")
   municipio              MotorMunicipio? @relation(fields: [municipioId], references: [municipioId], onDelete: SetNull)
 
-  @@unique([fecha, plataforma, campania, municipioId])
+  @@id([fecha, plataforma, campania])
   @@index([fecha, plataforma])
   @@map("ads_diario")
 }

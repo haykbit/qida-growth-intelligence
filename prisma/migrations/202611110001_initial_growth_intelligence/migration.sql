@@ -110,7 +110,6 @@ CREATE TABLE "web_sesiones_diarias" (
 
 -- CreateTable
 CREATE TABLE "ads_diario" (
-    "ads_id" TEXT NOT NULL,
     "fecha" DATE NOT NULL,
     "plataforma" TEXT NOT NULL,
     "campania" TEXT NOT NULL,
@@ -120,7 +119,7 @@ CREATE TABLE "ads_diario" (
     "coste_eur" DECIMAL(12,2) NOT NULL,
     "conversiones_plataforma" INTEGER NOT NULL,
 
-    CONSTRAINT "ads_diario_pkey" PRIMARY KEY ("ads_id")
+    CONSTRAINT "ads_diario_pkey" PRIMARY KEY ("fecha","plataforma","campania")
 );
 
 -- CreateTable
@@ -306,8 +305,6 @@ CREATE INDEX "web_sesiones_diarias_canal_fecha_idx" ON "web_sesiones_diarias"("c
 CREATE INDEX "ads_diario_fecha_plataforma_idx" ON "ads_diario"("fecha", "plataforma");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "ads_diario_fecha_plataforma_campania_municipio_id_key" ON "ads_diario"("fecha", "plataforma", "campania", "municipio_id");
-
 -- CreateIndex
 CREATE INDEX "lead_fecha_creacion_canal_idx" ON "lead"("fecha_creacion", "canal");
 

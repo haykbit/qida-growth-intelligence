@@ -8,7 +8,7 @@ export type SyntheticDataset = {
   landings: Array<{ url: string; municipioId: string | null; idioma: "es" | "ca"; origen: "manual" | "generada"; fechaPublicacion: Date | null; fechaPrimeraIndexacion: Date | null }>;
   gsc: Array<{ fecha: Date; url: string; consulta: string; impresiones: number; clics: number; posicionMedia: number }>;
   webSessions: Array<{ fecha: Date; urlEntrada: string; canal: string; dispositivo: string; sesiones: number; formularios: number; clicsLlamar: number }>;
-  ads: Array<{ adsId: string; fecha: Date; plataforma: string; campania: string; municipioId: string | null; impresiones: number; clics: number; costeEur: number; conversionesPlataforma: number }>;
+  ads: Array<{ fecha: Date; plataforma: string; campania: string; municipioId: string | null; impresiones: number; clics: number; costeEur: number; conversionesPlataforma: number }>;
   leads: Array<{ leadId: string; fechaCreacion: Date; municipioId: string | null; canal: string; urlEntrada: string | null; tipoContacto: string; esSql: boolean; fechaSql: Date | null; esAlta: boolean; fechaAlta: Date | null; servicio: string; motivoDescarte: string | null }>;
   identities: Array<{ identityId: string; personId: string; sourceSystem: string; sourceIdentifier: string; matchMethod: string; confidence: number; ambiguous: boolean; createdAt: Date }>;
   opportunities: Array<{ opportunityId: string; personId: string; municipioId: string; servicio: string; createdAt: Date; status: string; leadId: string; sqlAt: Date | null; altaAt: Date | null }>;
