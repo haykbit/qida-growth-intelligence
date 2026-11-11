@@ -229,6 +229,13 @@ export class PrismaGrowthRepository implements GrowthRepository {
     const paid = paidRows[0] ?? {};
     const matureSql = numberValue(summary.mature_sql_count);
     const matureAltas = numberValue(summary.mature_alta_count);
+    const paidSql = numberValue(paid.paid_sql_count);
+    const paidAltas = numberValue(paid.paid_alta_count);
+    const hasUnassignableCostFilter = filters.province !== undefined
+      || filters.municipalityId !== undefined
+      || filters.service !== undefined
+      || filters.channel !== undefined
+      || filters.language !== undefined;
     return {
       kpis: {
         leads,
@@ -236,8 +243,8 @@ export class PrismaGrowthRepository implements GrowthRepository {
         altas,
         leadToSql: round(rate(sql, leads)),
         sqlToAlta: round(rate(matureAltas, matureSql)),
-        costPerSql: round(rate(spend, numberValue(paid.paid_sql_count)), 2),
-        costPerAttributedAlta: round(rate(spend, numberValue(paid.paid_alta_count)), 2),
+        costPerSql: hasUnassignableCostFilter || paidSql === 0 ? null : round(spend / paidSql, 2),
+        costPerAttributedAlta: hasUnassignableCostFilter || paidAltas === 0 ? null : round(spend / paidAltas, 2),
         traceabilityCoverage: round(rate(numberValue(summary.traced), leads)),
         duplicates: numberValue(summary.duplicates),
         opportunityMunicipalities: numberValue(summary.opportunity_municipalities),
@@ -256,6 +263,7 @@ export class PrismaGrowthRepository implements GrowthRepository {
         "Channel views are descriptive attribution and do not establish causal impact.",
         "SQL-to-alta uses opportunities created at least 90 days ago; headline SQL and altas remain period totals.",
         "Paid cost ratios use only CRM outcomes linked to an observed campaign event; they remain attribution ratios, not incrementality.",
+        "Paid cost ratios are unavailable for dimensions that cannot be reconciled to Ads spend, and when no reconciled outcome exists.",
       ],
     };
   }

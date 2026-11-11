@@ -15,6 +15,17 @@ function databaseReturning(resultSets: unknown[][]): { database: DatabaseClient;
 }
 
 describe("PrismaGrowthRepository evidence semantics", () => {
+  function overviewResultSets(paidSql: number, paidAltas: number): unknown[][] {
+    return [
+      [{
+        leads: 10, sql_count: 5, alta_count: 2, mature_sql_count: 4, mature_alta_count: 1,
+        traced: 8, duplicates: 1, opportunity_municipalities: 2, constrained_municipalities: 1, spend: 100,
+      }],
+      [{ paid_sql_count: paidSql, paid_alta_count: paidAltas }],
+      [], [], [], [], [],
+    ];
+  }
+
   it("scores opportunities without an uncalibrated confidence field or multiplier", async () => {
     const { database, query } = databaseReturning([[
       {
@@ -54,5 +65,26 @@ describe("PrismaGrowthRepository evidence semantics", () => {
     expect(response?.events[0]).not.toHaveProperty("identityConfidence");
     expect(response?.identities[0]).toMatchObject({ method: "explicit", ambiguous: true });
     expect(response?.identities[0]).not.toHaveProperty("confidence");
+  });
+
+  it.each([
+    { name: "an unassignable service filter", filters: { service: "respiro" }, paidSql: 5, paidAltas: 2 },
+    { name: "no reconciled denominator", filters: {}, paidSql: 0, paidAltas: 0 },
+  ])("returns unavailable cost ratios for $name", async ({ filters, paidSql, paidAltas }) => {
+    const { database } = databaseReturning(overviewResultSets(paidSql, paidAltas));
+    const repository = new PrismaGrowthRepository(database, "test");
+    const response = await repository.overview(filters);
+
+    expect(response.kpis.costPerSql).toBeNull();
+    expect(response.kpis.costPerAttributedAlta).toBeNull();
+  });
+
+  it("calculates paid cost ratios only for date-global reconciled outcomes", async () => {
+    const { database } = databaseReturning(overviewResultSets(5, 2));
+    const repository = new PrismaGrowthRepository(database, "test");
+    const response = await repository.overview({ from: "2026-01-01", to: "2026-12-31" });
+
+    expect(response.kpis.costPerSql).toBe(20);
+    expect(response.kpis.costPerAttributedAlta).toBe(50);
   });
 });
