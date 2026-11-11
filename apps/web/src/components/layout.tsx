@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Badge, Button, Input, Select, cn } from "@qida/ui";
-import { Activity, BarChart3, Beaker, Building2, ChevronRight, CircleGauge, Factory, Filter, Menu, Moon, MousePointerClick, PanelLeftClose, Route, Search, ShieldCheck, Sun, Target, X } from "lucide-react";
+import { Activity, BarChart3, Beaker, Blocks, BookOpenCheck, Building2, ChevronRight, CircleGauge, Factory, Filter, Menu, Moon, MousePointerClick, PanelLeftClose, Route, Search, ShieldCheck, Sun, Target, TerminalSquare, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { api } from "../lib/api";
@@ -16,6 +16,10 @@ const navigation = [
   { to: "/paid-media", label: "Paid Media", icon: MousePointerClick },
   { to: "/experiments", label: "Experiments", icon: Beaker },
   { to: "/data-quality", label: "Data Quality", icon: ShieldCheck },
+  { to: "/strategy", label: "Strategy & Roadmap", icon: Target },
+  { to: "/workbench", label: "Analytics Workbench", icon: TerminalSquare },
+  { to: "/architecture", label: "Architecture", icon: Blocks },
+  { to: "/case-study", label: "Interview Mode", icon: BookOpenCheck },
 ];
 
 function Sidebar({ collapsed, mobileOpen, onCollapse, onMobileClose }: { collapsed: boolean; mobileOpen: boolean; onCollapse: () => void; onMobileClose: () => void }) {

@@ -13,12 +13,16 @@ import { OpportunitiesPage, OpportunityDetailPage } from "./pages/opportunities"
 import { OverviewPage } from "./pages/overview";
 import { PaidMediaPage } from "./pages/paid-media";
 import { SeoPage } from "./pages/seo";
+import { ArchitecturePage } from "./pages/architecture";
+import { CaseStudyPage } from "./pages/case-study";
+import { StrategyPage } from "./pages/strategy";
+import { WorkbenchPage } from "./pages/workbench";
 import { FilterProvider } from "./state/filters";
 import "./styles.css";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false } } });
 const router = createBrowserRouter([{ path: "/", element: <AppLayout />, children: [
-  { index: true, element: <OverviewPage /> }, { path: "opportunities", element: <OpportunitiesPage /> }, { path: "opportunities/:municipalityId/:service", element: <OpportunityDetailPage /> }, { path: "journeys", element: <JourneysPage /> }, { path: "journeys/:opportunityId", element: <JourneyDetailPage /> }, { path: "funnel", element: <FunnelPage /> }, { path: "landings", element: <LandingsPage /> }, { path: "seo", element: <SeoPage /> }, { path: "paid-media", element: <PaidMediaPage /> }, { path: "experiments", element: <ExperimentsPage /> }, { path: "experiments/:experimentId", element: <ExperimentDetailPage /> }, { path: "data-quality", element: <DataQualityPage /> }, { path: "*", element: <NotFoundPage /> },
+  { index: true, element: <OverviewPage /> }, { path: "opportunities", element: <OpportunitiesPage /> }, { path: "opportunities/:municipalityId/:service", element: <OpportunityDetailPage /> }, { path: "journeys", element: <JourneysPage /> }, { path: "journeys/:opportunityId", element: <JourneyDetailPage /> }, { path: "funnel", element: <FunnelPage /> }, { path: "landings", element: <LandingsPage /> }, { path: "seo", element: <SeoPage /> }, { path: "paid-media", element: <PaidMediaPage /> }, { path: "experiments", element: <ExperimentsPage /> }, { path: "experiments/:experimentId", element: <ExperimentDetailPage /> }, { path: "data-quality", element: <DataQualityPage /> }, { path: "strategy", element: <StrategyPage /> }, { path: "workbench", element: <WorkbenchPage /> }, { path: "architecture", element: <ArchitecturePage /> }, { path: "case-study", element: <CaseStudyPage /> }, { path: "*", element: <NotFoundPage /> },
 ]}]);
 
 const root = document.getElementById("root");
