@@ -1,0 +1,28 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root { color-scheme: light; }
+  :root.dark { color-scheme: dark; }
+  * { @apply border-slate-200 dark:border-slate-800; }
+  body { @apply m-0 min-w-[320px] bg-slate-50 font-sans text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100; }
+  button, input, select { font: inherit; }
+  ::selection { @apply bg-brand-100 text-brand-900; }
+}
+
+@layer components {
+  .metric-grid { @apply grid gap-3 sm:grid-cols-2 xl:grid-cols-4; }
+  .chart-grid { @apply grid gap-4 xl:grid-cols-2; }
+  .page-grid { @apply grid gap-5; }
+  .data-table { @apply w-full min-w-[760px] text-left text-sm; }
+  .data-table thead { @apply bg-slate-50/80 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-950/50; }
+  .data-table th { @apply whitespace-nowrap px-4 py-3 font-medium; }
+  .data-table td { @apply border-t border-slate-100 px-4 py-3 align-middle dark:border-slate-800; }
+  .data-table tbody tr { @apply transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/50; }
+}
+
+.recharts-default-tooltip { border-radius: 0.75rem !important; border-color: rgb(226 232 240) !important; box-shadow: 0 10px 30px rgb(15 23 42 / 0.12); }
+.dark .recharts-default-tooltip { background: rgb(15 23 42) !important; border-color: rgb(51 65 85) !important; }
+.dark .recharts-tooltip-label, .dark .recharts-tooltip-item { color: rgb(226 232 240) !important; }
