@@ -1,4 +1,4 @@
-export const OPPORTUNITY_RULES_VERSION = "qgi-opportunity-v1.0.0";
+export const OPPORTUNITY_RULES_VERSION = "qgi-opportunity-v2.0.0";
 
 export type OpportunityEligibility = "eligible" | "constrained" | "ineligible";
 
@@ -12,11 +12,10 @@ export type OpportunityScoreInput = {
   serviceCovered: boolean;
   estimatedCpcEur: number;
   unmetNeedSignals: number;
-  dataCompleteness: number;
 };
 
 export type ScoreFactor = {
-  key: "demand" | "captureGap" | "conversionOpportunity" | "commercialFit" | "capacity" | "dataConfidence";
+  key: "demand" | "captureGap" | "conversionOpportunity" | "commercialFit" | "capacity";
   normalizedValue: number;
   weight: number;
   contribution: number;
@@ -26,7 +25,6 @@ export type ScoreFactor = {
 export type OpportunityScoreResult = {
   score: number;
   eligibility: OpportunityEligibility;
-  confidence: number;
   factors: ScoreFactor[];
   constraints: string[];
   proposedAction: string;
@@ -54,15 +52,13 @@ export function scoreOpportunity(input: OpportunityScoreInput): OpportunityScore
   const voiceFit = clamp01(input.unmetNeedSignals / 40);
   const commercialFit = clamp01(cpcFit * 0.6 + voiceFit * 0.4);
   const capacity = clamp01(input.caregiversAvailable / 12);
-  const dataConfidence = clamp01(input.dataCompleteness);
 
   const values: ReadonlyArray<readonly [ScoreFactor["key"], number, number, string]> = [
-    ["demand", demand, 0.28, `${String(searches)} búsquedas/mes frente al p90 de ${String(Math.max(1, input.p90MonthlySearches))}`],
-    ["captureGap", captureGap, 0.24, `${String(sql)} SQL frente a ${String(round(expectedSqlFromDemand, 1))} esperables como referencia operativa`],
-    ["conversionOpportunity", conversionOpportunity, 0.14, `${String(altas)}/${String(sql)} altas sobre SQL; señala margen, no rendimiento causal`],
-    ["commercialFit", commercialFit, 0.12, `CPC €${Math.max(0, input.estimatedCpcEur).toFixed(2)} y ${String(Math.max(0, input.unmetNeedSignals))} señales de necesidad`],
-    ["capacity", capacity, 0.12, `${String(Math.max(0, input.caregiversAvailable))} cuidadoras disponibles a 30 días`],
-    ["dataConfidence", dataConfidence, 0.1, `${String(round(dataConfidence * 100, 0))}% de señales requeridas disponibles`],
+    ["demand", demand, 0.31, `${String(searches)} búsquedas/mes frente al p90 de ${String(Math.max(1, input.p90MonthlySearches))}`],
+    ["captureGap", captureGap, 0.27, `${String(sql)} SQL frente a ${String(round(expectedSqlFromDemand, 1))} esperables como referencia operativa`],
+    ["conversionOpportunity", conversionOpportunity, 0.16, `${String(altas)}/${String(sql)} altas sobre SQL; señala margen, no rendimiento causal`],
+    ["commercialFit", commercialFit, 0.13, `CPC €${Math.max(0, input.estimatedCpcEur).toFixed(2)} y ${String(Math.max(0, input.unmetNeedSignals))} señales de necesidad`],
+    ["capacity", capacity, 0.13, `${String(Math.max(0, input.caregiversAvailable))} cuidadoras disponibles a 30 días`],
   ];
 
   const factors = values.map(([key, normalizedValue, weight, evidence]) => ({
@@ -86,8 +82,6 @@ export function scoreOpportunity(input: OpportunityScoreInput): OpportunityScore
     eligibilityMultiplier = 0.35;
     constraints.push("Capacidad limitada: menos de 4 cuidadoras disponibles a 30 días");
   }
-  if (dataConfidence < 0.6) constraints.push("Confianza reducida por señales incompletas");
-
   const weighted = factors.reduce((sum, factor) => sum + factor.contribution, 0);
   const score = round(weighted * eligibilityMultiplier, 1);
   const action = eligibility === "ineligible"
@@ -101,7 +95,6 @@ export function scoreOpportunity(input: OpportunityScoreInput): OpportunityScore
   return {
     score,
     eligibility,
-    confidence: round(dataConfidence, 2),
     factors,
     constraints,
     proposedAction: action,

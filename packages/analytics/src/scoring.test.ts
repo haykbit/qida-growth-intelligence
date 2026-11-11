@@ -11,7 +11,6 @@ const baseline = {
   serviceCovered: true,
   estimatedCpcEur: 3.5,
   unmetNeedSignals: 20,
-  dataCompleteness: 0.9,
 };
 
 describe("scoreOpportunity", () => {
@@ -19,8 +18,11 @@ describe("scoreOpportunity", () => {
     const first = scoreOpportunity(baseline);
     expect(scoreOpportunity(baseline)).toEqual(first);
     expect(first.score).toBeGreaterThan(0);
-    expect(first.factors).toHaveLength(6);
-    expect(first.rulesVersion).toMatch(/^qgi-opportunity-v/);
+    expect(first.factors).toHaveLength(5);
+    expect(first.factors.reduce((sum, factor) => sum + factor.weight, 0)).toBe(1);
+    expect(first.factors.map((factor) => factor.key)).not.toContain("dataConfidence");
+    expect(first).not.toHaveProperty("confidence");
+    expect(first.rulesVersion).toBe("qgi-opportunity-v2.0.0");
     expect(first.disclaimer).toContain("no es una predicción");
   });
 
