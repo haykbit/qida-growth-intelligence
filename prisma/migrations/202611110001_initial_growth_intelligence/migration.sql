@@ -147,7 +147,6 @@ CREATE TABLE "identity_map" (
     "source_system" TEXT NOT NULL,
     "source_identifier" TEXT NOT NULL,
     "match_method" TEXT NOT NULL,
-    "confidence" DOUBLE PRECISION NOT NULL,
     "ambiguous" BOOLEAN NOT NULL DEFAULT false,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -182,7 +181,6 @@ CREATE TABLE "journey_event" (
     "campaign" TEXT,
     "landing_url" TEXT,
     "metadata" JSONB NOT NULL,
-    "identity_confidence" DOUBLE PRECISION,
 
     CONSTRAINT "journey_event_pkey" PRIMARY KEY ("event_id")
 );
@@ -218,7 +216,6 @@ CREATE TABLE "growth_recommendation" (
     "servicio" TEXT NOT NULL,
     "score" DOUBLE PRECISION NOT NULL,
     "expected_impact" TEXT NOT NULL,
-    "confidence" DOUBLE PRECISION NOT NULL,
     "explanation" JSONB NOT NULL,
     "status" "RecommendationStatus" NOT NULL,
     "rules_version" TEXT NOT NULL,
@@ -419,7 +416,5 @@ ALTER TABLE "web_sesiones_diarias" ADD CONSTRAINT "web_valid_counts" CHECK ("ses
 ALTER TABLE "ads_diario" ADD CONSTRAINT "ads_valid_counts" CHECK ("impresiones" >= 0 AND "clics" >= 0 AND "clics" <= "impresiones" AND "coste_eur" >= 0 AND "conversiones_plataforma" >= 0);
 ALTER TABLE "lead" ADD CONSTRAINT "lead_sql_chronology" CHECK (("es_sql" AND "fecha_sql" IS NOT NULL AND "fecha_sql" >= "fecha_creacion") OR (NOT "es_sql" AND "fecha_sql" IS NULL));
 ALTER TABLE "lead" ADD CONSTRAINT "lead_alta_chronology" CHECK (("es_alta" AND "es_sql" AND "fecha_alta" IS NOT NULL AND "fecha_alta" >= "fecha_sql") OR (NOT "es_alta" AND "fecha_alta" IS NULL));
-ALTER TABLE "identity_map" ADD CONSTRAINT "identity_confidence_range" CHECK ("confidence" >= 0 AND "confidence" <= 1);
 ALTER TABLE "care_opportunity" ADD CONSTRAINT "opportunity_chronology" CHECK (("sql_at" IS NULL OR "sql_at" >= "created_at") AND ("alta_at" IS NULL OR ("sql_at" IS NOT NULL AND "alta_at" >= "sql_at")));
-ALTER TABLE "journey_event" ADD CONSTRAINT "journey_identity_confidence_range" CHECK ("identity_confidence" IS NULL OR ("identity_confidence" >= 0 AND "identity_confidence" <= 1));
-ALTER TABLE "growth_recommendation" ADD CONSTRAINT "recommendation_ranges" CHECK ("score" >= 0 AND "score" <= 100 AND "confidence" >= 0 AND "confidence" <= 1);
+ALTER TABLE "growth_recommendation" ADD CONSTRAINT "recommendation_score_range" CHECK ("score" >= 0 AND "score" <= 100);

@@ -295,13 +295,12 @@ export function generateSyntheticDataset(config: SeedConfig): SyntheticDataset {
         sourceSystem,
         sourceIdentifier: `${sourceSystem}-${leadId}`,
         matchMethod: duplicate ? "confirmed_cross_system_identifier" : ambiguousIdentity ? "ambiguous_unmerged" : "explicit_lead_identifier",
-        confidence: ambiguousIdentity ? 0.55 : 1,
         ambiguous: ambiguousIdentity,
         createdAt,
       });
 
       if (isCaregiver) {
-        pushEvent({ personId, opportunityId: null, sessionId: null, eventType: "lead_created", sourceSystem, occurredAt: createdAt, channel, campaign: null, landingUrl: null, metadata: { contactType: "caregiver_job" }, identityConfidence: 0.98 });
+        pushEvent({ personId, opportunityId: null, sessionId: null, eventType: "lead_created", sourceSystem, occurredAt: createdAt, channel, campaign: null, landingUrl: null, metadata: { contactType: "caregiver_job" } });
         continue;
       }
 
@@ -311,7 +310,6 @@ export function generateSyntheticDataset(config: SeedConfig): SyntheticDataset {
       opportunities.push({ opportunityId, personId, municipioId: municipality.municipioId, servicio: service, createdAt, status, leadId, sqlAt, altaAt });
       const sessionId = unattributed ? null : `session-${leadId}`;
       const campaign = channel.startsWith("paid") ? (channel === "paid_search" ? "SEA-LOCAL-02" : "SOC-LOCAL-01") : null;
-      const confidence = unattributed ? null : ambiguousIdentity ? 0.55 : 1;
       const specialJourney = monthIndex === 0 && monthlyIndex === 0;
       if (specialJourney) specialJourneyOpportunityId = opportunityId;
       const journeyChannels = specialJourney ? ["paid_search", "organic", "direct", "phone"] : [channel];
@@ -328,17 +326,16 @@ export function generateSyntheticDataset(config: SeedConfig): SyntheticDataset {
           campaign: touchChannel.startsWith("paid") ? campaign : null,
           landingUrl: landing?.url ?? null,
           metadata: { observed: true, synthetic: true },
-          identityConfidence: confidence,
         });
       }
-      pushEvent({ personId, opportunityId, sessionId, eventType: "form_submit", sourceSystem: "web", occurredAt: addMinutes(createdAt, -15), channel, campaign, landingUrl: landing?.url ?? null, metadata: { observed: true }, identityConfidence: confidence });
-      pushEvent({ personId, opportunityId, sessionId, eventType: "lead_created", sourceSystem, occurredAt: createdAt, channel, campaign, landingUrl: landing?.url ?? null, metadata: { observed: true }, identityConfidence: confidence });
-      if (sqlAt !== null) pushEvent({ personId, opportunityId, sessionId, eventType: "sql_qualified", sourceSystem: "hubspot", occurredAt: sqlAt, channel: "crm", campaign: null, landingUrl: null, metadata: { observed: true }, identityConfidence: 1 });
-      if (altaAt !== null) pushEvent({ personId, opportunityId, sessionId, eventType: "alta_completed", sourceSystem: "odoo", occurredAt: altaAt, channel: "crm", campaign: null, landingUrl: null, metadata: { observed: true }, identityConfidence: 1 });
-      else if (!isSql) pushEvent({ personId, opportunityId, sessionId, eventType: "opportunity_discarded", sourceSystem: "hubspot", occurredAt: addMinutes(createdAt, 90), channel: "crm", campaign: null, landingUrl: null, metadata: { reason: discardReason ?? "unknown" }, identityConfidence: 1 });
+      pushEvent({ personId, opportunityId, sessionId, eventType: "form_submit", sourceSystem: "web", occurredAt: addMinutes(createdAt, -15), channel, campaign, landingUrl: landing?.url ?? null, metadata: { observed: true } });
+      pushEvent({ personId, opportunityId, sessionId, eventType: "lead_created", sourceSystem, occurredAt: createdAt, channel, campaign, landingUrl: landing?.url ?? null, metadata: { observed: true } });
+      if (sqlAt !== null) pushEvent({ personId, opportunityId, sessionId, eventType: "sql_qualified", sourceSystem: "hubspot", occurredAt: sqlAt, channel: "crm", campaign: null, landingUrl: null, metadata: { observed: true } });
+      if (altaAt !== null) pushEvent({ personId, opportunityId, sessionId, eventType: "alta_completed", sourceSystem: "odoo", occurredAt: altaAt, channel: "crm", campaign: null, landingUrl: null, metadata: { observed: true } });
+      else if (!isSql) pushEvent({ personId, opportunityId, sessionId, eventType: "opportunity_discarded", sourceSystem: "hubspot", occurredAt: addMinutes(createdAt, 90), channel: "crm", campaign: null, landingUrl: null, metadata: { reason: discardReason ?? "unknown" } });
 
       if (monthIndex === months.length - 1 && monthlyIndex === monthlyLeadCount - caregiverContacts - 2) {
-        incompleteEventId = pushEvent({ personId: null, opportunityId: null, sessionId: "late-session-fixture", eventType: "page_view", sourceSystem: "web", occurredAt: createdAt, channel: "unknown", campaign: "misattributed-campaign", landingUrl: landing?.url ?? null, metadata: { ingestedLate: true, ingestionDelayHours: 72, attributionError: true }, identityConfidence: null });
+        incompleteEventId = pushEvent({ personId: null, opportunityId: null, sessionId: "late-session-fixture", eventType: "page_view", sourceSystem: "web", occurredAt: createdAt, channel: "unknown", campaign: "misattributed-campaign", landingUrl: landing?.url ?? null, metadata: { ingestedLate: true, ingestionDelayHours: 72, attributionError: true } });
       }
     }
   }
@@ -375,7 +372,6 @@ export function generateSyntheticDataset(config: SeedConfig): SyntheticDataset {
       serviceCovered: municipality.serviciosCubiertos.includes(service),
       estimatedCpcEur: demandRow?.cpcEstimadoEur ?? 8,
       unmetNeedSignals: voice.filter((row) => row.municipioId === municipality.municipioId).at(-1)?.llamadas ?? 0,
-      dataCompleteness: municipality.datosPropios && demandRow !== undefined ? 0.9 : 0.5,
     });
     recommendations.push({
       recommendationId: `rec-${String(index).padStart(4, "0")}`,
@@ -383,7 +379,6 @@ export function generateSyntheticDataset(config: SeedConfig): SyntheticDataset {
       servicio: service,
       score: score.score,
       expectedImpact: score.eligibility === "ineligible" ? "Sin impacto hasta resolver cobertura" : "Validar incremento de SQL elegibles en prueba acotada",
-      confidence: score.confidence,
       explanation: { factors: score.factors as unknown as JsonValue, constraints: score.constraints, action: score.proposedAction, validationMetric: score.validationMetric, disclaimer: score.disclaimer },
       status: "proposed",
       rulesVersion: OPPORTUNITY_RULES_VERSION,

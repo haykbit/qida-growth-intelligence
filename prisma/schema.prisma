@@ -201,7 +201,6 @@ model IdentityMap {
   sourceSystem     String   @map("source_system")
   sourceIdentifier String   @map("source_identifier")
   matchMethod      String   @map("match_method")
-  confidence       Float
   ambiguous        Boolean  @default(false)
   createdAt        DateTime @default(now()) @map("created_at")
 
@@ -241,7 +240,6 @@ model JourneyEvent {
   campaign           String?
   landingUrl         String?          @map("landing_url")
   metadata           Json
-  identityConfidence Float?           @map("identity_confidence")
   opportunity        CareOpportunity? @relation(fields: [opportunityId], references: [opportunityId], onDelete: SetNull)
   landing            Landing?         @relation(fields: [landingUrl], references: [url], onDelete: SetNull)
 
@@ -284,7 +282,6 @@ model GrowthRecommendation {
   servicio         String
   score            Float
   expectedImpact   String               @map("expected_impact")
-  confidence       Float
   explanation      Json
   status           RecommendationStatus
   rulesVersion     String               @map("rules_version")

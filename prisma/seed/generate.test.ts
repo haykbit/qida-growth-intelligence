@@ -27,6 +27,10 @@ describe("synthetic data generator", () => {
       expect.stringContaining("negativo"),
     ]));
     expect(first.identities.some((identity) => identity.ambiguous && identity.matchMethod === "ambiguous_unmerged")).toBe(true);
+    expect(first.identities.every((identity) => !("confidence" in identity))).toBe(true);
+    expect(first.events.every((event) => !("identityConfidence" in event))).toBe(true);
+    expect(first.recommendations.every((recommendation) => !("confidence" in recommendation))).toBe(true);
+    expect(first.recommendations.every((recommendation) => recommendation.rulesVersion === "qgi-opportunity-v2.0.0")).toBe(true);
     expect(new Set(first.workflows.map((workflow) => workflow.status))).toEqual(new Set(["draft", "pending_review", "published", "rejected"]));
   });
 
