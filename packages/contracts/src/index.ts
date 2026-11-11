@@ -18,8 +18,8 @@ export const paginationSchema = z.object({
 
 export const kpiSchema = z.object({
   leads: z.number().int().nonnegative(), sql: z.number().int().nonnegative(), altas: z.number().int().nonnegative(),
-  leadToSql: z.number().min(0).max(1), sqlToAlta: z.number().min(0).max(1), costPerSql: z.number().nonnegative(),
-  costPerAttributedAlta: z.number().nonnegative(), traceabilityCoverage: z.number().min(0).max(1), duplicates: z.number().int().nonnegative(),
+  leadToSql: z.number().min(0).max(1), sqlToAlta: z.number().min(0).max(1), costPerSql: z.number().nonnegative().nullable(),
+  costPerAttributedAlta: z.number().nonnegative().nullable(), traceabilityCoverage: z.number().min(0).max(1), duplicates: z.number().int().nonnegative(),
   opportunityMunicipalities: z.number().int().nonnegative(), capacityConstrainedMunicipalities: z.number().int().nonnegative(),
 });
 export type Kpis = z.infer<typeof kpiSchema>;
