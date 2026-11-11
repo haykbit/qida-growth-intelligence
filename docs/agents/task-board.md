@@ -13,4 +13,8 @@
 | INF-001 | Agent 0 | Docker, K8s/kind, Tilt, health probes | infra, Tiltfile | API-001, WEB-001 | config render/build | in progress | — |
 | QA-001 | Agent 0 | integrate and cross-review | all | implementation tasks | no ownership overlap unresolved | blocked | — |
 | QA-002 | Agent 0 | lint/typecheck/test/build/E2E smoke | all | QA-001 | all commands pass | blocked | — |
+| STR-001 | Agent 2 + 3 | Strategy, editable scenarios, 90-day/six-month roadmap | API + web | core metrics | planning assumptions labeled and decision criteria visible | in progress | — |
+| WRK-001 | Agent 1 + 2 + 3 | Curated executable analytics workbench | analytics + API + web | data/API | 3 read-only SQL queries with results and decisions | in progress | — |
+| GOV-001 | Agent 0 + 3 | Architecture/governance and interview case mode | docs + web | core features | Existing/Proposed/Simulated separated | in progress | — |
+
 
