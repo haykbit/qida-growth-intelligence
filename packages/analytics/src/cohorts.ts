@@ -22,7 +22,7 @@ export type CohortMetric = {
 const MS_PER_DAY = 86_400_000;
 
 function monthKey(value: Date): string {
-  return `${value.getUTCFullYear()}-${String(value.getUTCMonth() + 1).padStart(2, "0")}`;
+  return `${String(value.getUTCFullYear())}-${String(value.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
 function ratio(numerator: number, denominator: number): number | null {

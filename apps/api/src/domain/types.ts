@@ -229,7 +229,7 @@ export type GovernanceResponse = {
   };
 };
 
-export interface GrowthRepository {
+export type GrowthRepository = {
   health(): Promise<{ database: "up" | "down"; seedVersion: string }>;
   filters(): Promise<FilterOptions>;
   overview(filters: Filters): Promise<OverviewResponse>;
@@ -251,4 +251,4 @@ export interface GrowthRepository {
   strategy(assumptions: StrategyAssumptions): Promise<StrategyResponse>;
   workbench(): Promise<WorkbenchResponse>;
   governance(): Promise<GovernanceResponse>;
-}
+};

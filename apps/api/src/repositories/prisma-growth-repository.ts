@@ -1260,11 +1260,14 @@ ORDER BY descartes DESC, sin_atribucion DESC LIMIT 20`;
   }
 
   private workbenchRows(rows: Array<Record<string, unknown>>): Array<Record<string, string | number | boolean | null>> {
-    return rows.map((row) => Object.fromEntries(Object.entries(row).map(([key, value]) => {
-      if (value === null || typeof value === "string" || typeof value === "boolean") return [key, value];
-      if (value instanceof Date) return [key, value.toISOString()];
-      return [key, numberValue(value)];
-    })));
+    return rows.map((row) => {
+      const entries: Array<[string, string | number | boolean | null]> = Object.entries(row).map(([key, value]) => {
+        if (value === null || typeof value === "string" || typeof value === "boolean") return [key, value];
+        if (value instanceof Date) return [key, value.toISOString()];
+        return [key, numberValue(value)];
+      });
+      return Object.fromEntries(entries);
+    });
   }
 }
 

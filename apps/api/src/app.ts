@@ -26,7 +26,13 @@ export function createApp({ repository, logger }: AppDependencies): Express {
     logger,
     genReqId: (_request, response) => String(response.getHeader("x-request-id") ?? "unknown"),
     customProps: (_request, response) => ({ requestId: String(response.getHeader("x-request-id") ?? "unknown") }),
-    serializers: { req: (request) => ({ method: request.method, url: request.url }) },
+    serializers: { req: (request: unknown) => {
+      const candidate = request as { method?: unknown; url?: unknown };
+      return {
+        method: typeof candidate.method === "string" ? candidate.method : "unknown",
+        url: typeof candidate.url === "string" ? candidate.url : "unknown",
+      };
+    } },
   }));
 
   const api = express.Router();

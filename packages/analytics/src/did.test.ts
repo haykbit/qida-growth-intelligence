@@ -3,9 +3,9 @@ import { differenceInDifferences, type DidObservation } from "./did.js";
 
 function observations(group: "treatment" | "control", prefix: string, values: readonly number[]): DidObservation[] {
   return Array.from({ length: 10 }, (_, unit) => values.map((value, period) => ({
-    unitId: `${prefix}-${unit}`,
+    unitId: `${prefix}-${String(unit)}`,
     group,
-    period: `p${period}`,
+    period: `p${String(period)}`,
     phase: period < 3 ? "pre" as const : "post" as const,
     value,
   }))).flat();

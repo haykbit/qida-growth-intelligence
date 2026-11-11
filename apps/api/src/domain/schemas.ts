@@ -61,7 +61,7 @@ export const strategyQuerySchema = z.object({
 
 export function parseListQuery(value: unknown): PageRequest {
   const parsed = listQuerySchema.parse(value);
-  return { ...parsed, page: parsed.page ?? 1, pageSize: parsed.pageSize ?? 25 };
+  return parsed;
 }
 
 export function encodeLandingUrl(value: string): string {

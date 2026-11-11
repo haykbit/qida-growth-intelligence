@@ -57,12 +57,12 @@ export function scoreOpportunity(input: OpportunityScoreInput): OpportunityScore
   const dataConfidence = clamp01(input.dataCompleteness);
 
   const values: ReadonlyArray<readonly [ScoreFactor["key"], number, number, string]> = [
-    ["demand", demand, 0.28, `${searches} búsquedas/mes frente al p90 de ${Math.max(1, input.p90MonthlySearches)}`],
-    ["captureGap", captureGap, 0.24, `${sql} SQL frente a ${round(expectedSqlFromDemand, 1)} esperables como referencia operativa`],
-    ["conversionOpportunity", conversionOpportunity, 0.14, `${altas}/${sql} altas sobre SQL; señala margen, no rendimiento causal`],
-    ["commercialFit", commercialFit, 0.12, `CPC €${Math.max(0, input.estimatedCpcEur).toFixed(2)} y ${Math.max(0, input.unmetNeedSignals)} señales de necesidad`],
-    ["capacity", capacity, 0.12, `${Math.max(0, input.caregiversAvailable)} cuidadoras disponibles a 30 días`],
-    ["dataConfidence", dataConfidence, 0.1, `${round(dataConfidence * 100, 0)}% de señales requeridas disponibles`],
+    ["demand", demand, 0.28, `${String(searches)} búsquedas/mes frente al p90 de ${String(Math.max(1, input.p90MonthlySearches))}`],
+    ["captureGap", captureGap, 0.24, `${String(sql)} SQL frente a ${String(round(expectedSqlFromDemand, 1))} esperables como referencia operativa`],
+    ["conversionOpportunity", conversionOpportunity, 0.14, `${String(altas)}/${String(sql)} altas sobre SQL; señala margen, no rendimiento causal`],
+    ["commercialFit", commercialFit, 0.12, `CPC €${Math.max(0, input.estimatedCpcEur).toFixed(2)} y ${String(Math.max(0, input.unmetNeedSignals))} señales de necesidad`],
+    ["capacity", capacity, 0.12, `${String(Math.max(0, input.caregiversAvailable))} cuidadoras disponibles a 30 días`],
+    ["dataConfidence", dataConfidence, 0.1, `${String(round(dataConfidence * 100, 0))}% de señales requeridas disponibles`],
   ];
 
   const factors = values.map(([key, normalizedValue, weight, evidence]) => ({
