@@ -29,12 +29,13 @@ export type BreakdownPoint = { name: string; value: number; secondary?: number }
 export type OverviewResponse = { kpis: Kpis; monthlyFunnel: SeriesPoint[]; channelFunnel: Array<SeriesPoint & { channel: string }>; altasByMunicipality: BreakdownPoint[]; opportunityRanking: OpportunityRow[]; discardReasons: BreakdownPoint[]; caveats: string[] };
 
 export type OpportunityFactor = { key: string; label: string; normalizedValue: number; weight: number; contribution: number; evidence: string };
-export type OpportunityRow = { municipalityId: string; municipality: string; province: string; service: string; monthlySearches: number; estimatedCpc: number; sql: number; altas: number; sqlToAlta: number; caregiversAvailable: number; coverage: boolean; voiceSignals: number; competitors: number; score: number; eligibility: "eligible" | "constrained" | "ineligible"; confidence: number };
+export type OpportunityRow = { municipalityId: string; municipality: string; province: string; service: string; monthlySearches: number; estimatedCpc: number; sql: number; altas: number; sqlToAlta: number; caregiversAvailable: number; coverage: boolean; voiceSignals: number; competitors: number; score: number; eligibility: "eligible" | "constrained" | "ineligible" };
 export type OpportunityDetail = OpportunityRow & { factors: OpportunityFactor[]; constraints: string[]; proposedAction: string; validationMetric: string; rulesVersion: string; disclaimer: string };
 
-export type JourneyEventDto = { eventId: string; eventType: string; occurredAt: string; channel: string | null; campaign: string | null; landingUrl: string | null; sourceSystem: string; observed: boolean; identityConfidence: number | null; metadata: Record<string, unknown> };
-export type JourneySummary = { opportunityId: string; personId: string; municipality: string; service: string; status: string; createdAt: string; duplicateCount: number; identityConfidence: number };
-export type JourneyDetail = JourneySummary & { events: JourneyEventDto[]; identities: Array<{ sourceSystem: string; pseudonym: string; method: string; confidence: number; ambiguous: boolean }>; attribution: { firstTouch: string | null; lastTouch: string | null; multiTouch: Array<{ channel: string; touches: number }> }; warning: string };
+export type IdentityStatus = "confirmed" | "ambiguous" | "unlinked";
+export type JourneyEventDto = { eventId: string; eventType: string; occurredAt: string; channel: string | null; campaign: string | null; landingUrl: string | null; sourceSystem: string; observed: boolean; metadata: Record<string, unknown> };
+export type JourneySummary = { opportunityId: string; personId: string; municipality: string; service: string; status: string; createdAt: string; duplicateCount: number; identityStatus: IdentityStatus };
+export type JourneyDetail = JourneySummary & { events: JourneyEventDto[]; identities: Array<{ sourceSystem: string; pseudonym: string; method: string; ambiguous: boolean }>; attribution: { firstTouch: string | null; lastTouch: string | null; multiTouch: Array<{ channel: string; touches: number }> }; warning: string };
 
 export type LandingStatus = "draft" | "pending_review" | "approved" | "published" | "rejected";
 export const landingDraftRequestSchema = z.object({ municipalityId: z.string().min(1), language: z.enum(["es", "ca"]), service: z.string().min(1), blocks: z.array(z.enum(["hero", "coverage", "how_it_works", "faq", "contact"])).min(1) });
