@@ -19,6 +19,7 @@ import type {
   FunnelBreakdown,
   FunnelsResponse,
   GrowthRepository,
+  GovernanceResponse,
   LandingApprovalInput,
   LandingCommandResult,
   LandingContent,
@@ -154,33 +155,47 @@ export class PrismaGrowthRepository implements GrowthRepository {
   }
 
   public async overview(filters: Filters): Promise<OverviewResponse> {
-    const builder = new SqlBuilder();
-    const where = leadWhere(filters, builder);
+    const summaryBuilder = new SqlBuilder();
+    const summaryWhere = leadWhere(filters, summaryBuilder);
+    const spendFrom = filters.from === undefined ? "TRUE" : `a.fecha >= ${summaryBuilder.add(filters.from)}::date`;
+    const spendTo = filters.to === undefined ? "TRUE" : `a.fecha <= ${summaryBuilder.add(filters.to)}::date`;
+    const municipalityBuilder = new SqlBuilder();
+    const municipalityWhere = leadWhere(filters, municipalityBuilder);
+    const discardBuilder = new SqlBuilder();
+    const discardWhere = leadWhere(filters, discardBuilder);
     const [summaryRows, monthlyRows, channelRows, municipalityRows, discardRows, opportunities] = await Promise.all([
       this.query(
         `SELECT COUNT(*)::int AS leads,
           COUNT(*) FILTER (WHERE l.es_sql)::int AS sql_count,
           COUNT(*) FILTER (WHERE l.es_alta)::int AS alta_count,
-          COUNT(DISTINCT l.lead_id) FILTER (WHERE l.es_sql)::int AS traced,
+          COUNT(DISTINCT l.lead_id) FILTER (WHERE EXISTS (
+            SELECT 1 FROM care_opportunity co JOIN journey_event je ON je.opportunity_id = co.opportunity_id
+            WHERE co.lead_id = l.lead_id
+          ))::int AS traced,
+          (SELECT GREATEST(COUNT(*) - COUNT(DISTINCT person_id), 0)::int FROM identity_map) AS duplicates,
+          (SELECT COUNT(DISTINCT d.municipio_id)::int FROM motor_demanda_busqueda d
+             JOIN motor_municipio om ON om.municipio_id = d.municipio_id
+             WHERE om.tiene_cobertura AND d.tema = ANY(om.servicios_cubiertos)) AS opportunity_municipalities,
+          (SELECT COUNT(*)::int FROM motor_municipio cm
+             WHERE cm.tiene_cobertura AND cm.cuidadoras_disponibles_30d < 8) AS constrained_municipalities,
           COALESCE((SELECT SUM(a.coste_eur)::double precision FROM ads_diario a
-            WHERE (${filters.from === undefined ? "TRUE" : `a.fecha >= ${builder.add(filters.from)}::date`})
-              AND (${filters.to === undefined ? "TRUE" : `a.fecha <= ${builder.add(filters.to)}::date`})), 0) AS spend
-        FROM lead l LEFT JOIN motor_municipio m ON m.municipio_id = l.municipio_id WHERE ${where}`,
-        builder.values,
+            WHERE ${spendFrom} AND ${spendTo}), 0) AS spend
+        FROM lead l LEFT JOIN motor_municipio m ON m.municipio_id = l.municipio_id WHERE ${summaryWhere}`,
+        summaryBuilder.values,
       ),
       this.aggregateFunnel(filters, "to_char(date_trunc('month', l.fecha_creacion), 'YYYY-MM')", "period"),
       this.aggregateFunnel(filters, "l.canal", "channel"),
       this.query(
         `SELECT m.nombre AS name, COUNT(*) FILTER (WHERE l.es_alta)::int AS value
          FROM lead l LEFT JOIN motor_municipio m ON m.municipio_id = l.municipio_id
-         WHERE ${where} GROUP BY m.nombre ORDER BY value DESC, m.nombre LIMIT 15`,
-        builder.values.slice(0, filters.from === undefined ? 0 : 1),
-      ).catch(() => []),
+         WHERE ${municipalityWhere} GROUP BY m.nombre ORDER BY value DESC, m.nombre LIMIT 15`,
+        municipalityBuilder.values,
+      ),
       this.query(
         `SELECT COALESCE(l.motivo_descarte, 'sin_especificar') AS name, COUNT(*)::int AS value
          FROM lead l LEFT JOIN motor_municipio m ON m.municipio_id = l.municipio_id
-         WHERE ${where} AND NOT l.es_alta GROUP BY l.motivo_descarte ORDER BY value DESC`,
-        this.valuesForLeadFilters(filters),
+         WHERE ${discardWhere} AND NOT l.es_alta GROUP BY l.motivo_descarte ORDER BY value DESC`,
+        discardBuilder.values,
       ),
       this.opportunities({ ...filters, page: 1, pageSize: 10 }),
     ]);
@@ -190,7 +205,6 @@ export class PrismaGrowthRepository implements GrowthRepository {
     const sql = numberValue(summary.sql_count);
     const altas = numberValue(summary.alta_count);
     const spend = numberValue(summary.spend);
-    const constrained = opportunities.items.filter((item) => item.eligibility === "constrained").length;
     return {
       kpis: {
         leads,
@@ -201,9 +215,9 @@ export class PrismaGrowthRepository implements GrowthRepository {
         costPerSql: round(rate(spend, sql), 2),
         costPerAttributedAlta: round(rate(spend, altas), 2),
         traceabilityCoverage: round(rate(numberValue(summary.traced), leads)),
-        duplicates: 0,
-        opportunityMunicipalities: new Set(opportunities.items.filter((item) => item.eligibility !== "ineligible").map((item) => item.municipalityId)).size,
-        capacityConstrainedMunicipalities: constrained,
+        duplicates: numberValue(summary.duplicates),
+        opportunityMunicipalities: numberValue(summary.opportunity_municipalities),
+        capacityConstrainedMunicipalities: numberValue(summary.constrained_municipalities),
       },
       monthlyFunnel: monthlyRows.map((row) => ({
         period: stringValue(row.period), leads: numberValue(row.leads), sql: numberValue(row.sql_count), altas: numberValue(row.alta_count),
@@ -219,12 +233,6 @@ export class PrismaGrowthRepository implements GrowthRepository {
         "SQL to alta conversion should be interpreted on mature cohorts.",
       ],
     };
-  }
-
-  private valuesForLeadFilters(filters: Filters): SqlValue[] {
-    const builder = new SqlBuilder();
-    leadWhere(filters, builder);
-    return builder.values;
   }
 
   private async aggregateFunnel(filters: Filters, expression: string, alias: string): Promise<Array<Record<string, unknown>>> {
@@ -403,7 +411,7 @@ export class PrismaGrowthRepository implements GrowthRepository {
         [opportunityId],
       ),
       this.query(
-        `SELECT source_system, source_identifier, match_method, confidence
+        `SELECT source_system, source_identifier, match_method, confidence, ambiguous
          FROM identity_map WHERE person_id = $1 ORDER BY source_system, identity_id`,
         [summary.personId],
       ),
@@ -435,7 +443,7 @@ export class PrismaGrowthRepository implements GrowthRepository {
         pseudonym: createHash("sha256").update(stringValue(row.source_identifier)).digest("hex").slice(0, 12),
         method: stringValue(row.match_method),
         confidence: round(numberValue(row.confidence), 3),
-        ambiguous: numberValue(row.confidence) < 1,
+        ambiguous: booleanValue(row.ambiguous),
       })),
       attribution: {
         firstTouch: events.find((event) => event.channel !== null)?.channel ?? null,
@@ -502,13 +510,26 @@ export class PrismaGrowthRepository implements GrowthRepository {
   public async landings(input: PageRequest): Promise<Paginated<LandingRecord>> {
     const builder = new SqlBuilder();
     const clauses: string[] = [];
-    if (input.from !== undefined) clauses.push(`l.fecha_publicacion >= ${builder.add(input.from)}::date`);
-    if (input.to !== undefined) clauses.push(`l.fecha_publicacion < (${builder.add(input.to)}::date + interval '1 day')`);
+    const webClauses: string[] = [];
+    const gscClauses: string[] = [];
+    const leadClauses = ["tipo_contacto <> 'cuidadora_empleo'"];
+    if (input.from !== undefined) {
+      clauses.push(`l.fecha_publicacion >= ${builder.add(input.from)}::date`);
+      webClauses.push(`fecha >= ${builder.add(input.from)}::date`);
+      gscClauses.push(`fecha >= ${builder.add(input.from)}::date`);
+      leadClauses.push(`fecha_creacion >= ${builder.add(input.from)}::date`);
+    }
+    if (input.to !== undefined) {
+      clauses.push(`l.fecha_publicacion < (${builder.add(input.to)}::date + interval '1 day')`);
+      webClauses.push(`fecha <= ${builder.add(input.to)}::date`);
+      gscClauses.push(`fecha <= ${builder.add(input.to)}::date`);
+      leadClauses.push(`fecha_creacion < (${builder.add(input.to)}::date + interval '1 day')`);
+    }
     if (input.province !== undefined) clauses.push(`m.provincia = ${builder.add(input.province)}`);
     if (input.municipalityId !== undefined) clauses.push(`l.municipio_id = ${builder.add(input.municipalityId)}`);
     if (input.service !== undefined) clauses.push(`lw.service = ${builder.add(input.service)}`);
     if (input.language !== undefined) clauses.push(`l.idioma = ${builder.add(input.language)}`);
-    if (input.channel !== undefined) clauses.push(`ws.canal = ${builder.add(input.channel)}`);
+    if (input.channel !== undefined) webClauses.push(`canal = ${builder.add(input.channel)}`);
     if (input.search !== undefined) {
       const search = builder.add(`%${input.search}%`);
       clauses.push(`(l.url ILIKE ${search} OR m.nombre ILIKE ${search})`);
@@ -517,22 +538,31 @@ export class PrismaGrowthRepository implements GrowthRepository {
     const limit = builder.add(input.pageSize);
     const offset = builder.add((input.page - 1) * input.pageSize);
     const rows = await this.query(
-      `SELECT l.url, l.municipio_id, m.nombre AS municipality, l.idioma AS language, l.origen AS origin,
+      `WITH web AS (
+         SELECT url_entrada, SUM(sesiones)::int AS sessions, SUM(formularios)::int AS forms
+         FROM web_sesiones_diarias ${webClauses.length > 0 ? `WHERE ${webClauses.join(" AND ")}` : ""} GROUP BY url_entrada
+       ), search AS (
+         SELECT url, SUM(impresiones)::int AS impressions, SUM(clics)::int AS clicks
+         FROM gsc_diario ${gscClauses.length > 0 ? `WHERE ${gscClauses.join(" AND ")}` : ""} GROUP BY url
+       ), lead_stats AS (
+         SELECT url_entrada, COUNT(*) FILTER (WHERE es_sql)::int AS sql_count,
+                COUNT(*) FILTER (WHERE es_alta)::int AS alta_count
+         FROM lead WHERE ${leadClauses.join(" AND ")} GROUP BY url_entrada
+       )
+       SELECT l.url, l.municipio_id, m.nombre AS municipality, l.idioma AS language, l.origen AS origin,
               lw.service, COALESCE(lw.status, CASE WHEN l.fecha_publicacion IS NULL THEN 'draft' ELSE 'published' END) AS status,
               l.fecha_publicacion AS published_at, l.fecha_primera_indexacion AS indexed_at,
-              COALESCE(SUM(ws.sesiones), 0)::int AS sessions, COALESCE(SUM(ws.formularios), 0)::int AS forms,
-              COUNT(DISTINCT ld.lead_id) FILTER (WHERE ld.es_sql)::int AS sql_count,
-              COUNT(DISTINCT ld.lead_id) FILTER (WHERE ld.es_alta)::int AS alta_count,
-              COALESCE(SUM(g.impressions), 0)::int AS impressions, COALESCE(SUM(g.clicks), 0)::int AS clicks,
+              COALESCE(web.sessions, 0)::int AS sessions, COALESCE(web.forms, 0)::int AS forms,
+              COALESCE(lead_stats.sql_count, 0)::int AS sql_count,
+              COALESCE(lead_stats.alta_count, 0)::int AS alta_count,
+              COALESCE(search.impressions, 0)::int AS impressions, COALESCE(search.clicks, 0)::int AS clicks,
               lw.content, lw.validation_issues, COUNT(*) OVER()::int AS total
        FROM landing l LEFT JOIN motor_municipio m ON m.municipio_id = l.municipio_id
        LEFT JOIN landing_workflow lw ON lw.url = l.url
-       LEFT JOIN web_sesiones_diarias ws ON ws.url_entrada = l.url
-       LEFT JOIN gsc_diario g ON g.url = l.url
-       LEFT JOIN lead ld ON ld.url_entrada = l.url AND ld.tipo_contacto <> 'cuidadora_empleo'
+       LEFT JOIN web ON web.url_entrada = l.url
+       LEFT JOIN search ON search.url = l.url
+       LEFT JOIN lead_stats ON lead_stats.url_entrada = l.url
        ${where}
-       GROUP BY l.url, l.municipio_id, m.nombre, l.idioma, l.origen, lw.service, lw.status,
-                l.fecha_publicacion, l.fecha_primera_indexacion, lw.content, lw.validation_issues
        ORDER BY COALESCE(l.fecha_publicacion, lw.updated_at) DESC NULLS LAST, l.url
        LIMIT ${limit} OFFSET ${offset}`,
       builder.values,
@@ -726,29 +756,52 @@ export class PrismaGrowthRepository implements GrowthRepository {
   public async seo(filters: Filters): Promise<{ rows: SeoRow[]; caveat: string }> {
     const builder = new SqlBuilder();
     const clauses: string[] = [];
-    if (filters.from !== undefined) clauses.push(`g.fecha >= ${builder.add(filters.from)}::date`);
-    if (filters.to !== undefined) clauses.push(`g.fecha <= ${builder.add(filters.to)}::date`);
+    const gscClauses: string[] = [];
+    const webClauses = ["canal = 'organic'"];
+    const leadClauses = ["tipo_contacto <> 'cuidadora_empleo'"];
+    if (filters.from !== undefined) {
+      gscClauses.push(`fecha >= ${builder.add(filters.from)}::date`);
+      webClauses.push(`fecha >= ${builder.add(filters.from)}::date`);
+      leadClauses.push(`fecha_creacion >= ${builder.add(filters.from)}::date`);
+    }
+    if (filters.to !== undefined) {
+      gscClauses.push(`fecha <= ${builder.add(filters.to)}::date`);
+      webClauses.push(`fecha <= ${builder.add(filters.to)}::date`);
+      leadClauses.push(`fecha_creacion < (${builder.add(filters.to)}::date + interval '1 day')`);
+    }
     if (filters.province !== undefined) clauses.push(`m.provincia = ${builder.add(filters.province)}`);
     if (filters.municipalityId !== undefined) clauses.push(`l.municipio_id = ${builder.add(filters.municipalityId)}`);
     if (filters.language !== undefined) clauses.push(`l.idioma = ${builder.add(filters.language)}`);
     const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
     const rows = await this.query(
-      `SELECT l.origen AS origin,
+      `WITH search AS (
+         SELECT url, SUM(impresiones)::int AS impressions, SUM(clics)::int AS clicks,
+                (SUM(posicion_media * impresiones) / NULLIF(SUM(impresiones), 0))::double precision AS average_position
+         FROM gsc_diario ${gscClauses.length > 0 ? `WHERE ${gscClauses.join(" AND ")}` : ""} GROUP BY url
+       ), web AS (
+         SELECT url_entrada, SUM(sesiones)::int AS organic_sessions, SUM(formularios)::int AS forms
+         FROM web_sesiones_diarias WHERE ${webClauses.join(" AND ")} GROUP BY url_entrada
+       ), lead_stats AS (
+         SELECT url_entrada, COUNT(*) FILTER (WHERE es_sql)::int AS sql_count,
+                COUNT(*) FILTER (WHERE es_alta)::int AS alta_count
+         FROM lead WHERE ${leadClauses.join(" AND ")} GROUP BY url_entrada
+       )
+       SELECT l.origen AS origin,
               COALESCE(lw.status, CASE WHEN l.fecha_publicacion IS NULL THEN 'draft' ELSE 'published' END) AS status,
               COUNT(DISTINCT l.url)::int AS landings,
               COUNT(DISTINCT l.url) FILTER (WHERE l.fecha_publicacion IS NOT NULL)::int AS published,
               COUNT(DISTINCT l.url) FILTER (WHERE l.fecha_primera_indexacion IS NOT NULL)::int AS indexed,
-              COALESCE(SUM(g.impresiones), 0)::int AS impressions, COALESCE(SUM(g.clics), 0)::int AS clicks,
-              AVG(g.posicion_media)::double precision AS average_position,
-              COALESCE(SUM(ws.sesiones) FILTER (WHERE ws.canal = 'organic'), 0)::int AS organic_sessions,
-              COALESCE(SUM(ws.formularios), 0)::int AS forms,
-              COUNT(DISTINCT ld.lead_id) FILTER (WHERE ld.es_sql)::int AS sql_count,
-              COUNT(DISTINCT ld.lead_id) FILTER (WHERE ld.es_alta)::int AS alta_count
+              COALESCE(SUM(search.impressions), 0)::int AS impressions, COALESCE(SUM(search.clicks), 0)::int AS clicks,
+              (SUM(search.average_position * search.impressions) / NULLIF(SUM(search.impressions), 0))::double precision AS average_position,
+              COALESCE(SUM(web.organic_sessions), 0)::int AS organic_sessions,
+              COALESCE(SUM(web.forms), 0)::int AS forms,
+              COALESCE(SUM(lead_stats.sql_count), 0)::int AS sql_count,
+              COALESCE(SUM(lead_stats.alta_count), 0)::int AS alta_count
        FROM landing l LEFT JOIN landing_workflow lw ON lw.url = l.url
        LEFT JOIN motor_municipio m ON m.municipio_id = l.municipio_id
-       LEFT JOIN gsc_diario g ON g.url = l.url
-       LEFT JOIN web_sesiones_diarias ws ON ws.url_entrada = l.url
-       LEFT JOIN lead ld ON ld.url_entrada = l.url AND ld.tipo_contacto <> 'cuidadora_empleo'
+       LEFT JOIN search ON search.url = l.url
+       LEFT JOIN web ON web.url_entrada = l.url
+       LEFT JOIN lead_stats ON lead_stats.url_entrada = l.url
        ${where} GROUP BY l.origen, 2 ORDER BY l.origen, 2`,
       builder.values,
     );
@@ -968,12 +1021,12 @@ export class PrismaGrowthRepository implements GrowthRepository {
       this.query(
         `SELECT COUNT(*)::int AS total_events,
                 COUNT(*) FILTER (WHERE person_id IS NULL AND opportunity_id IS NULL)::int AS unlinked_events,
-                (SELECT COUNT(*)::int FROM identity_map WHERE confidence < 1) AS ambiguous_identities
+                (SELECT COUNT(*)::int FROM identity_map WHERE ambiguous) AS ambiguous_identities
          FROM journey_event`,
       ),
       this.query(
         `SELECT GREATEST(COUNT(*) - COUNT(DISTINCT person_id), 0)::int AS confirmed_links,
-                COUNT(*) FILTER (WHERE confidence < 1)::int AS potential_duplicates FROM identity_map`,
+                COUNT(*) FILTER (WHERE ambiguous)::int AS potential_duplicates FROM identity_map`,
       ),
       this.query(
         `SELECT 'sql_before_lead' AS check, COUNT(*)::int AS failures, 'error' AS severity FROM lead WHERE fecha_sql < fecha_creacion
@@ -1106,22 +1159,27 @@ export class PrismaGrowthRepository implements GrowthRepository {
     const municipalitySql = `SELECT m.municipio_id, m.nombre, m.provincia, m.tiene_cobertura,
        m.cuidadoras_disponibles_30d,
        ROUND(AVG(d.busquedas)) AS busquedas_mensuales,
-       COUNT(*) FILTER (WHERE l.es_sql) AS sql,
-       COUNT(*) FILTER (WHERE l.es_alta) AS altas
+       COUNT(DISTINCT l.lead_id) FILTER (WHERE l.es_sql) AS sql,
+       COUNT(DISTINCT l.lead_id) FILTER (WHERE l.es_alta) AS altas
 FROM motor_municipio m
 JOIN motor_demanda_busqueda d ON d.municipio_id = m.municipio_id
 LEFT JOIN lead l ON l.municipio_id = m.municipio_id AND l.tipo_contacto <> 'cuidadora_empleo'
 GROUP BY m.municipio_id, m.nombre, m.provincia, m.tiene_cobertura, m.cuidadoras_disponibles_30d
 ORDER BY busquedas_mensuales DESC, sql ASC LIMIT 20`;
-    const landingSql = `SELECT l.origen, DATE_TRUNC('quarter', l.fecha_publicacion) AS cohorte,
-       COUNT(DISTINCT l.url) AS landings,
-       SUM(w.sesiones) AS sesiones,
-       SUM(w.formularios) AS formularios,
-       COUNT(DISTINCT ld.lead_id) FILTER (WHERE ld.es_sql) AS sql,
-       COUNT(DISTINCT ld.lead_id) FILTER (WHERE ld.es_alta) AS altas
-FROM landing l
-LEFT JOIN web_sesiones_diarias w ON w.url_entrada = l.url
-LEFT JOIN lead ld ON ld.url_entrada = l.url AND ld.tipo_contacto <> 'cuidadora_empleo'
+    const landingSql = `WITH web AS (
+  SELECT url_entrada, SUM(sesiones) AS sesiones, SUM(formularios) AS formularios
+  FROM web_sesiones_diarias GROUP BY url_entrada
+), crm AS (
+  SELECT url_entrada,
+         COUNT(*) FILTER (WHERE es_sql) AS sql,
+         COUNT(*) FILTER (WHERE es_alta) AS altas
+  FROM lead WHERE tipo_contacto <> 'cuidadora_empleo' GROUP BY url_entrada
+)
+SELECT l.origen, DATE_TRUNC('quarter', l.fecha_publicacion) AS cohorte,
+       COUNT(*) AS landings, SUM(COALESCE(web.sesiones, 0)) AS sesiones,
+       SUM(COALESCE(web.formularios, 0)) AS formularios,
+       SUM(COALESCE(crm.sql, 0)) AS sql, SUM(COALESCE(crm.altas, 0)) AS altas
+FROM landing l LEFT JOIN web ON web.url_entrada = l.url LEFT JOIN crm ON crm.url_entrada = l.url
 WHERE l.fecha_publicacion IS NOT NULL
 GROUP BY l.origen, DATE_TRUNC('quarter', l.fecha_publicacion)
 ORDER BY cohorte, l.origen`;
@@ -1162,6 +1220,42 @@ ORDER BY descartes DESC, sin_atribucion DESC LIMIT 20`;
     return {
       executionMode: "curated_read_only", generatedAt: new Date().toISOString(), queries,
       warning: "Only server-curated SELECT statements are executable; the API does not accept or execute user-provided SQL.",
+    };
+  }
+
+  public async governance(): Promise<GovernanceResponse> {
+    return {
+      product: "Qida Growth Intelligence",
+      architectureStages: [
+        { stage: 1, name: "Persist", purpose: "Store coherent synthetic source and extension data.", inputs: ["Deterministic seed"], outputs: ["PostgreSQL source of truth"] },
+        { stage: 2, name: "Resolve and measure", purpose: "Link explicit identities and calculate governed metrics.", inputs: ["CRM, web, ads, SEO, operations"], outputs: ["Journeys, cohorts, attribution, quality"] },
+        { stage: 3, name: "Prioritize", purpose: "Rank eligible municipality/service opportunities with explanations.", inputs: ["Demand, capacity, conversion, confidence"], outputs: ["Versioned rule scores and constraints"] },
+        { stage: 4, name: "Act safely", purpose: "Run bounded experiments and simulated landing publication.", inputs: ["Prioritized bets", "Human review"], outputs: ["Audited decisions and outcomes"] },
+      ],
+      ownership: [
+        { domain: "Source data and seed", owner: "Data / Analytics", paths: ["prisma", "packages/analytics"], tools: ["Prisma", "PostgreSQL", "Vitest"] },
+        { domain: "Transport and persistence orchestration", owner: "Backend", paths: ["apps/api"], tools: ["Express", "Zod", "Pino", "OpenAPI"] },
+        { domain: "Decision surfaces", owner: "Growth Product", paths: ["apps/web"], tools: ["React", "TanStack Query", "Recharts"] },
+        { domain: "Landing approval", owner: "Growth Manager", paths: ["landing_workflow", "audit_log"], tools: ["Local role gate", "Policy validation"] },
+      ],
+      integrations: [
+        { name: "Landing factory", mode: "existing", boundary: "Represented as a central product asset; local records preserve its workflow." },
+        { name: "PostgreSQL analytics", mode: "existing", boundary: "All UI metrics originate in persisted synthetic data through the API." },
+        { name: "Enterprise SSO", mode: "proposed", boundary: "Replace x-local-role with verified identity and role claims." },
+        { name: "Strapi publication", mode: "simulated", boundary: "No remote CMS call; publication updates local audited state only." },
+        { name: "External LLM generation", mode: "simulated", boundary: "Draft copy is deterministic and uses structured persisted inputs." },
+      ],
+      controls: {
+        validation: ["Zod at HTTP boundaries", "Bounded pagination and scenario coefficients", "Parameterized curated SQL", "Landing coverage/capacity/content policy checks"],
+        monitoring: ["Freshness lag", "Unlinked and ambiguous identity rates", "Referential/date integrity", "Platform-to-CRM discrepancies", "Immature cohort count"],
+        approval: "A human growth_manager or admin transition is required before simulated publication; every mutation emits an audit identifier.",
+        privacy: "Only synthetic pseudonymous identities are exposed; source identifiers are hashed in journey responses and redacted from logs.",
+        evidenceLabels: [
+          { label: "correlation", meaning: "Observed variables move together without assigned credit or causal identification." },
+          { label: "attribution", meaning: "First-, last- or multi-touch rules assign descriptive channel credit." },
+          { label: "causal", meaning: "Reserved for valid experimental or quasi-experimental evidence with explicit diagnostics and limitations." },
+        ],
+      },
     };
   }
 

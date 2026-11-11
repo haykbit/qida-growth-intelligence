@@ -215,6 +215,20 @@ export type WorkbenchResponse = {
   warning: string;
 };
 
+export type GovernanceResponse = {
+  product: string;
+  architectureStages: Array<{ stage: number; name: string; purpose: string; inputs: string[]; outputs: string[] }>;
+  ownership: Array<{ domain: string; owner: string; paths: string[]; tools: string[] }>;
+  integrations: Array<{ name: string; mode: "existing" | "proposed" | "simulated"; boundary: string }>;
+  controls: {
+    validation: string[];
+    monitoring: string[];
+    approval: string;
+    privacy: string;
+    evidenceLabels: Array<{ label: "correlation" | "attribution" | "causal"; meaning: string }>;
+  };
+};
+
 export interface GrowthRepository {
   health(): Promise<{ database: "up" | "down"; seedVersion: string }>;
   filters(): Promise<FilterOptions>;
@@ -236,4 +250,5 @@ export interface GrowthRepository {
   dataQuality(): Promise<DataQualityResponse>;
   strategy(assumptions: StrategyAssumptions): Promise<StrategyResponse>;
   workbench(): Promise<WorkbenchResponse>;
+  governance(): Promise<GovernanceResponse>;
 }

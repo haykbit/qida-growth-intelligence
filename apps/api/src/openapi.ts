@@ -56,6 +56,7 @@ export const openApiDocument = {
       { name: "months", in: "query", schema: { type: "integer", minimum: 1, maximum: 24, default: 6 } },
     ], responses: ok() } },
     "/workbench": { get: { summary: "Three curated, executable, read-only analytical SQL queries", responses: ok() } },
+    "/governance": { get: { summary: "Architecture stages, ownership, integration modes and controls", responses: ok() } },
     "/openapi.json": { get: { summary: "This OpenAPI document", responses: ok() } },
   },
 } as const;

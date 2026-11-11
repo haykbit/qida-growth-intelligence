@@ -39,6 +39,7 @@ function repositoryMock(): GrowthRepository {
       prioritizedBets: [], rejectedBets: [], milestones: { first90Days: [], sixMonths: [] }, caveats: [],
     })),
     workbench: vi.fn(async () => ({ executionMode: "curated_read_only" as const, generatedAt: new Date(0).toISOString(), queries: [], warning: "No user SQL" })),
+    governance: vi.fn(async () => ({ product: "Qida Growth Intelligence", architectureStages: [], ownership: [], integrations: [], controls: { validation: [], monitoring: [], approval: "human", privacy: "synthetic", evidenceLabels: [] } })),
   };
 }
 
@@ -93,6 +94,7 @@ describe("Qida API", () => {
     const response = await request(app()).get("/api/v1/openapi.json").expect(200);
     expect(response.body.openapi).toBe("3.0.3");
     expect(response.body.paths).toHaveProperty("/workbench");
+    expect(response.body.paths).toHaveProperty("/governance");
     expect(response.body.paths).toHaveProperty("/landings/{url}/publish");
   });
 

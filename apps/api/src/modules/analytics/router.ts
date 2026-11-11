@@ -16,5 +16,6 @@ export function analyticsRouter(repository: GrowthRepository): Router {
     response.json(await repository.strategy(assumptions));
   }));
   router.get("/workbench", asyncHandler(async (_request, response) => { response.json(await repository.workbench()); }));
+  router.get("/governance", asyncHandler(async (_request, response) => { response.json(await repository.governance()); }));
   return router;
 }
