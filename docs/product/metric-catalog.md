@@ -19,7 +19,7 @@ All rates are calculated after applying the same global filters. Family acquisit
 | Monthly searches | Sum of query demand for the municipality/service in latest complete month | `motor_demanda_busqueda` | Search demand is a signal, not lead volume |
 | Landing CTR | GSC clicks / GSC impressions | `gsc_diario`, URL-query-day | Only indexed landing dates; descriptive |
 | Landing form rate | Forms / web sessions | `web_sesiones_diarias`, URL-channel-day | Session aggregates may not map one-to-one to people |
-| Opportunity score | Weighted normalized demand gap, capacity, conversion opportunity, commercial fit, and confidence after eligibility gates | analytics rules, municipality-service | Rules version shown; prioritization aid, not a prediction |
+| Opportunity score | Versioned rule over persisted demand, demand-to-SQL gap, available capacity, voice signals, and observed conversion after eligibility gates | analytics rules, municipality-service | Prioritization aid, not a probability or prediction; no numeric confidence is reported |
 | First touch | Earliest observed eligible acquisition channel in a linked journey | `journey_event`, opportunity | Descriptive attribution; missing early events bias results |
 | Last touch | Latest observed eligible channel before SQL/alta | `journey_event`, opportunity | Descriptive attribution; does not prove influence |
 | Multi-touch | Count/share of observed touches across linked channels | `journey_event`, opportunity-channel | No causal credit weights in MVP |
@@ -33,4 +33,8 @@ Lead → SQL cohorts require at least 14 elapsed days after the cohort period. S
 ## Deduplication
 
 An opportunity is the funnel counting unit. Multiple calls, forms, source-system leads, or sessions linked by explicit identifiers do not multiply the denominator. Identity records with insufficient or conflicting evidence remain separate and contribute to the data-quality view.
+
+## Confidence labels
+
+The product does not expose numeric confidence percentages. The synthetic dataset cannot calibrate those values as probabilities. Identity resolution is reported as `confirmed`, `ambiguous`, or `unlinked` from persisted linkage evidence, and opportunity ranking exposes its raw evidence and versioned rule contributions instead.
 
