@@ -70,7 +70,7 @@ function opportunityFromRow(row: Record<string, unknown>): OpportunityRow {
   const confidence = round(numberValue(row.confidence, 0.5), 3);
   const eligibility: OpportunityRow["eligibility"] = !coverage ? "ineligible" : caregivers < 8 ? "constrained" : "eligible";
   return {
-    municipalityId: stringValue(row.municipality_id),
+    municipalityId: stringValue(row.municipio_id),
     municipality: stringValue(row.municipality),
     province: stringValue(row.province),
     service: stringValue(row.service),
@@ -550,7 +550,7 @@ export class PrismaGrowthRepository implements GrowthRepository {
          FROM lead WHERE ${leadClauses.join(" AND ")} GROUP BY url_entrada
        )
        SELECT l.url, l.municipio_id, m.nombre AS municipality, l.idioma AS language, l.origen AS origin,
-              lw.service, COALESCE(lw.status, CASE WHEN l.fecha_publicacion IS NULL THEN 'draft' ELSE 'published' END) AS status,
+              lw.service, COALESCE(lw.status::text, CASE WHEN l.fecha_publicacion IS NULL THEN 'draft' ELSE 'published' END) AS status,
               l.fecha_publicacion AS published_at, l.fecha_primera_indexacion AS indexed_at,
               COALESCE(web.sessions, 0)::int AS sessions, COALESCE(web.forms, 0)::int AS forms,
               COALESCE(lead_stats.sql_count, 0)::int AS sql_count,
@@ -632,7 +632,7 @@ export class PrismaGrowthRepository implements GrowthRepository {
     };
     await this.execute(
       `INSERT INTO landing (url, municipio_id, idioma, origen, fecha_publicacion, fecha_primera_indexacion)
-       VALUES ($1, $2, $3, 'generada', NULL, NULL)
+       VALUES ($1, $2, $3::"LandingLanguage", 'generada'::"LandingOrigin", NULL, NULL)
        ON CONFLICT (url) DO UPDATE SET municipio_id = EXCLUDED.municipio_id, idioma = EXCLUDED.idioma`,
       [url, input.municipalityId, input.language],
     );
@@ -787,7 +787,7 @@ export class PrismaGrowthRepository implements GrowthRepository {
          FROM lead WHERE ${leadClauses.join(" AND ")} GROUP BY url_entrada
        )
        SELECT l.origen AS origin,
-              COALESCE(lw.status, CASE WHEN l.fecha_publicacion IS NULL THEN 'draft' ELSE 'published' END) AS status,
+              COALESCE(lw.status::text, CASE WHEN l.fecha_publicacion IS NULL THEN 'draft' ELSE 'published' END) AS status,
               COUNT(DISTINCT l.url)::int AS landings,
               COUNT(DISTINCT l.url) FILTER (WHERE l.fecha_publicacion IS NOT NULL)::int AS published,
               COUNT(DISTINCT l.url) FILTER (WHERE l.fecha_primera_indexacion IS NOT NULL)::int AS indexed,
