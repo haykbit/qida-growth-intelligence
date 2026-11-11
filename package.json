@@ -7,14 +7,18 @@
     "dev": "pnpm --parallel --filter @qida/api --filter @qida/web dev",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck && tsc -p tsconfig.data.json --noEmit",
+    "test": "pnpm -r test && vitest run prisma/seed",
     "test:e2e": "playwright test",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed/index.ts",
     "db:reset": "prisma migrate reset --force",
     "db:validate": "tsx scripts/validate-seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.1.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
@@ -26,6 +30,9 @@
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.1",
     "vitest": "^2.1.8"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed/index.ts"
   }
 }
 
