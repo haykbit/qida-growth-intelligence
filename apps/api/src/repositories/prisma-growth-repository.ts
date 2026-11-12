@@ -1095,12 +1095,22 @@ export class PrismaGrowthRepository implements GrowthRepository {
          UNION ALL SELECT 'motor_municipio.nps_12m', COUNT(*) FILTER (WHERE nps_12m IS NULL)::int, COUNT(*)::int FROM motor_municipio`,
       ),
       this.query(
-        `SELECT a.plataforma AS metric, SUM(a.conversiones_plataforma)::int AS platform,
-                COALESCE(COUNT(DISTINCT co.lead_id) FILTER (WHERE l.es_sql), 0)::int AS crm
-         FROM ads_diario a LEFT JOIN journey_event je ON je.campaign = a.campania
-         LEFT JOIN care_opportunity co ON co.opportunity_id = je.opportunity_id
-         LEFT JOIN lead l ON l.lead_id = co.lead_id
-         GROUP BY a.plataforma`,
+        `WITH platform_totals AS (
+           SELECT plataforma, SUM(conversiones_plataforma)::int AS platform
+           FROM ads_diario GROUP BY plataforma
+         ), campaigns AS (
+           SELECT DISTINCT plataforma, campania FROM ads_diario
+         ), crm_totals AS (
+           SELECT c.plataforma,
+                  COALESCE(COUNT(DISTINCT co.lead_id) FILTER (WHERE l.es_sql), 0)::int AS crm
+           FROM campaigns c LEFT JOIN journey_event je ON je.campaign = c.campania
+           LEFT JOIN care_opportunity co ON co.opportunity_id = je.opportunity_id
+           LEFT JOIN lead l ON l.lead_id = co.lead_id
+           GROUP BY c.plataforma
+         )
+         SELECT p.plataforma AS metric, p.platform, COALESCE(c.crm, 0)::int AS crm
+         FROM platform_totals p LEFT JOIN crm_totals c ON c.plataforma = p.plataforma
+         ORDER BY p.plataforma`,
       ),
       this.query(
         `SELECT COUNT(DISTINCT date_trunc('month', fecha_creacion))::int AS count

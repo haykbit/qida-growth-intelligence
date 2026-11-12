@@ -87,4 +87,25 @@ describe("PrismaGrowthRepository evidence semantics", () => {
     expect(response.kpis.costPerSql).toBe(20);
     expect(response.kpis.costPerAttributedAlta).toBe(50);
   });
+
+  it("aggregates platform conversions before joining campaign events for data-quality discrepancies", async () => {
+    const { database, query } = databaseReturning([
+      [],
+      [{ total_events: 0, unlinked_events: 0, ambiguous_identities: 0 }],
+      [{ confirmed_links: 0, potential_duplicates: 0 }],
+      [],
+      [],
+      [{ metric: "Google Ads", platform: 12, crm: 2 }],
+      [{ count: 0 }],
+    ]);
+    const repository = new PrismaGrowthRepository(database, "test");
+
+    const response = await repository.dataQuality();
+
+    expect(response.discrepancies).toEqual([{ metric: "Google Ads", platform: 12, crm: 2, difference: 10 }]);
+    const discrepancySql = String(query.mock.calls[5]?.[0]);
+    expect(discrepancySql).toContain("platform_totals AS");
+    expect(discrepancySql).toContain("SELECT DISTINCT plataforma, campania");
+    expect(discrepancySql).not.toContain("FROM ads_diario a LEFT JOIN journey_event");
+  });
 });
