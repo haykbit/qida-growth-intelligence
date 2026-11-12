@@ -14,8 +14,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-brand-600 text-white shadow-sm hover:bg-brand-700",
-        secondary: "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800",
+        primary: "bg-slate-950 text-white shadow-sm hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200",
+        secondary: "border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800",
         ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white",
         danger: "bg-rose-600 text-white hover:bg-rose-700",
       },
@@ -36,12 +36,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({ className, v
 Button.displayName = "Button";
 
 export const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("rounded-xl border border-slate-200/80 bg-white shadow-panel dark:border-slate-800 dark:bg-slate-900", className)} {...props} />
+  <div ref={ref} className={cn("rounded-xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.025)] dark:border-slate-800 dark:bg-slate-900", className)} {...props} />
 ));
 Card.displayName = "Card";
 
 export const CardHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 dark:border-slate-800", className)} {...props} />
+  <div ref={ref} className={cn("flex items-start justify-between gap-4 px-5 pb-3 pt-5", className)} {...props} />
 ));
 CardHeader.displayName = "CardHeader";
 
