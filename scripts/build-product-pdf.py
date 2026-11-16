@@ -120,35 +120,96 @@ def draw_cover_background(canvas, doc):
     canvas.setFillColor(INK)
     canvas.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT, fill=1, stroke=0)
 
-    canvas.setStrokeColor(colors.HexColor("#31514B"))
-    canvas.setLineWidth(0.7)
-    for x in range(22, 196, 29):
-        canvas.line(x * mm, 0, x * mm, PAGE_HEIGHT)
-    for y in range(24, 285, 29):
-        canvas.line(0, y * mm, PAGE_WIDTH, y * mm)
+    left = 22 * mm
+    right = PAGE_WIDTH - 22 * mm
 
-    nodes = [
-        (30, 57, 8, GREEN),
-        (62, 75, 11, colors.HexColor("#72D6B4")),
-        (96, 59, 7, GREEN),
-        (129, 83, 13, colors.HexColor("#BCEBD9")),
-        (166, 61, 9, GREEN),
-    ]
-    canvas.setLineWidth(2)
-    canvas.setStrokeColor(colors.HexColor("#72D6B4"))
-    for first, second in zip(nodes, nodes[1:]):
-        canvas.line(first[0] * mm, first[1] * mm, second[0] * mm, second[1] * mm)
-    for x, y, radius, fill in nodes:
-        canvas.setFillColor(fill)
-        canvas.circle(x * mm, y * mm, radius * mm, fill=1, stroke=0)
-        canvas.setFillColor(INK)
-        canvas.circle(x * mm, y * mm, max(1.4, radius * 0.22) * mm, fill=1, stroke=0)
-
-    canvas.setFillColor(GREEN)
-    canvas.roundRect(23 * mm, 262 * mm, 49 * mm, 10 * mm, 5 * mm, fill=1, stroke=0)
+    # Eyebrow: exact horizontal and optical vertical centering.
+    pill_x = left
+    pill_y = 263 * mm
+    pill_w = 45 * mm
+    pill_h = 9 * mm
+    canvas.setFillColor(colors.HexColor("#76E0BA"))
+    canvas.roundRect(pill_x, pill_y, pill_w, pill_h, pill_h / 2, fill=1, stroke=0)
     canvas.setFillColor(INK)
-    canvas.setFont("QidaSans-Bold", 9)
-    canvas.drawCentredString(47.5 * mm, 265.2 * mm, "PRODUCTO Y DATOS")
+    canvas.setFont("QidaSans-Bold", 8.5)
+    canvas.drawCentredString(pill_x + pill_w / 2, pill_y + 3.1 * mm, "CASO DE PRODUCTO")
+
+    # Primary hierarchy: one shared left edge for every text element.
+    canvas.setFillColor(WHITE)
+    canvas.setFont("QidaSans-Bold", 44)
+    canvas.drawString(left, 234 * mm, "Qida Growth")
+    canvas.drawString(left, 216 * mm, "Intelligence")
+
+    canvas.setFont("QidaSans", 17)
+    canvas.setFillColor(colors.HexColor("#B9D1CA"))
+    canvas.drawString(left, 197 * mm, "Documento de producto")
+
+    canvas.setStrokeColor(colors.HexColor("#45635C"))
+    canvas.setLineWidth(0.8)
+    canvas.line(left, 186 * mm, right, 186 * mm)
+
+    canvas.setFillColor(WHITE)
+    canvas.setFont("QidaSans", 12.5)
+    canvas.drawString(left, 174 * mm, "Una capa de inteligencia para conectar landings,")
+    canvas.drawString(left, 167 * mm, "datos y decisiones.")
+
+    # Product diagram: the three existing/new capabilities and the closed loop.
+    card_y = 78 * mm
+    card_w = 47 * mm
+    card_h = 46 * mm
+    gap = 12 * mm
+    card_xs = [left, left + card_w + gap, left + 2 * (card_w + gap)]
+    card_specs = [
+        ("Motor de datos", ["Demanda", "Capacidad", "Actividad comercial"], False),
+        ("Growth Intelligence", ["Landings", "Métricas", "Experimentos"], True),
+        ("Decisiones", ["Priorizar", "Medir", "Aprender"], False),
+    ]
+
+    for x, (title, lines, highlighted) in zip(card_xs, card_specs):
+        if highlighted:
+            canvas.setFillColor(colors.HexColor("#76E0BA"))
+            canvas.setStrokeColor(colors.HexColor("#76E0BA"))
+        else:
+            canvas.setFillColor(colors.HexColor("#1B3933"))
+            canvas.setStrokeColor(colors.HexColor("#58736C"))
+        canvas.setLineWidth(0.9)
+        canvas.roundRect(x, card_y, card_w, card_h, 4 * mm, fill=1, stroke=1)
+
+        text_color = INK if highlighted else WHITE
+        sub_color = colors.HexColor("#244A42") if highlighted else colors.HexColor("#B9D1CA")
+        center_x = x + card_w / 2
+        canvas.setFillColor(text_color)
+        canvas.setFont("QidaSans-Bold", 10.5)
+        canvas.drawCentredString(center_x, card_y + 31 * mm, title)
+        canvas.setStrokeColor(colors.HexColor("#4B806F") if highlighted else colors.HexColor("#3D5A54"))
+        canvas.line(x + 8 * mm, card_y + 25 * mm, x + card_w - 8 * mm, card_y + 25 * mm)
+        canvas.setFillColor(sub_color)
+        canvas.setFont("QidaSans", 8.5)
+        for index, line in enumerate(lines):
+            canvas.drawCentredString(center_x, card_y + (17 - index * 5) * mm, line)
+
+    # Connectors live only in the gaps and share the cards' vertical center.
+    connector_y = card_y + card_h / 2
+    canvas.setStrokeColor(colors.HexColor("#76E0BA"))
+    canvas.setFillColor(colors.HexColor("#76E0BA"))
+    canvas.setLineWidth(1.2)
+    for x in (card_xs[0] + card_w, card_xs[1] + card_w):
+        start = x + 2.5 * mm
+        end = x + gap - 2.5 * mm
+        canvas.line(start, connector_y, end, connector_y)
+        canvas.line(end, connector_y, end - 2.2 * mm, connector_y + 1.7 * mm)
+        canvas.line(end, connector_y, end - 2.2 * mm, connector_y - 1.7 * mm)
+
+    canvas.setStrokeColor(colors.HexColor("#45635C"))
+    canvas.line(left, 61 * mm, right, 61 * mm)
+    canvas.setFillColor(colors.HexColor("#B9D1CA"))
+    canvas.setFont("QidaSans", 9)
+    canvas.drawString(left, 51 * mm, "Del dato disponible a una decisión que se puede medir.")
+
+    canvas.setFillColor(colors.HexColor("#8FA9A2"))
+    canvas.setFont("QidaSans", 8.5)
+    canvas.drawString(left, 20 * mm, "Prueba técnica")
+    canvas.drawRightString(right, 20 * mm, "Noviembre 2026")
     canvas.restoreState()
 
 
@@ -168,35 +229,6 @@ def draw_body_chrome(canvas, doc):
 
 
 styles = getSampleStyleSheet()
-styles.add(
-    ParagraphStyle(
-        "CoverTitle",
-        fontName="QidaSans-Bold",
-        fontSize=31,
-        leading=34,
-        textColor=WHITE,
-        spaceAfter=8 * mm,
-    )
-)
-styles.add(
-    ParagraphStyle(
-        "CoverSubtitle",
-        fontName="QidaSans",
-        fontSize=15,
-        leading=21,
-        textColor=colors.HexColor("#D5E8E2"),
-        spaceAfter=10 * mm,
-    )
-)
-styles.add(
-    ParagraphStyle(
-        "CoverMeta",
-        fontName="QidaSans",
-        fontSize=9.5,
-        leading=15,
-        textColor=colors.HexColor("#B6CEC7"),
-    )
-)
 styles.add(
     ParagraphStyle(
         "H1",
@@ -465,34 +497,7 @@ def parse_markdown(markdown_text: str):
 
 
 def cover_story():
-    summary = (
-        "Una capa de inteligencia que conecta el motor de datos y la fábrica de landings "
-        "con rendimiento, experimentos, decisiones y aprendizaje operativo."
-    )
-    meta = (
-        "Documento canónico para Producto, Growth, Data, Marketing y Tecnología<br/>"
-        "Datos de demostración sintéticos, deterministas y sin información personal"
-    )
     return [
-        Spacer(1, 64 * mm),
-        Paragraph("Qida Growth<br/>Intelligence", styles["CoverTitle"]),
-        Paragraph("Documento de producto", styles["CoverSubtitle"]),
-        Table(
-            [[Paragraph(summary, ParagraphStyle("CoverSummary", parent=styles["CoverSubtitle"], fontSize=12.5, leading=18, textColor=WHITE))]],
-            colWidths=[142 * mm],
-            style=TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#24433D")),
-                    ("BOX", (0, 0), (-1, -1), 0.8, colors.HexColor("#4D7169")),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 9 * mm),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 9 * mm),
-                    ("TOPPADDING", (0, 0), (-1, -1), 7 * mm),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 7 * mm),
-                ]
-            ),
-        ),
-        Spacer(1, 14 * mm),
-        Paragraph(meta, styles["CoverMeta"]),
         NextPageTemplate("body"),
         PageBreak(),
     ]
