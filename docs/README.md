@@ -6,7 +6,7 @@ La documentación está separada por finalidad para que el evaluador pueda elegi
 
 | Documento | Para qué sirve |
 | --- | --- |
-| [Manual de producto](product/manual-producto-qida-growth-intelligence.md) | Comprender la propuesta completa desde cero |
+| [Documento de producto](product/manual-producto-qida-growth-intelligence.md) | Comprender la propuesta completa en una lectura ejecutiva |
 | [Presentación](product/qida-growth-intelligence.pptx) | Soporte visual editable |
 
 ## Arquitectura

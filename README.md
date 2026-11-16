@@ -24,7 +24,7 @@ La aplicación diferencia siempre entre descripción, atribución y evidencia ca
 
 ## Documento de producto
 
-El [manual de producto](docs/product/manual-producto-qida-growth-intelligence.md) explica la propuesta desde cero: problema, usuarios, pantallas, métricas, consultas, arquitectura, privacidad, gobierno y plan de 90 días.
+El [documento de producto](docs/product/manual-producto-qida-growth-intelligence.md) explica la propuesta de forma ejecutiva: idea, partes del producto, datos, métricas, consultas, planificación y límites.
 
 ## Cómo está construido
 

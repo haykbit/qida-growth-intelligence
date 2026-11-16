@@ -73,7 +73,7 @@ class ProductManualDoc(BaseDocTemplate):
             rightMargin=MARGIN_X,
             topMargin=MARGIN_TOP,
             bottomMargin=MARGIN_BOTTOM,
-            title="Qida Growth Intelligence - Manual de producto",
+            title="Qida Growth Intelligence - Documento de producto",
             author="Propuesta de producto",
             subject="Producto, medición, datos y plan de 90 días",
         )
@@ -160,7 +160,7 @@ def draw_body_chrome(canvas, doc):
     canvas.setFont("QidaSans", 8.5)
     canvas.setFillColor(MUTED)
     canvas.drawString(MARGIN_X, PAGE_HEIGHT - 9.5 * mm, "Qida Growth Intelligence")
-    canvas.drawRightString(PAGE_WIDTH - MARGIN_X, PAGE_HEIGHT - 9.5 * mm, "Manual de producto")
+    canvas.drawRightString(PAGE_WIDTH - MARGIN_X, PAGE_HEIGHT - 9.5 * mm, "Documento de producto")
     canvas.line(MARGIN_X, 13 * mm, PAGE_WIDTH - MARGIN_X, 13 * mm)
     canvas.drawString(MARGIN_X, 8.5 * mm, "Datos sintéticos - Propuesta de prueba técnica")
     canvas.drawRightString(PAGE_WIDTH - MARGIN_X, 8.5 * mm, str(canvas.getPageNumber() - 1))
@@ -476,7 +476,7 @@ def cover_story():
     return [
         Spacer(1, 64 * mm),
         Paragraph("Qida Growth<br/>Intelligence", styles["CoverTitle"]),
-        Paragraph("Manual de producto", styles["CoverSubtitle"]),
+        Paragraph("Documento de producto", styles["CoverSubtitle"]),
         Table(
             [[Paragraph(summary, ParagraphStyle("CoverSummary", parent=styles["CoverSubtitle"], fontSize=12.5, leading=18, textColor=WHITE))]],
             colWidths=[142 * mm],
