@@ -276,7 +276,7 @@ export function WeeklyMinutes({
           </Select>
         </label>
         <Link className="inline-block text-sm underline" to="/measurement">
-          Consultar calidad, SQL y guardarraíles
+          Consultar calidad, SQL y controles que no deben empeorar
         </Link>
         {q.error || learning.error ? (
           <ErrorState

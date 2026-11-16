@@ -37,7 +37,15 @@ import { api } from "../lib/api";
 import { decimal, integer, percent, titleCase } from "../lib/format";
 import { useFilters } from "../state/filters";
 
-function PortfolioMetric({ label, value, definition }: { label: string; value: string; definition: string }) {
+function PortfolioMetric({
+  label,
+  value,
+  definition,
+}: {
+  label: string;
+  value: string;
+  definition: string;
+}) {
   return <MetricCard definition={definition} label={label} value={value} />;
 }
 
@@ -322,7 +330,10 @@ export function LandingRecordPage() {
         <p className="mt-2 text-sm leading-6">{landingReading(data)}</p>
       </div>
 
-      <Tabs key={params.get("decision") ?? url} defaultValue={params.has("decision") ? "changes" : "summary"}>
+      <Tabs
+        key={params.get("decision") ?? url}
+        defaultValue={params.has("decision") ? "changes" : "summary"}
+      >
         <div className="overflow-x-auto border-b">
           <TabsList className="h-auto min-w-max rounded-none bg-transparent p-0">
             {(
@@ -345,7 +356,9 @@ export function LandingRecordPage() {
           </TabsList>
         </div>
 
-        <TabsContent value="changes"><LandingChanges data={data} selectedId={params.get("decision")}/></TabsContent>
+        <TabsContent value="changes">
+          <LandingChanges data={data} selectedId={params.get("decision")} />
+        </TabsContent>
         <TabsContent className="space-y-5" value="summary">
           <FunnelEvidence
             altas={data.altas}
@@ -587,14 +600,18 @@ export function LandingRecordPage() {
                         <TableCell>
                           <Badge>
                             {experiment.evidenceLevel === "quasi_experimental"
-                              ? "Cuasi experimental"
-                              : "Descriptivo"}
+                              ? "Comparación con versión anterior"
+                              : "Solo seguimiento"}
                           </Badge>
                         </TableCell>
                         <TableCell className="tabular text-right">
                           {experiment.didEstimate === null
                             ? "Pendiente"
-                            : experiment.primaryMetric === "sql_per_municipality_week" ? decimal.format(experiment.didEstimate) + " SQL" : decimal.format(experiment.didEstimate*100) + " pp"}
+                            : experiment.primaryMetric ===
+                                "sql_per_municipality_week"
+                              ? decimal.format(experiment.didEstimate) + " SQL"
+                              : decimal.format(experiment.didEstimate * 100) +
+                                " pp"}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -617,7 +634,7 @@ export function LandingRecordPage() {
               ["CRM", "Leads, SQL y altas enlazados por URL", "lead"],
               [
                 "Alcance",
-                "El enlace por URL atribuye resultados; no demuestra causalidad",
+                "La URL permite relacionar la landing con resultados del CRM. Esta relación no demuestra que la landing los haya causado.",
                 "landing.url = lead.url_entrada",
               ],
             ].map(([title, text, source]) => (

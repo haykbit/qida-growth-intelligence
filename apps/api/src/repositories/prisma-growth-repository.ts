@@ -1,7 +1,16 @@
-import { changeSchema, sqlResultSchema, weeklyNoteSchema, type WeeklyNote, type SqlResult } from "@qida/contracts";
+import {
+  changeSchema,
+  sqlResultSchema,
+  weeklyNoteSchema,
+  type WeeklyNote,
+  type SqlResult,
+} from "@qida/contracts";
 import { experimentSql, sqlReadout } from "./experiment-sql.js";
 import { createHash, randomUUID } from "node:crypto";
-import { calculateLandingImpact, calculatePlanningDelta } from "@qida/analytics";
+import {
+  calculateLandingImpact,
+  calculatePlanningDelta,
+} from "@qida/analytics";
 import type {
   IdentityStatus,
   JourneyDetail,
@@ -69,22 +78,44 @@ function decisionEvidence(metadata: Record<string, unknown>) {
   return {
     ...(metadata.change ? { change: changeSchema.parse(metadata.change) } : {}),
     ...(typeof metadata.author === "string" ? { author: metadata.author } : {}),
-    ...(typeof metadata.evidenceDecisionId === "string" ? { evidenceDecisionId: metadata.evidenceDecisionId } : {}),
-    ...(metadata.resultSnapshot ? { resultSnapshot: sqlResultSchema.parse(metadata.resultSnapshot) } : {}),
+    ...(typeof metadata.evidenceDecisionId === "string"
+      ? { evidenceDecisionId: metadata.evidenceDecisionId }
+      : {}),
+    ...(metadata.resultSnapshot
+      ? { resultSnapshot: sqlResultSchema.parse(metadata.resultSnapshot) }
+      : {}),
   };
 }
 
 type LeadAliases = { lead: string; municipality: string };
 const LANDING_SELECTION_RULES_VERSION = "qgi-landing-selection-v1.0.0";
 
-function leadWhere(filters: Filters, builder: SqlBuilder, aliases: LeadAliases = { lead: "l", municipality: "m" }): string {
+function leadWhere(
+  filters: Filters,
+  builder: SqlBuilder,
+  aliases: LeadAliases = { lead: "l", municipality: "m" },
+): string {
   const clauses = [`${aliases.lead}.tipo_contacto <> 'cuidadora_empleo'`];
-  if (filters.from !== undefined) clauses.push(`${aliases.lead}.fecha_creacion >= ${builder.add(filters.from)}::date`);
-  if (filters.to !== undefined) clauses.push(`${aliases.lead}.fecha_creacion < (${builder.add(filters.to)}::date + interval '1 day')`);
-  if (filters.province !== undefined) clauses.push(`${aliases.municipality}.provincia = ${builder.add(filters.province)}`);
-  if (filters.municipalityId !== undefined) clauses.push(`${aliases.lead}.municipio_id = ${builder.add(filters.municipalityId)}`);
-  if (filters.service !== undefined) clauses.push(`${aliases.lead}.servicio = ${builder.add(filters.service)}`);
-  if (filters.channel !== undefined) clauses.push(`${aliases.lead}.canal = ${builder.add(filters.channel)}`);
+  if (filters.from !== undefined)
+    clauses.push(
+      `${aliases.lead}.fecha_creacion >= ${builder.add(filters.from)}::date`,
+    );
+  if (filters.to !== undefined)
+    clauses.push(
+      `${aliases.lead}.fecha_creacion < (${builder.add(filters.to)}::date + interval '1 day')`,
+    );
+  if (filters.province !== undefined)
+    clauses.push(
+      `${aliases.municipality}.provincia = ${builder.add(filters.province)}`,
+    );
+  if (filters.municipalityId !== undefined)
+    clauses.push(
+      `${aliases.lead}.municipio_id = ${builder.add(filters.municipalityId)}`,
+    );
+  if (filters.service !== undefined)
+    clauses.push(`${aliases.lead}.servicio = ${builder.add(filters.service)}`);
+  if (filters.channel !== undefined)
+    clauses.push(`${aliases.lead}.canal = ${builder.add(filters.channel)}`);
   return clauses.join(" AND ");
 }
 
@@ -93,18 +124,29 @@ function opportunityFromRow(row: Record<string, unknown>): OpportunityRow {
   const caregivers = numberValue(row.caregivers_available);
   const ownMunicipalData = booleanValue(row.own_municipal_data);
   const demandMonthsObserved = numberValue(row.demand_months_observed);
-  const eligibility: OpportunityRow["eligibility"] = !coverage ? "ineligible" : caregivers < 8 ? "constrained" : "eligible";
-  const selectionReasons = [
-    ...(!ownMunicipalData ? ["Solo hay agregados provinciales; falta evidencia municipal propia"] : []),
-    ...(!coverage ? ["El servicio no tiene cobertura en el municipio"] : []),
-    ...(caregivers < 8 ? ["Hay menos de ocho cuidadoras disponibles a 30 días"] : []),
-    ...(demandMonthsObserved < 6 ? ["Hay menos de seis meses de demanda observada"] : []),
-  ];
-  const selectionEligibility: OpportunityRow["selectionEligibility"] = !ownMunicipalData || !coverage || demandMonthsObserved < 6
+  const eligibility: OpportunityRow["eligibility"] = !coverage
     ? "ineligible"
     : caregivers < 8
       ? "constrained"
       : "eligible";
+  const selectionReasons = [
+    ...(!ownMunicipalData
+      ? ["Solo hay agregados provinciales; falta evidencia municipal propia"]
+      : []),
+    ...(!coverage ? ["El servicio no tiene cobertura en el municipio"] : []),
+    ...(caregivers < 8
+      ? ["Hay menos de ocho cuidadoras disponibles a 30 días"]
+      : []),
+    ...(demandMonthsObserved < 6
+      ? ["Hay menos de seis meses de demanda observada"]
+      : []),
+  ];
+  const selectionEligibility: OpportunityRow["selectionEligibility"] =
+    !ownMunicipalData || !coverage || demandMonthsObserved < 6
+      ? "ineligible"
+      : caregivers < 8
+        ? "constrained"
+        : "eligible";
   return {
     municipalityId: stringValue(row.municipio_id),
     municipality: stringValue(row.municipality),
@@ -115,7 +157,9 @@ function opportunityFromRow(row: Record<string, unknown>): OpportunityRow {
     leads: Math.round(numberValue(row.lead_count)),
     sql: Math.round(numberValue(row.sql_count)),
     altas: Math.round(numberValue(row.alta_count)),
-    sqlToAlta: round(rate(numberValue(row.alta_count), numberValue(row.sql_count))),
+    sqlToAlta: round(
+      rate(numberValue(row.alta_count), numberValue(row.sql_count)),
+    ),
     caregiversAvailable: caregivers,
     coverage,
     voiceSignals: Math.round(numberValue(row.voice_signals)),
@@ -146,26 +190,35 @@ function serviceLabel(value: string): string {
   return labels[value] ?? value.replaceAll("_", " ");
 }
 
-function pseudonymousContactRef(sourceSystem: string, sourceIdentifier: string): string {
+function pseudonymousContactRef(
+  sourceSystem: string,
+  sourceIdentifier: string,
+): string {
   const prefix = sourceSystem.toLowerCase() === "hubspot" ? "hs" : "crm";
-  const digest = createHash("sha256").update(`${sourceSystem}:${sourceIdentifier}`).digest("hex").slice(0, 12);
+  const digest = createHash("sha256")
+    .update(`${sourceSystem}:${sourceIdentifier}`)
+    .digest("hex")
+    .slice(0, 12);
   return `${prefix}_${digest}`;
 }
 
 function journeyRoute(value: unknown): JourneyRouteStep[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
-    if (typeof item !== "object" || item === null || Array.isArray(item)) return [];
+    if (typeof item !== "object" || item === null || Array.isArray(item))
+      return [];
     const row = item as Record<string, unknown>;
     const eventType = stringValue(row.eventType);
     if (!eventType || row.occurredAt === undefined) return [];
-    return [{
-      eventType,
-      occurredAt: isoValue(row.occurredAt),
-      sourceSystem: stringValue(row.sourceSystem),
-      channel: nullableString(row.channel),
-      observed: booleanValue(row.observed),
-    }];
+    return [
+      {
+        eventType,
+        occurredAt: isoValue(row.occurredAt),
+        sourceSystem: stringValue(row.sourceSystem),
+        channel: nullableString(row.channel),
+        observed: booleanValue(row.observed),
+      },
+    ];
   });
 }
 
@@ -180,8 +233,12 @@ function funnelFromRow(row: Record<string, unknown>): FunnelBreakdown {
     altas,
     leadToSql: round(rate(sql, leads)),
     sqlToAlta: round(rate(altas, sql)),
-    averageDaysToSql: row.days_to_sql === null ? null : round(numberValue(row.days_to_sql), 1),
-    averageDaysToAlta: row.days_to_alta === null ? null : round(numberValue(row.days_to_alta), 1),
+    averageDaysToSql:
+      row.days_to_sql === null ? null : round(numberValue(row.days_to_sql), 1),
+    averageDaysToAlta:
+      row.days_to_alta === null
+        ? null
+        : round(numberValue(row.days_to_alta), 1),
     mature: row.mature === undefined ? true : booleanValue(row.mature),
   };
 }
@@ -203,8 +260,13 @@ function diagnoseLanding(input: {
     return {
       decision: "stop",
       headline: "No escalar hasta resolver la restricción operativa",
-      rationale: [!input.coverage ? "El municipio no tiene cobertura activa." : `La capacidad disponible es de ${input.caregiversAvailable} cuidadoras, por debajo del umbral operativo.`],
-      recommendedAction: "Detener nuevas activaciones y revisar cobertura o capacidad antes de generar más demanda.",
+      rationale: [
+        !input.coverage
+          ? "El municipio no tiene cobertura activa."
+          : `La capacidad disponible es de ${input.caregiversAvailable} cuidadoras, por debajo del umbral operativo.`,
+      ],
+      recommendedAction:
+        "Detener nuevas activaciones y revisar cobertura o capacidad antes de generar más demanda.",
       primaryMetric: "sql_to_alta",
       guardrailMetric: "caregiver_capacity",
       evidenceLevel: "attributed",
@@ -214,8 +276,11 @@ function diagnoseLanding(input: {
     return {
       decision: "iterate",
       headline: "La landing todavía no tiene una publicación medible",
-      rationale: ["El estado editorial no permite evaluar un resultado completo."],
-      recommendedAction: "Completar el flujo de publicación y declarar la métrica antes de empezar a comparar resultados.",
+      rationale: [
+        "El estado editorial no permite evaluar un resultado completo.",
+      ],
+      recommendedAction:
+        "Completar el flujo de publicación y declarar la métrica antes de empezar a comparar resultados.",
       primaryMetric: "session_to_lead",
       guardrailMetric: "lead_to_sql",
       evidenceLevel: "descriptive",
@@ -224,42 +289,63 @@ function diagnoseLanding(input: {
   if (input.sessions < 250 || input.leads < 10) {
     return {
       decision: "keep",
-      headline: "Mantener mientras madura la muestra",
-      rationale: [`Hay ${input.sessions} sesiones y ${input.leads} leads atribuidos; la lectura aún es sensible a pocos casos.`],
-      recommendedAction: "No cambiar todavía. Esperar más observaciones y vigilar la calidad de los leads.",
+      headline: "Mantener hasta disponer de más casos",
+      rationale: [
+        `Hay ${input.sessions} sesiones y ${input.leads} leads atribuidos; la lectura aún es sensible a pocos casos.`,
+      ],
+      recommendedAction:
+        "No cambiar todavía. Esperar más observaciones y vigilar la calidad de los leads.",
       primaryMetric: "session_to_lead",
       guardrailMetric: "lead_to_sql",
       evidenceLevel: "attributed",
     };
   }
-  if (input.benchmarkSessionToLead > 0 && input.sessionToLead < input.benchmarkSessionToLead * 0.8) {
+  if (
+    input.benchmarkSessionToLead > 0 &&
+    input.sessionToLead < input.benchmarkSessionToLead * 0.8
+  ) {
     return {
       decision: "iterate",
       headline: "El principal margen está antes del lead",
-      rationale: ["La conversión de sesión a lead está al menos un 20% por debajo del portfolio comparable."],
-      recommendedAction: "Probar una nueva propuesta de valor o un CTA más directo en una versión controlada.",
+      rationale: [
+        "La conversión de sesión a lead está al menos un 20% por debajo del portfolio comparable.",
+      ],
+      recommendedAction:
+        "Probar una nueva propuesta de valor o un CTA más directo en una versión controlada.",
       primaryMetric: "session_to_lead",
       guardrailMetric: "lead_to_sql",
       evidenceLevel: "attributed",
     };
   }
-  if (input.benchmarkLeadToSql > 0 && input.leadToSql < input.benchmarkLeadToSql * 0.8) {
+  if (
+    input.benchmarkLeadToSql > 0 &&
+    input.leadToSql < input.benchmarkLeadToSql * 0.8
+  ) {
     return {
       decision: "iterate",
       headline: "La landing capta, pero la calidad del lead es menor",
-      rationale: ["La conversión de lead a SQL está al menos un 20% por debajo del portfolio comparable."],
-      recommendedAction: "Ajustar el mensaje y la cualificación del formulario sin optimizar únicamente el volumen.",
+      rationale: [
+        "La conversión de lead a SQL está al menos un 20% por debajo del portfolio comparable.",
+      ],
+      recommendedAction:
+        "Ajustar el mensaje y la cualificación del formulario sin optimizar únicamente el volumen.",
       primaryMetric: "lead_to_sql",
       guardrailMetric: "sql_to_alta",
       evidenceLevel: "attributed",
     };
   }
-  if (input.benchmarkSqlToAlta > 0 && input.sqlToAlta < input.benchmarkSqlToAlta * 0.8) {
+  if (
+    input.benchmarkSqlToAlta > 0 &&
+    input.sqlToAlta < input.benchmarkSqlToAlta * 0.8
+  ) {
     return {
       decision: "iterate",
       headline: "El volumen llega a SQL, pero no se convierte en alta",
-      rationale: ["La conversión de SQL a alta está al menos un 20% por debajo del portfolio comparable."],
-      recommendedAction: "Revisar si el mensaje atrae necesidades atendibles y validar el cambio sin aumentar primero el volumen.",
+      rationale: [
+        "La conversión de SQL a alta está al menos un 20% por debajo del portfolio comparable.",
+      ],
+      recommendedAction:
+        "Revisar si el mensaje atrae necesidades atendibles y validar el cambio sin aumentar primero el volumen.",
       primaryMetric: "sql_to_alta",
       guardrailMetric: "caregiver_capacity",
       evidenceLevel: "attributed",
@@ -268,8 +354,11 @@ function diagnoseLanding(input: {
   return {
     decision: "keep",
     headline: "Rendimiento estable frente al portfolio",
-    rationale: ["La captación y la calidad no presentan una brecha material frente al benchmark actual."],
-    recommendedAction: "Mantener la versión y priorizar una prueba solo si existe una hipótesis específica.",
+    rationale: [
+      "La captación y la calidad están próximas a la media de las landings comparables.",
+    ],
+    recommendedAction:
+      "Mantener la versión y priorizar una prueba solo si existe una hipótesis específica.",
     primaryMetric: "lead_to_sql",
     guardrailMetric: "sql_to_alta",
     evidenceLevel: "attributed",
@@ -289,22 +378,68 @@ function evaluateLanding(input: {
   coverage: boolean;
   caregiversAvailable: number;
 }): LandingInsightSummary["evaluation"] {
-  const boundedRatio = (value: number, benchmark: number): number => benchmark <= 0 ? 0 : Math.round(Math.min(100, (value / benchmark) * 100));
-  const visibility = Math.min(100,
-    (input.indexedAt === null ? 0 : 35)
-    + (input.clicks > 0 ? 25 : 0)
-    + (input.averagePosition !== null && input.averagePosition <= 10 ? 40 : input.averagePosition !== null && input.averagePosition <= 20 ? 20 : 0),
+  const boundedRatio = (value: number, benchmark: number): number =>
+    benchmark <= 0 ? 0 : Math.round(Math.min(100, (value / benchmark) * 100));
+  const visibility = Math.min(
+    100,
+    (input.indexedAt === null ? 0 : 35) +
+      (input.clicks > 0 ? 25 : 0) +
+      (input.averagePosition !== null && input.averagePosition <= 10
+        ? 40
+        : input.averagePosition !== null && input.averagePosition <= 20
+          ? 20
+          : 0),
   );
-  const acquisition = boundedRatio(input.sessionToLead, input.benchmarkSessionToLead);
-  const quality = Math.round((boundedRatio(input.leadToSql, input.benchmarkLeadToSql) + boundedRatio(input.sqlToAlta, input.benchmarkSqlToAlta)) / 2);
-  const operability = !input.coverage ? 0 : input.caregiversAvailable < 8 ? 40 : 100;
+  const acquisition = boundedRatio(
+    input.sessionToLead,
+    input.benchmarkSessionToLead,
+  );
+  const quality = Math.round(
+    (boundedRatio(input.leadToSql, input.benchmarkLeadToSql) +
+      boundedRatio(input.sqlToAlta, input.benchmarkSqlToAlta)) /
+      2,
+  );
+  const operability = !input.coverage
+    ? 0
+    : input.caregiversAvailable < 8
+      ? 40
+      : 100;
   const dimensions: LandingInsightSummary["evaluation"]["dimensions"] = [
-    { key: "visibility", label: "Visibilidad", score: visibility, explanation: "Indexación, clics orgánicos y posición media observada." },
-    { key: "acquisition", label: "Captación", score: acquisition, explanation: "Sesión → lead frente al benchmark filtrado." },
-    { key: "quality", label: "Calidad", score: quality, explanation: "Lead → SQL y SQL → alta frente al benchmark filtrado." },
-    { key: "operability", label: "Operabilidad", score: operability, explanation: "Cobertura activa y capacidad mínima de cuidadoras." },
+    {
+      key: "visibility",
+      label: "Visibilidad",
+      score: visibility,
+      explanation: "Indexación, clics orgánicos y posición media observada.",
+    },
+    {
+      key: "acquisition",
+      label: "Captación",
+      score: acquisition,
+      explanation:
+        "Sesión → lead frente a la media de las landings incluidas en los filtros.",
+    },
+    {
+      key: "quality",
+      label: "Calidad",
+      score: quality,
+      explanation:
+        "Lead → SQL y SQL → alta frente a la media de las landings incluidas en los filtros.",
+    },
+    {
+      key: "operability",
+      label: "Operabilidad",
+      score: operability,
+      explanation: "Cobertura activa y capacidad mínima de cuidadoras.",
+    },
   ];
-  return { overall: Math.round(dimensions.reduce((sum, dimension) => sum + dimension.score, 0) / dimensions.length), version: "landing-evaluator-v1", dimensions };
+  return {
+    overall: Math.round(
+      dimensions.reduce((sum, dimension) => sum + dimension.score, 0) /
+        dimensions.length,
+    ),
+    version: "landing-evaluator-v1",
+    dimensions,
+  };
 }
 
 export class PrismaGrowthRepository implements GrowthRepository {
@@ -313,7 +448,10 @@ export class PrismaGrowthRepository implements GrowthRepository {
     private readonly seedVersion: string,
   ) {}
 
-  private async query(sql: string, values: SqlValue[] = []): Promise<Array<Record<string, unknown>>> {
+  private async query(
+    sql: string,
+    values: SqlValue[] = [],
+  ): Promise<Array<Record<string, unknown>>> {
     const result: unknown = await this.db.$queryRawUnsafe(sql, ...values);
     return records(result);
   }
@@ -322,7 +460,10 @@ export class PrismaGrowthRepository implements GrowthRepository {
     return this.db.$executeRawUnsafe(sql, ...values);
   }
 
-  public async health(): Promise<{ database: "up" | "down"; seedVersion: string }> {
+  public async health(): Promise<{
+    database: "up" | "down";
+    seedVersion: string;
+  }> {
     try {
       await this.query("SELECT 1 AS ok");
       return { database: "up", seedVersion: this.seedVersion };
@@ -333,17 +474,33 @@ export class PrismaGrowthRepository implements GrowthRepository {
 
   public async filters(): Promise<FilterOptions> {
     const [municipalities, services, channels, dates] = await Promise.all([
-      this.query(`SELECT municipio_id, nombre, provincia FROM motor_municipio ORDER BY provincia, nombre`),
-      this.query(`SELECT DISTINCT servicio FROM lead WHERE tipo_contacto <> 'cuidadora_empleo' ORDER BY servicio`),
-      this.query(`SELECT DISTINCT canal FROM lead WHERE tipo_contacto <> 'cuidadora_empleo' ORDER BY canal`),
-      this.query(`SELECT MIN(fecha_creacion) AS min_date, MAX(fecha_creacion) AS max_date FROM lead`),
+      this.query(
+        `SELECT municipio_id, nombre, provincia FROM motor_municipio ORDER BY provincia, nombre`,
+      ),
+      this.query(
+        `SELECT DISTINCT servicio FROM lead WHERE tipo_contacto <> 'cuidadora_empleo' ORDER BY servicio`,
+      ),
+      this.query(
+        `SELECT DISTINCT canal FROM lead WHERE tipo_contacto <> 'cuidadora_empleo' ORDER BY canal`,
+      ),
+      this.query(
+        `SELECT MIN(fecha_creacion) AS min_date, MAX(fecha_creacion) AS max_date FROM lead`,
+      ),
     ]);
     return {
       dateRange: {
-        min: dates[0]?.min_date === null || dates[0]?.min_date === undefined ? null : isoValue(dates[0].min_date).slice(0, 10),
-        max: dates[0]?.max_date === null || dates[0]?.max_date === undefined ? null : isoValue(dates[0].max_date).slice(0, 10),
+        min:
+          dates[0]?.min_date === null || dates[0]?.min_date === undefined
+            ? null
+            : isoValue(dates[0].min_date).slice(0, 10),
+        max:
+          dates[0]?.max_date === null || dates[0]?.max_date === undefined
+            ? null
+            : isoValue(dates[0].max_date).slice(0, 10),
       },
-      provinces: [...new Set(municipalities.map((row) => stringValue(row.provincia)))],
+      provinces: [
+        ...new Set(municipalities.map((row) => stringValue(row.provincia))),
+      ],
       municipalities: municipalities.map((row) => ({
         id: stringValue(row.municipio_id),
         name: stringValue(row.nombre),
@@ -358,17 +515,35 @@ export class PrismaGrowthRepository implements GrowthRepository {
   public async overview(filters: Filters): Promise<OverviewResponse> {
     const summaryBuilder = new SqlBuilder();
     const summaryWhere = leadWhere(filters, summaryBuilder);
-    const spendFrom = filters.from === undefined ? "TRUE" : `a.fecha >= ${summaryBuilder.add(filters.from)}::date`;
-    const spendTo = filters.to === undefined ? "TRUE" : `a.fecha <= ${summaryBuilder.add(filters.to)}::date`;
+    const spendFrom =
+      filters.from === undefined
+        ? "TRUE"
+        : `a.fecha >= ${summaryBuilder.add(filters.from)}::date`;
+    const spendTo =
+      filters.to === undefined
+        ? "TRUE"
+        : `a.fecha <= ${summaryBuilder.add(filters.to)}::date`;
     const municipalityBuilder = new SqlBuilder();
     const municipalityWhere = leadWhere(filters, municipalityBuilder);
     const discardBuilder = new SqlBuilder();
     const discardWhere = leadWhere(filters, discardBuilder);
     const paidBuilder = new SqlBuilder();
-    const paidWhere = leadWhere(filters, paidBuilder, { lead: "pl", municipality: "pm" });
+    const paidWhere = leadWhere(filters, paidBuilder, {
+      lead: "pl",
+      municipality: "pm",
+    });
     const conversionBuilder = new SqlBuilder();
     const conversionWhere = leadWhere(filters, conversionBuilder);
-    const [summaryRows, paidRows, monthlyRows, conversionRows, channelRows, municipalityRows, discardRows, opportunities] = await Promise.all([
+    const [
+      summaryRows,
+      paidRows,
+      monthlyRows,
+      conversionRows,
+      channelRows,
+      municipalityRows,
+      discardRows,
+      opportunities,
+    ] = await Promise.all([
       this.query(
         `SELECT COUNT(*)::int AS leads,
           COUNT(*) FILTER (WHERE l.es_sql)::int AS sql_count,
@@ -403,7 +578,11 @@ export class PrismaGrowthRepository implements GrowthRepository {
          WHERE ${paidWhere}`,
         paidBuilder.values,
       ),
-      this.aggregateFunnel(filters, "to_char(date_trunc('month', l.fecha_creacion), 'YYYY-MM')", "period"),
+      this.aggregateFunnel(
+        filters,
+        "to_char(date_trunc('month', l.fecha_creacion), 'YYYY-MM')",
+        "period",
+      ),
       this.query(
         `SELECT to_char(date_trunc('month', l.fecha_creacion), 'YYYY-MM') AS period,
           COUNT(*) FILTER (WHERE l.fecha_creacion <= CURRENT_DATE - interval '90 days')::int AS mature_leads,
@@ -442,11 +621,12 @@ export class PrismaGrowthRepository implements GrowthRepository {
     const matureAltas = numberValue(summary.mature_alta_count);
     const paidSql = numberValue(paid.paid_sql_count);
     const paidAltas = numberValue(paid.paid_alta_count);
-    const hasUnassignableCostFilter = filters.province !== undefined
-      || filters.municipalityId !== undefined
-      || filters.service !== undefined
-      || filters.channel !== undefined
-      || filters.language !== undefined;
+    const hasUnassignableCostFilter =
+      filters.province !== undefined ||
+      filters.municipalityId !== undefined ||
+      filters.service !== undefined ||
+      filters.channel !== undefined ||
+      filters.language !== undefined;
     return {
       kpis: {
         leads,
@@ -454,39 +634,70 @@ export class PrismaGrowthRepository implements GrowthRepository {
         altas,
         leadToSql: round(rate(sql, leads)),
         sqlToAlta: round(rate(matureAltas, matureSql)),
-        costPerSql: hasUnassignableCostFilter || paidSql === 0 ? null : round(spend / paidSql, 2),
-        costPerAttributedAlta: hasUnassignableCostFilter || paidAltas === 0 ? null : round(spend / paidAltas, 2),
+        costPerSql:
+          hasUnassignableCostFilter || paidSql === 0
+            ? null
+            : round(spend / paidSql, 2),
+        costPerAttributedAlta:
+          hasUnassignableCostFilter || paidAltas === 0
+            ? null
+            : round(spend / paidAltas, 2),
         traceabilityCoverage: round(rate(numberValue(summary.traced), leads)),
         duplicates: numberValue(summary.duplicates),
-        opportunityMunicipalities: numberValue(summary.opportunity_municipalities),
-        capacityConstrainedMunicipalities: numberValue(summary.constrained_municipalities),
+        opportunityMunicipalities: numberValue(
+          summary.opportunity_municipalities,
+        ),
+        capacityConstrainedMunicipalities: numberValue(
+          summary.constrained_municipalities,
+        ),
       },
       monthlyFunnel: monthlyRows.map((row) => ({
-        period: stringValue(row.period), leads: numberValue(row.leads), sql: numberValue(row.sql_count), altas: numberValue(row.alta_count),
+        period: stringValue(row.period),
+        leads: numberValue(row.leads),
+        sql: numberValue(row.sql_count),
+        altas: numberValue(row.alta_count),
       })),
       monthlyConversion: conversionRows.map((row) => ({
         period: stringValue(row.period),
-        leadToSql: round(rate(numberValue(row.mature_sql), numberValue(row.mature_leads))),
-        sqlToAlta: round(rate(numberValue(row.mature_altas), numberValue(row.mature_sql))),
+        leadToSql: round(
+          rate(numberValue(row.mature_sql), numberValue(row.mature_leads)),
+        ),
+        sqlToAlta: round(
+          rate(numberValue(row.mature_altas), numberValue(row.mature_sql)),
+        ),
         matureLeads: numberValue(row.mature_leads),
         matureSql: numberValue(row.mature_sql),
       })),
       channelFunnel: channelRows.map((row) => ({
-        period: stringValue(row.channel), channel: stringValue(row.channel), leads: numberValue(row.leads), sql: numberValue(row.sql_count), altas: numberValue(row.alta_count),
+        period: stringValue(row.channel),
+        channel: stringValue(row.channel),
+        leads: numberValue(row.leads),
+        sql: numberValue(row.sql_count),
+        altas: numberValue(row.alta_count),
       })),
-      altasByMunicipality: municipalityRows.map((row) => ({ name: stringValue(row.name, "Sin municipio"), value: numberValue(row.value) })),
+      altasByMunicipality: municipalityRows.map((row) => ({
+        name: stringValue(row.name, "Sin municipio"),
+        value: numberValue(row.value),
+      })),
       opportunityRanking: opportunities.items,
-      discardReasons: discardRows.map((row) => ({ name: stringValue(row.name), value: numberValue(row.value) })),
+      discardReasons: discardRows.map((row) => ({
+        name: stringValue(row.name),
+        value: numberValue(row.value),
+      })),
       caveats: [
-        "Channel views are descriptive attribution and do not establish causal impact.",
-        "SQL-to-alta uses opportunities created at least 90 days ago; headline SQL and altas remain period totals.",
-        "Paid cost ratios use only CRM outcomes linked to an observed campaign event; they remain attribution ratios, not incrementality.",
-        "Paid cost ratios are unavailable for dimensions that cannot be reconciled to Ads spend, and when no reconciled outcome exists.",
+        "Las vistas por canal reparten los resultados observados; no demuestran que el canal los haya causado.",
+        "La conversión SQL → alta usa oportunidades con al menos 90 días. Los totales principales de SQL y altas incluyen todo el periodo.",
+        "Los costes de campañas usan solo resultados del CRM conectados con un evento publicitario observado.",
+        "No se muestra un coste cuando la inversión publicitaria no puede relacionarse con el resultado correspondiente.",
       ],
     };
   }
 
-  private async aggregateFunnel(filters: Filters, expression: string, alias: string): Promise<Array<Record<string, unknown>>> {
+  private async aggregateFunnel(
+    filters: Filters,
+    expression: string,
+    alias: string,
+  ): Promise<Array<Record<string, unknown>>> {
     const builder = new SqlBuilder();
     const where = leadWhere(filters, builder);
     return this.query(
@@ -499,13 +710,21 @@ export class PrismaGrowthRepository implements GrowthRepository {
     );
   }
 
-  public async opportunities(input: PageRequest): Promise<Paginated<OpportunityRow>> {
+  public async opportunities(
+    input: PageRequest,
+  ): Promise<Paginated<OpportunityRow>> {
     const builder = new SqlBuilder();
     const clauses: string[] = [];
-    if (input.province !== undefined) clauses.push(`m.provincia = ${builder.add(input.province)}`);
-    if (input.municipalityId !== undefined) clauses.push(`m.municipio_id = ${builder.add(input.municipalityId)}`);
-    if (input.service !== undefined) clauses.push(`d.tema = ${builder.add(input.service)}`);
-    if (input.search !== undefined) clauses.push(`(m.nombre ILIKE ${builder.add(`%${input.search}%`)} OR d.tema ILIKE ${builder.add(`%${input.search}%`)})`);
+    if (input.province !== undefined)
+      clauses.push(`m.provincia = ${builder.add(input.province)}`);
+    if (input.municipalityId !== undefined)
+      clauses.push(`m.municipio_id = ${builder.add(input.municipalityId)}`);
+    if (input.service !== undefined)
+      clauses.push(`d.tema = ${builder.add(input.service)}`);
+    if (input.search !== undefined)
+      clauses.push(
+        `(m.nombre ILIKE ${builder.add(`%${input.search}%`)} OR d.tema ILIKE ${builder.add(`%${input.search}%`)})`,
+      );
     const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
     const limit = builder.add(input.pageSize);
     const offset = builder.add((input.page - 1) * input.pageSize);
@@ -516,10 +735,20 @@ export class PrismaGrowthRepository implements GrowthRepository {
                 COUNT(DISTINCT mes)::int AS demand_months_observed,
                 to_char(MAX(mes), 'YYYY-MM') AS latest_demand_month
          FROM motor_demanda_busqueda
-         ${input.from === undefined && input.to === undefined ? "" : `WHERE ${[
-           input.from === undefined ? null : `mes >= ${builder.add(input.from)}::date`,
-           input.to === undefined ? null : `mes <= ${builder.add(input.to)}::date`,
-         ].filter((value): value is string => value !== null).join(" AND ")}`}
+         ${
+           input.from === undefined && input.to === undefined
+             ? ""
+             : `WHERE ${[
+                 input.from === undefined
+                   ? null
+                   : `mes >= ${builder.add(input.from)}::date`,
+                 input.to === undefined
+                   ? null
+                   : `mes <= ${builder.add(input.to)}::date`,
+               ]
+                 .filter((value): value is string => value !== null)
+                 .join(" AND ")}`
+         }
          GROUP BY municipio_id, tema
        ), lead_stats AS (
          SELECT municipio_id, servicio,
@@ -576,47 +805,118 @@ export class PrismaGrowthRepository implements GrowthRepository {
     };
   }
 
-  public async opportunity(municipalityId: string, service: string): Promise<OpportunityDetail | null> {
-    const result = await this.opportunities({ municipalityId, service, page: 1, pageSize: 1 });
+  public async opportunity(
+    municipalityId: string,
+    service: string,
+  ): Promise<OpportunityDetail | null> {
+    const result = await this.opportunities({
+      municipalityId,
+      service,
+      page: 1,
+      pageSize: 1,
+    });
     const row = result.items[0];
     if (row === undefined) return null;
     const demand = Math.min(row.monthlySearches / 20, 35);
-    const gap = Math.min(Math.max(row.monthlySearches - row.sql * 3, 0) / 30, 25);
-    const capacity = Math.min(row.caregiversAvailable / 2, 20) - (row.caregiversAvailable < 8 ? 20 : 0);
+    const gap = Math.min(
+      Math.max(row.monthlySearches - row.sql * 3, 0) / 30,
+      25,
+    );
+    const capacity =
+      Math.min(row.caregiversAvailable / 2, 20) -
+      (row.caregiversAvailable < 8 ? 20 : 0);
     const voice = Math.min(row.voiceSignals / 10, 10);
     const conversion = row.sql === 0 ? 5 : (1 - row.sqlToAlta) * 10;
-    const factor = (key: string, label: string, normalizedValue: number, weight: number, contribution: number, evidence: string): OpportunityFactor => ({
-      key, label, normalizedValue: round(normalizedValue), weight, contribution: round(contribution, 2), evidence,
+    const factor = (
+      key: string,
+      label: string,
+      normalizedValue: number,
+      weight: number,
+      contribution: number,
+      evidence: string,
+    ): OpportunityFactor => ({
+      key,
+      label,
+      normalizedValue: round(normalizedValue),
+      weight,
+      contribution: round(contribution, 2),
+      evidence,
     });
     const factors: OpportunityFactor[] = [
-      factor("demand", "Demanda de búsqueda", Math.min(row.monthlySearches / 700, 1), 0.35, demand, `${row.monthlySearches} búsquedas mensuales observadas de media`),
-      factor("capture_gap", "Brecha entre demanda y SQL", Math.min(gap / 25, 1), 0.25, gap, `${row.sql} SQL frente a la demanda observada`),
-      factor("capacity", "Capacidad operativa", Math.min(row.caregiversAvailable / 40, 1), 0.2, capacity, `${row.caregiversAvailable} cuidadoras disponibles en 30 días`),
-      factor("voice", "Señales de necesidad", Math.min(row.voiceSignals / 100, 1), 0.1, voice, `${row.voiceSignals} llamadas sintéticas de voz de cliente`),
-      factor("conversion", "Oportunidad de conversión", 1 - row.sqlToAlta, 0.1, conversion, `${round(row.sqlToAlta * 100, 1)} % de conversión SQL a alta`),
+      factor(
+        "demand",
+        "Demanda de búsqueda",
+        Math.min(row.monthlySearches / 700, 1),
+        0.35,
+        demand,
+        `${row.monthlySearches} búsquedas mensuales observadas de media`,
+      ),
+      factor(
+        "capture_gap",
+        "Demanda sin respuesta comercial",
+        Math.min(gap / 25, 1),
+        0.25,
+        gap,
+        `${row.sql} SQL frente a la demanda observada`,
+      ),
+      factor(
+        "capacity",
+        "Capacidad operativa",
+        Math.min(row.caregiversAvailable / 40, 1),
+        0.2,
+        capacity,
+        `${row.caregiversAvailable} cuidadoras disponibles en 30 días`,
+      ),
+      factor(
+        "voice",
+        "Señales de necesidad",
+        Math.min(row.voiceSignals / 100, 1),
+        0.1,
+        voice,
+        `${row.voiceSignals} llamadas sintéticas de voz de cliente`,
+      ),
+      factor(
+        "conversion",
+        "Oportunidad de conversión",
+        1 - row.sqlToAlta,
+        0.1,
+        conversion,
+        `${round(row.sqlToAlta * 100, 1)} % de conversión SQL a alta`,
+      ),
     ];
     const constraints = row.selectionReasons;
     return {
       ...row,
       factors,
       constraints,
-      proposedAction: row.selectionEligibility === "eligible"
-        ? `Validar una iniciativa local de ${serviceLabel(row.service)} con presupuesto limitado.`
-        : "Resolver las restricciones de datos, cobertura o capacidad antes de incluir el municipio en la prueba.",
+      proposedAction:
+        row.selectionEligibility === "eligible"
+          ? `Validar una iniciativa local de ${serviceLabel(row.service)} con presupuesto limitado.`
+          : "Resolver las restricciones de datos, cobertura o capacidad antes de incluir el municipio en la prueba.",
       validationMetric: "SQL familiares elegibles por municipio-semana",
       rulesVersion: LANDING_SELECTION_RULES_VERSION,
-      disclaimer: "Esta puntuación basada en reglas ordena dónde validar; no es una predicción.",
+      disclaimer:
+        "Esta puntuación basada en reglas ordena dónde validar; no es una predicción.",
     };
   }
 
-  public async journeys(input: PageRequest): Promise<Paginated<JourneySummary>> {
+  public async journeys(
+    input: PageRequest,
+  ): Promise<Paginated<JourneySummary>> {
     const builder = new SqlBuilder();
     const clauses: string[] = [];
-    if (input.from !== undefined) clauses.push(`co.created_at >= ${builder.add(input.from)}::date`);
-    if (input.to !== undefined) clauses.push(`co.created_at < (${builder.add(input.to)}::date + interval '1 day')`);
-    if (input.province !== undefined) clauses.push(`m.provincia = ${builder.add(input.province)}`);
-    if (input.municipalityId !== undefined) clauses.push(`co.municipio_id = ${builder.add(input.municipalityId)}`);
-    if (input.service !== undefined) clauses.push(`co.servicio = ${builder.add(input.service)}`);
+    if (input.from !== undefined)
+      clauses.push(`co.created_at >= ${builder.add(input.from)}::date`);
+    if (input.to !== undefined)
+      clauses.push(
+        `co.created_at < (${builder.add(input.to)}::date + interval '1 day')`,
+      );
+    if (input.province !== undefined)
+      clauses.push(`m.provincia = ${builder.add(input.province)}`);
+    if (input.municipalityId !== undefined)
+      clauses.push(`co.municipio_id = ${builder.add(input.municipalityId)}`);
+    if (input.service !== undefined)
+      clauses.push(`co.servicio = ${builder.add(input.service)}`);
     if (input.search !== undefined) {
       const search = builder.add(`%${input.search}%`);
       clauses.push(`(co.opportunity_id ILIKE ${search} OR co.person_id ILIKE ${search} OR m.nombre ILIKE ${search}
@@ -683,11 +983,17 @@ export class PrismaGrowthRepository implements GrowthRepository {
           linkedIdentityCount: numberValue(row.linked_identity_count),
           identityStatus: identityStatus(row.identity_status),
           route: journeyRoute(row.route),
-          crmProfile: crmSourceSystem !== null && crmSourceIdentifier !== null ? {
-            sourceSystem: crmSourceSystem,
-            contactRef: pseudonymousContactRef(crmSourceSystem, crmSourceIdentifier),
-            matchMethod: stringValue(row.crm_match_method),
-          } : null,
+          crmProfile:
+            crmSourceSystem !== null && crmSourceIdentifier !== null
+              ? {
+                  sourceSystem: crmSourceSystem,
+                  contactRef: pseudonymousContactRef(
+                    crmSourceSystem,
+                    crmSourceIdentifier,
+                  ),
+                  matchMethod: stringValue(row.crm_match_method),
+                }
+              : null,
         };
       }),
       page: input.page,
@@ -697,8 +1003,14 @@ export class PrismaGrowthRepository implements GrowthRepository {
   }
 
   public async journey(opportunityId: string): Promise<JourneyDetail | null> {
-    const summaries = await this.journeys({ page: 1, pageSize: 1, search: opportunityId });
-    const summary = summaries.items.find((item) => item.opportunityId === opportunityId);
+    const summaries = await this.journeys({
+      page: 1,
+      pageSize: 1,
+      search: opportunityId,
+    });
+    const summary = summaries.items.find(
+      (item) => item.opportunityId === opportunityId,
+    );
     if (summary === undefined) return null;
     const [eventRows, identityRows] = await Promise.all([
       this.query(
@@ -732,35 +1044,58 @@ export class PrismaGrowthRepository implements GrowthRepository {
         metadata,
       };
     });
-    const attributableEventTypes = new Set(["ad_click", "landing_view", "page_view", "form_submit", "phone_call"]);
-    const touchEvents = events.filter((event) => event.channel !== null && attributableEventTypes.has(event.eventType));
+    const attributableEventTypes = new Set([
+      "ad_click",
+      "landing_view",
+      "page_view",
+      "form_submit",
+      "phone_call",
+    ]);
+    const touchEvents = events.filter(
+      (event) =>
+        event.channel !== null && attributableEventTypes.has(event.eventType),
+    );
     const touches = new Map<string, number>();
     for (const event of touchEvents) {
-      if (event.channel !== null) touches.set(event.channel, (touches.get(event.channel) ?? 0) + 1);
+      if (event.channel !== null)
+        touches.set(event.channel, (touches.get(event.channel) ?? 0) + 1);
     }
     return {
       ...summary,
       events,
       identities: identityRows.map((row) => ({
         sourceSystem: stringValue(row.source_system),
-        pseudonym: pseudonymousContactRef(stringValue(row.source_system), stringValue(row.source_identifier)),
+        pseudonym: pseudonymousContactRef(
+          stringValue(row.source_system),
+          stringValue(row.source_identifier),
+        ),
         method: stringValue(row.match_method),
         ambiguous: booleanValue(row.ambiguous),
       })),
       attribution: {
         firstTouch: touchEvents[0]?.channel ?? null,
         lastTouch: touchEvents.at(-1)?.channel ?? null,
-        multiTouch: [...touches.entries()].map(([channel, count]) => ({ channel, touches: count })),
+        multiTouch: [...touches.entries()].map(([channel, count]) => ({
+          channel,
+          touches: count,
+        })),
       },
-      warning: "First-touch, last-touch and multi-touch are descriptive attribution views; they do not demonstrate causality.",
+      warning:
+        "Los modelos de primer contacto, último contacto y varios contactos reparten el mérito de forma distinta; ninguno demuestra por sí solo qué canal causó el resultado.",
     };
   }
 
   public async funnels(filters: Filters): Promise<FunnelsResponse> {
     const dimensions: Array<[string, string]> = [
-      ["l.canal", "channel"], ["l.servicio", "service"], ["COALESCE(m.nombre, 'Sin municipio')", "municipality"],
+      ["l.canal", "channel"],
+      ["l.servicio", "service"],
+      ["COALESCE(m.nombre, 'Sin municipio')", "municipality"],
     ];
-    const results = await Promise.all(dimensions.map(([expression]) => this.funnelDimension(filters, expression)));
+    const results = await Promise.all(
+      dimensions.map(([expression]) =>
+        this.funnelDimension(filters, expression),
+      ),
+    );
     const cohortBuilder = new SqlBuilder();
     const cohortWhere = leadWhere(filters, cohortBuilder);
     const cohorts = await this.query(
@@ -787,13 +1122,21 @@ export class PrismaGrowthRepository implements GrowthRepository {
       byService: results[1] ?? [],
       byMunicipality: results[2] ?? [],
       byCohort: cohorts.map(funnelFromRow),
-      discardReasons: discards.map((row) => ({ name: stringValue(row.name), value: numberValue(row.value) })),
+      discardReasons: discards.map((row) => ({
+        name: stringValue(row.name),
+        value: numberValue(row.value),
+      })),
       maturityWindowDays: 90,
-      caveats: ["Immature cohorts are flagged and should not be compared directly with complete cohorts."],
+      caveats: [
+        "Los SQL con menos de 90 días se identifican y no se comparan directamente con los que ya han completado el seguimiento.",
+      ],
     };
   }
 
-  private async funnelDimension(filters: Filters, expression: string): Promise<FunnelBreakdown[]> {
+  private async funnelDimension(
+    filters: Filters,
+    expression: string,
+  ): Promise<FunnelBreakdown[]> {
     const builder = new SqlBuilder();
     const where = leadWhere(filters, builder);
     const rows = await this.query(
@@ -822,16 +1165,25 @@ export class PrismaGrowthRepository implements GrowthRepository {
       leadClauses.push(`fecha_creacion >= ${builder.add(input.from)}::date`);
     }
     if (input.to !== undefined) {
-      clauses.push(`l.fecha_publicacion < (${builder.add(input.to)}::date + interval '1 day')`);
+      clauses.push(
+        `l.fecha_publicacion < (${builder.add(input.to)}::date + interval '1 day')`,
+      );
       webClauses.push(`fecha <= ${builder.add(input.to)}::date`);
       gscClauses.push(`fecha <= ${builder.add(input.to)}::date`);
-      leadClauses.push(`fecha_creacion < (${builder.add(input.to)}::date + interval '1 day')`);
+      leadClauses.push(
+        `fecha_creacion < (${builder.add(input.to)}::date + interval '1 day')`,
+      );
     }
-    if (input.province !== undefined) clauses.push(`m.provincia = ${builder.add(input.province)}`);
-    if (input.municipalityId !== undefined) clauses.push(`l.municipio_id = ${builder.add(input.municipalityId)}`);
-    if (input.service !== undefined) clauses.push(`lw.service = ${builder.add(input.service)}`);
-    if (input.language !== undefined) clauses.push(`l.idioma = ${builder.add(input.language)}`);
-    if (input.channel !== undefined) webClauses.push(`canal = ${builder.add(input.channel)}`);
+    if (input.province !== undefined)
+      clauses.push(`m.provincia = ${builder.add(input.province)}`);
+    if (input.municipalityId !== undefined)
+      clauses.push(`l.municipio_id = ${builder.add(input.municipalityId)}`);
+    if (input.service !== undefined)
+      clauses.push(`lw.service = ${builder.add(input.service)}`);
+    if (input.language !== undefined)
+      clauses.push(`l.idioma = ${builder.add(input.language)}`);
+    if (input.channel !== undefined)
+      webClauses.push(`canal = ${builder.add(input.channel)}`);
     if (input.search !== undefined) {
       const search = builder.add(`%${input.search}%`);
       clauses.push(`(l.url ILIKE ${search} OR m.nombre ILIKE ${search})`);
@@ -879,56 +1231,97 @@ export class PrismaGrowthRepository implements GrowthRepository {
 
   private landingFromRow(row: Record<string, unknown>): LandingRecord {
     const language = stringValue(row.language) === "ca" ? "ca" : "es";
-    const origin = stringValue(row.origin) === "generada" ? "generada" : "manual";
+    const origin =
+      stringValue(row.origin) === "generada" ? "generada" : "manual";
     const rawStatus = stringValue(row.status, "draft");
-    const validStatuses: LandingRecord["status"][] = ["draft", "pending_review", "approved", "published", "rejected"];
+    const validStatuses: LandingRecord["status"][] = [
+      "draft",
+      "pending_review",
+      "approved",
+      "published",
+      "rejected",
+    ];
     const status = validStatuses.includes(rawStatus as LandingRecord["status"])
       ? (rawStatus as LandingRecord["status"])
       : "draft";
     const contentRaw = jsonRecord(row.content);
     const blocksRaw = Array.isArray(contentRaw.blocks) ? contentRaw.blocks : [];
-    const content: LandingContent | undefined = Object.keys(contentRaw).length === 0 ? undefined : {
-      title: stringValue(contentRaw.title),
-      description: stringValue(contentRaw.description),
-      blocks: blocksRaw.map((block) => {
-        const item = jsonRecord(block);
-        return {
-          type: stringValue(item.type),
-          heading: stringValue(item.heading),
-          body: stringValue(item.body),
-        };
-      }),
-      generatedFrom: {
-        municipalityId: stringValue(jsonRecord(contentRaw.generatedFrom).municipalityId),
-        service: stringValue(jsonRecord(contentRaw.generatedFrom).service),
-        language,
-      },
-    };
+    const content: LandingContent | undefined =
+      Object.keys(contentRaw).length === 0
+        ? undefined
+        : {
+            title: stringValue(contentRaw.title),
+            description: stringValue(contentRaw.description),
+            blocks: blocksRaw.map((block) => {
+              const item = jsonRecord(block);
+              return {
+                type: stringValue(item.type),
+                heading: stringValue(item.heading),
+                body: stringValue(item.body),
+              };
+            }),
+            generatedFrom: {
+              municipalityId: stringValue(
+                jsonRecord(contentRaw.generatedFrom).municipalityId,
+              ),
+              service: stringValue(
+                jsonRecord(contentRaw.generatedFrom).service,
+              ),
+              language,
+            },
+          };
     return {
-      url: stringValue(row.url), municipalityId: nullableString(row.municipio_id), municipality: nullableString(row.municipality),
-      language, origin, service: nullableString(row.service), status,
-      publishedAt: nullableIso(row.published_at), indexedAt: nullableIso(row.indexed_at),
-      sessions: numberValue(row.sessions), forms: numberValue(row.forms), sql: numberValue(row.sql_count), altas: numberValue(row.alta_count),
-      impressions: numberValue(row.impressions), clicks: numberValue(row.clicks),
+      url: stringValue(row.url),
+      municipalityId: nullableString(row.municipio_id),
+      municipality: nullableString(row.municipality),
+      language,
+      origin,
+      service: nullableString(row.service),
+      status,
+      publishedAt: nullableIso(row.published_at),
+      indexedAt: nullableIso(row.indexed_at),
+      sessions: numberValue(row.sessions),
+      forms: numberValue(row.forms),
+      sql: numberValue(row.sql_count),
+      altas: numberValue(row.alta_count),
+      impressions: numberValue(row.impressions),
+      clicks: numberValue(row.clicks),
       ...(content === undefined ? {} : { content }),
       validationIssues: stringArray(row.validation_issues),
     };
   }
 
-  private landingInsightFromRow(row: Record<string, unknown>): LandingInsightSummary {
+  private landingInsightFromRow(
+    row: Record<string, unknown>,
+  ): LandingInsightSummary {
     const landing = this.landingFromRow(row);
     const leads = numberValue(row.lead_count);
     const sessions = landing.sessions;
     const sql = landing.sql;
-    const benchmarkSessionToLead = round(rate(numberValue(row.benchmark_leads), numberValue(row.benchmark_sessions)), 4);
-    const benchmarkLeadToSql = round(rate(numberValue(row.benchmark_sql), numberValue(row.benchmark_leads)), 4);
-    const benchmarkSqlToAlta = round(rate(numberValue(row.benchmark_altas), numberValue(row.benchmark_sql)), 4);
+    const benchmarkSessionToLead = round(
+      rate(
+        numberValue(row.benchmark_leads),
+        numberValue(row.benchmark_sessions),
+      ),
+      4,
+    );
+    const benchmarkLeadToSql = round(
+      rate(numberValue(row.benchmark_sql), numberValue(row.benchmark_leads)),
+      4,
+    );
+    const benchmarkSqlToAlta = round(
+      rate(numberValue(row.benchmark_altas), numberValue(row.benchmark_sql)),
+      4,
+    );
     const coverage = booleanValue(row.coverage);
     const caregiversAvailable = numberValue(row.caregivers_available);
     const sessionToLead = round(rate(leads, sessions), 4);
     const leadToSql = round(rate(sql, leads), 4);
     const sqlToAlta = round(rate(landing.altas, sql), 4);
-    const averagePosition = row.average_position === null || row.average_position === undefined ? null : round(numberValue(row.average_position), 1);
+    const averagePosition =
+      row.average_position === null || row.average_position === undefined
+        ? null
+        : round(numberValue(row.average_position), 1);
     return {
       ...landing,
       leads,
@@ -940,9 +1333,20 @@ export class PrismaGrowthRepository implements GrowthRepository {
         sqlToAlta,
         organicCtr: round(rate(landing.clicks, landing.impressions), 4),
       },
-      benchmark: { sessionToLead: benchmarkSessionToLead, leadToSql: benchmarkLeadToSql, sqlToAlta: benchmarkSqlToAlta },
-      operations: { coverage, caregiversAvailable, eligible: coverage && caregiversAvailable >= 8 },
-      opportunityScore: row.opportunity_score === null || row.opportunity_score === undefined ? null : round(numberValue(row.opportunity_score), 1),
+      benchmark: {
+        sessionToLead: benchmarkSessionToLead,
+        leadToSql: benchmarkLeadToSql,
+        sqlToAlta: benchmarkSqlToAlta,
+      },
+      operations: {
+        coverage,
+        caregiversAvailable,
+        eligible: coverage && caregiversAvailable >= 8,
+      },
+      opportunityScore:
+        row.opportunity_score === null || row.opportunity_score === undefined
+          ? null
+          : round(numberValue(row.opportunity_score), 1),
       diagnosis: diagnoseLanding({
         status: landing.status,
         sessions,
@@ -985,20 +1389,30 @@ export class PrismaGrowthRepository implements GrowthRepository {
     }
     if (input.to !== undefined) {
       webClauses.push(`fecha <= ${builder.add(input.to)}::date`);
-      leadClauses.push(`fecha_creacion < (${builder.add(input.to)}::date + interval '1 day')`);
+      leadClauses.push(
+        `fecha_creacion < (${builder.add(input.to)}::date + interval '1 day')`,
+      );
       gscClauses.push(`fecha <= ${builder.add(input.to)}::date`);
     }
     if (input.channel !== undefined) {
       webClauses.push(`canal = ${builder.add(input.channel)}`);
       leadClauses.push(`canal = ${builder.add(input.channel)}`);
     }
-    if (input.province !== undefined) clauses.push(`m.provincia = ${builder.add(input.province)}`);
-    if (input.municipalityId !== undefined) clauses.push(`l.municipio_id = ${builder.add(input.municipalityId)}`);
-    if (input.language !== undefined) clauses.push(`l.idioma = ${builder.add(input.language)}`);
-    if (input.service !== undefined) clauses.push(`COALESCE(lw.service, lead_service.service) = ${builder.add(input.service)}`);
+    if (input.province !== undefined)
+      clauses.push(`m.provincia = ${builder.add(input.province)}`);
+    if (input.municipalityId !== undefined)
+      clauses.push(`l.municipio_id = ${builder.add(input.municipalityId)}`);
+    if (input.language !== undefined)
+      clauses.push(`l.idioma = ${builder.add(input.language)}`);
+    if (input.service !== undefined)
+      clauses.push(
+        `COALESCE(lw.service, lead_service.service) = ${builder.add(input.service)}`,
+      );
     if (input.search !== undefined) {
       const search = builder.add(`%${input.search}%`);
-      clauses.push(`(l.url ILIKE ${search} OR m.nombre ILIKE ${search} OR COALESCE(lw.service, lead_service.service) ILIKE ${search})`);
+      clauses.push(
+        `(l.url ILIKE ${search} OR m.nombre ILIKE ${search} OR COALESCE(lw.service, lead_service.service) ILIKE ${search})`,
+      );
     }
     const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
     const limit = builder.add(input.pageSize);
@@ -1082,14 +1496,20 @@ export class PrismaGrowthRepository implements GrowthRepository {
     };
   }
 
-  public async landingInsight(url: string, filters: Filters): Promise<LandingInsightDetail | null> {
+  public async landingInsight(
+    url: string,
+    filters: Filters,
+  ): Promise<LandingInsightDetail | null> {
     const [selectedPortfolio, benchmarkPortfolio] = await Promise.all([
       this.landingInsights({ ...filters, page: 1, pageSize: 10, search: url }),
       this.landingInsights({ ...filters, page: 1, pageSize: 1 }),
     ]);
-    const selectedSummary = selectedPortfolio.items.find((item) => item.url === url);
+    const selectedSummary = selectedPortfolio.items.find(
+      (item) => item.url === url,
+    );
     if (selectedSummary === undefined) return null;
-    const benchmark = benchmarkPortfolio.items[0]?.benchmark ?? selectedSummary.benchmark;
+    const benchmark =
+      benchmarkPortfolio.items[0]?.benchmark ?? selectedSummary.benchmark;
     const summary: LandingInsightSummary = {
       ...selectedSummary,
       benchmark,
@@ -1122,7 +1542,10 @@ export class PrismaGrowthRepository implements GrowthRepository {
     };
     const builder = new SqlBuilder();
     const webClauses = [`url_entrada = ${builder.add(url)}`];
-    const leadClauses = [`url_entrada = ${builder.add(url)}`, "tipo_contacto <> 'cuidadora_empleo'"];
+    const leadClauses = [
+      `url_entrada = ${builder.add(url)}`,
+      "tipo_contacto <> 'cuidadora_empleo'",
+    ];
     const gscClauses = [`url = ${builder.add(url)}`];
     if (filters.from !== undefined) {
       webClauses.push(`fecha >= ${builder.add(filters.from)}::date`);
@@ -1131,7 +1554,9 @@ export class PrismaGrowthRepository implements GrowthRepository {
     }
     if (filters.to !== undefined) {
       webClauses.push(`fecha <= ${builder.add(filters.to)}::date`);
-      leadClauses.push(`fecha_creacion < (${builder.add(filters.to)}::date + interval '1 day')`);
+      leadClauses.push(
+        `fecha_creacion < (${builder.add(filters.to)}::date + interval '1 day')`,
+      );
       gscClauses.push(`fecha <= ${builder.add(filters.to)}::date`);
     }
     if (filters.channel !== undefined) {
@@ -1164,7 +1589,11 @@ export class PrismaGrowthRepository implements GrowthRepository {
       ),
       summary.municipalityId === null
         ? Promise.resolve({ items: [], page: 1, pageSize: 10, total: 0 })
-        : this.experiments({ page: 1, pageSize: 10, municipalityId: summary.municipalityId }),
+        : this.experiments({
+            page: 1,
+            pageSize: 10,
+            municipalityId: summary.municipalityId,
+          }),
       this.query(
         `SELECT audit_id, actor_role, metadata, created_at,
                 ROW_NUMBER() OVER (ORDER BY COALESCE((metadata->>'version')::int,0), created_at, audit_id)::int AS version
@@ -1183,12 +1612,26 @@ export class PrismaGrowthRepository implements GrowthRepository {
         version: numberValue(row.version),
         actorRole: stringValue(row.actor_role),
         createdAt: isoValue(row.created_at),
-        decision: rawDecision === "stop" || rawDecision === "iterate" ? rawDecision : "keep",
+        decision:
+          rawDecision === "stop" || rawDecision === "iterate"
+            ? rawDecision
+            : "keep",
         ...decisionEvidence(metadata),
         hypothesis: stringValue(metadata.hypothesis),
-        primaryMetric: rawPrimaryMetric === "sql_per_municipality_week" || rawPrimaryMetric === "lead_to_sql" || rawPrimaryMetric === "sql_to_alta" ? rawPrimaryMetric : "session_to_lead",
-        guardrailMetric: rawGuardrailMetric === "sql_to_alta" || rawGuardrailMetric === "caregiver_capacity" ? rawGuardrailMetric : "lead_to_sql",
-        ...(nullableString(metadata.note) === null ? {} : { note: stringValue(metadata.note) }),
+        primaryMetric:
+          rawPrimaryMetric === "sql_per_municipality_week" ||
+          rawPrimaryMetric === "lead_to_sql" ||
+          rawPrimaryMetric === "sql_to_alta"
+            ? rawPrimaryMetric
+            : "session_to_lead",
+        guardrailMetric:
+          rawGuardrailMetric === "sql_to_alta" ||
+          rawGuardrailMetric === "caregiver_capacity"
+            ? rawGuardrailMetric
+            : "lead_to_sql",
+        ...(nullableString(metadata.note) === null
+          ? {}
+          : { note: stringValue(metadata.note) }),
       };
     });
     return {
@@ -1198,91 +1641,200 @@ export class PrismaGrowthRepository implements GrowthRepository {
         const leads = numberValue(row.leads);
         const sql = numberValue(row.sql_count);
         return {
-          period: stringValue(row.period), sessions, forms: numberValue(row.forms), phoneClicks: numberValue(row.phone_clicks),
-          leads, sql, altas: numberValue(row.alta_count), sessionToLead: round(rate(leads, sessions), 4), leadToSql: round(rate(sql, leads), 4),
+          period: stringValue(row.period),
+          sessions,
+          forms: numberValue(row.forms),
+          phoneClicks: numberValue(row.phone_clicks),
+          leads,
+          sql,
+          altas: numberValue(row.alta_count),
+          sessionToLead: round(rate(leads, sessions), 4),
+          leadToSql: round(rate(sql, leads), 4),
         };
       }),
       experiments: experimentPage.items,
       decisions,
       caveats: [
-        "Los leads, SQL y altas se atribuyen por URL de entrada observada; esta unión no demuestra causalidad.",
-        "Las comparaciones usan el portfolio filtrado como benchmark y no sustituyen un grupo de control.",
-        "Los experimentos municipales se muestran como contexto; su efecto solo es cuasi experimental cuando se exponen sus diagnósticos.",
+        "La URL de entrada permite relacionar leads, SQL y altas con una landing; esta unión no demuestra que la landing los haya causado.",
+        "La media de las landings filtradas sirve como referencia, pero no sustituye la comparación con una versión anterior en municipios equivalentes.",
+        "Las comparaciones municipales solo se interpretan cuando se muestran también sus comprobaciones y limitaciones.",
       ],
     };
   }
 
-  public async recordLandingDecision(url: string, input: LandingDecisionRequest, role: string, requestId: string): Promise<LandingDecisionRecord> {
-    const landing = await this.query("SELECT municipio_id FROM landing WHERE url=$1", [url]);
-    if (!landing.length) throw new AppError(404, "LANDING_NOT_FOUND", "Landing desconocida.");
+  public async recordLandingDecision(
+    url: string,
+    input: LandingDecisionRequest,
+    role: string,
+    requestId: string,
+  ): Promise<LandingDecisionRecord> {
+    const landing = await this.query(
+      "SELECT municipio_id FROM landing WHERE url=$1",
+      [url],
+    );
+    if (!landing.length)
+      throw new AppError(404, "LANDING_NOT_FOUND", "Landing desconocida.");
     if (input.change?.experimentId) {
-      const matched = await this.query(`SELECT 1 FROM experiment_assignment a JOIN growth_experiment e USING (experiment_id)
+      const matched = await this.query(
+        `SELECT 1 FROM experiment_assignment a JOIN growth_experiment e USING (experiment_id)
         WHERE a.experiment_id=$1 AND a.municipio_id=$2 AND a.variant='treatment' AND e.start_date > CURRENT_DATE`,
-        [input.change.experimentId, nullableString(landing[0]?.municipio_id)]);
-      if (!matched.length) throw new AppError(422, "INVALID_ASSIGNMENT", "Se requiere asignación previa a un tratamiento futuro.");
+        [input.change.experimentId, nullableString(landing[0]?.municipio_id)],
+      );
+      if (!matched.length)
+        throw new AppError(
+          422,
+          "INVALID_ASSIGNMENT",
+          "Hay que asignar los municipios a la nueva landing o a la versión anterior antes de iniciar la comparación.",
+        );
     }
     let resultSnapshot: SqlResult | undefined;
     if (input.evidenceDecisionId) {
-      const [source] = await this.query(`SELECT metadata FROM audit_log WHERE audit_id=$1 AND entity_id=$2
-        AND action='landing.decision_recorded' AND entity_type='landing'`, [input.evidenceDecisionId,url]);
-      if (!source) throw new AppError(422, "INVALID_EVIDENCE", "La decisión de referencia no pertenece a la landing.");
-      const experiment = decisionEvidence(jsonRecord(source.metadata)).change?.experimentId;
-      if (experiment) resultSnapshot = await this.experimentSqlResult(experiment);
+      const [source] = await this.query(
+        `SELECT metadata FROM audit_log WHERE audit_id=$1 AND entity_id=$2
+        AND action='landing.decision_recorded' AND entity_type='landing'`,
+        [input.evidenceDecisionId, url],
+      );
+      if (!source)
+        throw new AppError(
+          422,
+          "INVALID_EVIDENCE",
+          "La decisión de referencia no pertenece a la landing.",
+        );
+      const experiment = decisionEvidence(jsonRecord(source.metadata)).change
+        ?.experimentId;
+      if (experiment)
+        resultSnapshot = await this.experimentSqlResult(experiment);
     }
-    const metadata = { ...input, ...(resultSnapshot ? { resultSnapshot } : {}) };
-    return this.db.$transaction(async tx => {
+    const metadata = {
+      ...input,
+      ...(resultSnapshot ? { resultSnapshot } : {}),
+    };
+    return this.db.$transaction(async (tx) => {
       // Serialize decisions on this landing so the returned version matches its audit history.
-      await tx.$queryRawUnsafe("SELECT url FROM landing WHERE url=$1 FOR UPDATE", url);
-      const [row] = records(await tx.$queryRawUnsafe(`INSERT INTO audit_log
+      await tx.$queryRawUnsafe(
+        "SELECT url FROM landing WHERE url=$1 FOR UPDATE",
+        url,
+      );
+      const [row] = records(
+        await tx.$queryRawUnsafe(
+          `INSERT INTO audit_log
         (audit_id,action,entity_type,entity_id,actor_role,request_id,metadata,created_at)
         SELECT $1,'landing.decision_recorded','landing',$2,$3,$4,$5::jsonb || jsonb_build_object('version',COUNT(*)+1),clock_timestamp()
         FROM audit_log WHERE entity_id=$2 AND action='landing.decision_recorded'
-        RETURNING audit_id, created_at,(metadata->>'version')::int AS version`,randomUUID(),url,role,requestId,JSON.stringify(metadata)));
-      return { ...metadata, id: stringValue(row?.audit_id), version: numberValue(row?.version), actorRole: role, createdAt: isoValue(row?.created_at) };
+        RETURNING audit_id, created_at,(metadata->>'version')::int AS version`,
+          randomUUID(),
+          url,
+          role,
+          requestId,
+          JSON.stringify(metadata),
+        ),
+      );
+      return {
+        ...metadata,
+        id: stringValue(row?.audit_id),
+        version: numberValue(row?.version),
+        actorRole: role,
+        createdAt: isoValue(row?.created_at),
+      };
     });
   }
 
   public async experimentSqlResult(id: string): Promise<SqlResult> {
-    const [experiment] = await this.query(`SELECT (SELECT to_char(MAX(simulation_date),'YYYY-MM-DD') FROM seed_run) AS cutoff
-      FROM growth_experiment WHERE experiment_id=$1`, [id]);
-    if (!experiment) throw new AppError(404, "EXPERIMENT_NOT_FOUND", "Experimento desconocido.");
-    if (!experiment.cutoff) throw new AppError(422, "MISSING_CUTOFF", "Falta la fecha de corte de la simulación.");
-    return sqlReadout(stringValue(experiment.cutoff), await this.query(experimentSql, [id]));
+    const [experiment] = await this.query(
+      `SELECT (SELECT to_char(MAX(simulation_date),'YYYY-MM-DD') FROM seed_run) AS cutoff
+      FROM growth_experiment WHERE experiment_id=$1`,
+      [id],
+    );
+    if (!experiment)
+      throw new AppError(
+        404,
+        "EXPERIMENT_NOT_FOUND",
+        "Experimento desconocido.",
+      );
+    if (!experiment.cutoff)
+      throw new AppError(
+        422,
+        "MISSING_CUTOFF",
+        "Falta la fecha de corte de la simulación.",
+      );
+    return sqlReadout(
+      stringValue(experiment.cutoff),
+      await this.query(experimentSql, [id]),
+    );
   }
 
   public async weeklyHistory(date: string): Promise<WeeklyNote[]> {
-    const rows = await this.query(`SELECT metadata FROM audit_log WHERE entity_type='weekly' AND entity_id=$1
-      AND action='weekly.saved' ORDER BY (metadata->>'revision')::int DESC`, [date]);
-    return rows.map(row => weeklyNoteSchema.parse(row.metadata));
+    const rows = await this.query(
+      `SELECT metadata FROM audit_log WHERE entity_type='weekly' AND entity_id=$1
+      AND action='weekly.saved' ORDER BY (metadata->>'revision')::int DESC`,
+      [date],
+    );
+    return rows.map((row) => weeklyNoteSchema.parse(row.metadata));
   }
 
   public async saveWeekly(input: WeeklyNote): Promise<WeeklyNote> {
-    const note = { ...input, actions: input.actions.map(action => ({ ...action })) };
-    const weekly = (await this.planning()).meetings.find(meeting => meeting.id === "weekly");
-    if (!weekly?.dates.includes(note.date)) throw new AppError(422, "UNSCHEDULED_WEEKLY", "Fecha fuera del calendario de revisión.");
-    const links = note.actions.flatMap(action => action.decisionId ? [action.decisionId] : []);
-    const sources = links.length ? await this.query(`SELECT audit_id,entity_id FROM audit_log WHERE
-      action='landing.decision_recorded' AND entity_type='landing' AND audit_id IN (SELECT jsonb_array_elements_text($1::jsonb))`,[JSON.stringify(links)]) : [];
+    const note = {
+      ...input,
+      actions: input.actions.map((action) => ({ ...action })),
+    };
+    const weekly = (await this.planning()).meetings.find(
+      (meeting) => meeting.id === "weekly",
+    );
+    if (!weekly?.dates.includes(note.date))
+      throw new AppError(
+        422,
+        "UNSCHEDULED_WEEKLY",
+        "Fecha fuera del calendario de revisión.",
+      );
+    const links = note.actions.flatMap((action) =>
+      action.decisionId ? [action.decisionId] : [],
+    );
+    const sources = links.length
+      ? await this.query(
+          `SELECT audit_id,entity_id FROM audit_log WHERE
+      action='landing.decision_recorded' AND entity_type='landing' AND audit_id IN (SELECT jsonb_array_elements_text($1::jsonb))`,
+          [JSON.stringify(links)],
+        )
+      : [];
     for (const action of note.actions) {
       delete action.decisionUrl;
       if (!action.decisionId) continue;
-      const source = sources.find(row => row.audit_id === action.decisionId);
-      if (!source) throw new AppError(422, "INVALID_EVIDENCE", "La acción referencia una decisión desconocida.");
+      const source = sources.find((row) => row.audit_id === action.decisionId);
+      if (!source)
+        throw new AppError(
+          422,
+          "INVALID_EVIDENCE",
+          "La acción referencia una decisión desconocida.",
+        );
       action.decisionUrl = stringValue(source.entity_id);
     }
     const id = `weekly:${note.date}:${note.revision}`;
-    const inserted = await this.execute(`INSERT INTO audit_log (audit_id,action,entity_type,entity_id,actor_role,metadata,created_at)
+    const inserted = await this.execute(
+      `INSERT INTO audit_log (audit_id,action,entity_type,entity_id,actor_role,metadata,created_at)
       SELECT $1,'weekly.saved','weekly',$2,'growth_manager',$3::jsonb,CURRENT_TIMESTAMP
       WHERE $4::int = 1 + (SELECT COUNT(*) FROM audit_log WHERE entity_type='weekly' AND entity_id=$2 AND action='weekly.saved')
-      ON CONFLICT (audit_id) DO NOTHING`,[id,note.date,JSON.stringify(note),note.revision]);
+      ON CONFLICT (audit_id) DO NOTHING`,
+      [id, note.date, JSON.stringify(note), note.revision],
+    );
     if (!inserted) {
-      const [same] = await this.query("SELECT 1 FROM audit_log WHERE audit_id=$1 AND metadata=$2::jsonb",[id,JSON.stringify(note)]);
-      if (!same) throw new AppError(409, "WEEKLY_REVISION_CONFLICT", "Hay otra revisión guardada. Recarga el acta antes de continuar.");
+      const [same] = await this.query(
+        "SELECT 1 FROM audit_log WHERE audit_id=$1 AND metadata=$2::jsonb",
+        [id, JSON.stringify(note)],
+      );
+      if (!same)
+        throw new AppError(
+          409,
+          "WEEKLY_REVISION_CONFLICT",
+          "Hay otra revisión guardada. Recarga el acta antes de continuar.",
+        );
     }
     return note;
   }
 
-  public async createLandingDraft(input: LandingDraftRequest, requestId: string): Promise<LandingCommandResult> {
+  public async createLandingDraft(
+    input: LandingDraftRequest,
+    requestId: string,
+  ): Promise<LandingCommandResult> {
     const municipalities = await this.query(
       `SELECT municipio_id, nombre, provincia, tiene_cobertura, servicios_cubiertos,
               cuidadoras_disponibles_30d, datos_propios
@@ -1290,18 +1842,44 @@ export class PrismaGrowthRepository implements GrowthRepository {
       [input.municipalityId],
     );
     const municipality = municipalities[0];
-    if (municipality === undefined) throw new AppError(404, "MUNICIPALITY_NOT_FOUND", "Municipality was not found");
+    if (municipality === undefined)
+      throw new AppError(
+        404,
+        "MUNICIPALITY_NOT_FOUND",
+        "Municipality was not found",
+      );
     const name = stringValue(municipality.nombre);
-    const slug = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-    const serviceSlug = input.service.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const slug = name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+    const serviceSlug = input.service
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
     const url = `/local/${input.language}/${slug}/${serviceSlug}`;
-    const copy = input.language === "ca"
-      ? { title: `${input.service} a ${name}`, description: `Informació local sobre ${input.service} i cobertura disponible a ${name}.` }
-      : { title: `${input.service} en ${name}`, description: `Información local sobre ${input.service} y cobertura disponible en ${name}.` };
+    const copy =
+      input.language === "ca"
+        ? {
+            title: `${input.service} a ${name}`,
+            description: `Informació local sobre ${input.service} i cobertura disponible a ${name}.`,
+          }
+        : {
+            title: `${input.service} en ${name}`,
+            description: `Información local sobre ${input.service} y cobertura disponible en ${name}.`,
+          };
     const content: LandingContent = {
       ...copy,
-      blocks: input.blocks.map((block) => this.draftBlock(block, input.language, name, input.service)),
-      generatedFrom: { municipalityId: input.municipalityId, service: input.service, language: input.language },
+      blocks: input.blocks.map((block) =>
+        this.draftBlock(block, input.language, name, input.service),
+      ),
+      generatedFrom: {
+        municipalityId: input.municipalityId,
+        service: input.service,
+        language: input.language,
+      },
     };
     await this.execute(
       `INSERT INTO landing (url, municipio_id, idioma, origen, fecha_publicacion, fecha_primera_indexacion)
@@ -1316,28 +1894,101 @@ export class PrismaGrowthRepository implements GrowthRepository {
        ON CONFLICT (url) DO UPDATE SET service = EXCLUDED.service, status = 'draft', blocks = EXCLUDED.blocks,
          content = EXCLUDED.content, validation_issues = '[]'::jsonb, reviewed_at = NULL, approved_at = NULL,
          published_at = NULL, approved_by = NULL, updated_at = CURRENT_TIMESTAMP`,
-      [url, input.service, JSON.stringify(input.blocks), JSON.stringify(content)],
+      [
+        url,
+        input.service,
+        JSON.stringify(input.blocks),
+        JSON.stringify(content),
+      ],
     );
-    const auditId = await this.audit("landing.draft_created", url, "analyst", requestId, { municipalityId: input.municipalityId, service: input.service });
+    const auditId = await this.audit(
+      "landing.draft_created",
+      url,
+      "analyst",
+      requestId,
+      { municipalityId: input.municipalityId, service: input.service },
+    );
     return { landing: await this.getLandingOrThrow(url), auditId };
   }
 
-  private draftBlock(block: string, language: "es" | "ca", municipality: string, service: string): { type: string; heading: string; body: string } {
-    const text: Record<string, { es: [string, string]; ca: [string, string] }> = {
-      hero: { es: [`Cuidado en ${municipality}`, `Conoce la disponibilidad de ${service} en tu municipio.`], ca: [`Cures a ${municipality}`, `Consulta la disponibilitat de ${service} al teu municipi.`] },
-      coverage: { es: ["Cobertura local", "La disponibilidad se confirma individualmente antes de iniciar el servicio."], ca: ["Cobertura local", "La disponibilitat es confirma individualment abans d'iniciar el servei."] },
-      how_it_works: { es: ["Cómo funciona", "Cuéntanos tu necesidad y el equipo valorará la cobertura y los siguientes pasos."], ca: ["Com funciona", "Explica'ns la teva necessitat i l'equip valorarà la cobertura i els següents passos."] },
-      faq: { es: ["Preguntas frecuentes", "La propuesta se adapta a cada necesidad de cuidado y a la capacidad local."], ca: ["Preguntes freqüents", "La proposta s'adapta a cada necessitat de cura i a la capacitat local."] },
-      contact: { es: ["Habla con el equipo", "Solicita información sin compromiso para validar la disponibilidad."], ca: ["Parla amb l'equip", "Demana informació sense compromís per validar la disponibilitat."] },
-    };
+  private draftBlock(
+    block: string,
+    language: "es" | "ca",
+    municipality: string,
+    service: string,
+  ): { type: string; heading: string; body: string } {
+    const text: Record<string, { es: [string, string]; ca: [string, string] }> =
+      {
+        hero: {
+          es: [
+            `Cuidado en ${municipality}`,
+            `Conoce la disponibilidad de ${service} en tu municipio.`,
+          ],
+          ca: [
+            `Cures a ${municipality}`,
+            `Consulta la disponibilitat de ${service} al teu municipi.`,
+          ],
+        },
+        coverage: {
+          es: [
+            "Cobertura local",
+            "La disponibilidad se confirma individualmente antes de iniciar el servicio.",
+          ],
+          ca: [
+            "Cobertura local",
+            "La disponibilitat es confirma individualment abans d'iniciar el servei.",
+          ],
+        },
+        how_it_works: {
+          es: [
+            "Cómo funciona",
+            "Cuéntanos tu necesidad y el equipo valorará la cobertura y los siguientes pasos.",
+          ],
+          ca: [
+            "Com funciona",
+            "Explica'ns la teva necessitat i l'equip valorarà la cobertura i els següents passos.",
+          ],
+        },
+        faq: {
+          es: [
+            "Preguntas frecuentes",
+            "La propuesta se adapta a cada necesidad de cuidado y a la capacidad local.",
+          ],
+          ca: [
+            "Preguntes freqüents",
+            "La proposta s'adapta a cada necessitat de cura i a la capacitat local.",
+          ],
+        },
+        contact: {
+          es: [
+            "Habla con el equipo",
+            "Solicita información sin compromiso para validar la disponibilidad.",
+          ],
+          ca: [
+            "Parla amb l'equip",
+            "Demana informació sense compromís per validar la disponibilitat.",
+          ],
+        },
+      };
     const selected = text[block]?.[language] ?? [block, ""];
     return { type: block, heading: selected[0], body: selected[1] };
   }
 
-  public async reviewLanding(url: string, input: LandingReviewInput, requestId: string): Promise<LandingCommandResult> {
+  public async reviewLanding(
+    url: string,
+    input: LandingReviewInput,
+    requestId: string,
+  ): Promise<LandingCommandResult> {
     const workflow = await this.getWorkflow(url);
-    if (stringValue(workflow.status) !== "draft" && stringValue(workflow.status) !== "rejected") {
-      throw new AppError(409, "INVALID_LANDING_TRANSITION", "Only draft or rejected landings can enter review");
+    if (
+      stringValue(workflow.status) !== "draft" &&
+      stringValue(workflow.status) !== "rejected"
+    ) {
+      throw new AppError(
+        409,
+        "INVALID_LANDING_TRANSITION",
+        "Only draft or rejected landings can enter review",
+      );
     }
     const issues = await this.validateLanding(url, workflow);
     await this.execute(
@@ -1345,40 +1996,91 @@ export class PrismaGrowthRepository implements GrowthRepository {
        reviewed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE url = $1`,
       [url, JSON.stringify(issues)],
     );
-    const auditId = await this.audit("landing.reviewed", url, "reviewer", requestId, { issues, note: input.reviewerNote ?? null });
+    const auditId = await this.audit(
+      "landing.reviewed",
+      url,
+      "reviewer",
+      requestId,
+      { issues, note: input.reviewerNote ?? null },
+    );
     return { landing: await this.getLandingOrThrow(url), auditId };
   }
 
-  public async approveLanding(url: string, input: LandingApprovalInput, role: string, requestId: string): Promise<LandingCommandResult> {
-    if (!new Set(["growth_manager", "admin"]).has(role)) throw new AppError(403, "ROLE_FORBIDDEN", "Growth manager or admin role is required");
+  public async approveLanding(
+    url: string,
+    input: LandingApprovalInput,
+    role: string,
+    requestId: string,
+  ): Promise<LandingCommandResult> {
+    if (!new Set(["growth_manager", "admin"]).has(role))
+      throw new AppError(
+        403,
+        "ROLE_FORBIDDEN",
+        "Growth manager or admin role is required",
+      );
     const workflow = await this.getWorkflow(url);
     if (stringValue(workflow.status) !== "pending_review") {
-      throw new AppError(409, "INVALID_LANDING_TRANSITION", "Landing must be pending review before approval");
+      throw new AppError(
+        409,
+        "INVALID_LANDING_TRANSITION",
+        "Landing must be pending review before approval",
+      );
     }
     const issues = stringArray(workflow.validation_issues);
-    if (issues.length > 0) throw new AppError(422, "LANDING_POLICY_FAILED", "Landing has unresolved validation issues", issues);
+    if (issues.length > 0)
+      throw new AppError(
+        422,
+        "LANDING_POLICY_FAILED",
+        "Landing has unresolved validation issues",
+        issues,
+      );
     await this.execute(
       `UPDATE landing_workflow SET status = 'approved', approved_at = CURRENT_TIMESTAMP,
        approved_by = $2, updated_at = CURRENT_TIMESTAMP WHERE url = $1`,
       [url, input.approver],
     );
-    const auditId = await this.audit("landing.approved", url, role, requestId, { approver: input.approver, note: input.note ?? null });
+    const auditId = await this.audit("landing.approved", url, role, requestId, {
+      approver: input.approver,
+      note: input.note ?? null,
+    });
     return { landing: await this.getLandingOrThrow(url), auditId };
   }
 
-  public async publishLanding(url: string, role: string, requestId: string): Promise<LandingCommandResult> {
-    if (!new Set(["growth_manager", "admin"]).has(role)) throw new AppError(403, "ROLE_FORBIDDEN", "Growth manager or admin role is required");
+  public async publishLanding(
+    url: string,
+    role: string,
+    requestId: string,
+  ): Promise<LandingCommandResult> {
+    if (!new Set(["growth_manager", "admin"]).has(role))
+      throw new AppError(
+        403,
+        "ROLE_FORBIDDEN",
+        "Growth manager or admin role is required",
+      );
     const workflow = await this.getWorkflow(url);
     if (stringValue(workflow.status) !== "approved") {
-      throw new AppError(409, "INVALID_LANDING_TRANSITION", "Landing must be approved before simulated publication");
+      throw new AppError(
+        409,
+        "INVALID_LANDING_TRANSITION",
+        "Landing must be approved before simulated publication",
+      );
     }
-    await this.execute(`UPDATE landing SET fecha_publicacion = CURRENT_TIMESTAMP WHERE url = $1`, [url]);
+    await this.execute(
+      `UPDATE landing SET fecha_publicacion = CURRENT_TIMESTAMP WHERE url = $1`,
+      [url],
+    );
     await this.execute(
       `UPDATE landing_workflow SET status = 'published', published_at = CURRENT_TIMESTAMP,
        updated_at = CURRENT_TIMESTAMP WHERE url = $1`,
       [url],
     );
-    const auditId = await this.audit("landing.published", url, role, requestId, { simulated: true });
+    const auditId = await this.audit(
+      "landing.published",
+      url,
+      role,
+      requestId,
+      { simulated: true },
+    );
     return { landing: await this.getLandingOrThrow(url), auditId };
   }
 
@@ -1391,20 +2093,42 @@ export class PrismaGrowthRepository implements GrowthRepository {
       [url],
     );
     const workflow = rows[0];
-    if (workflow === undefined) throw new AppError(404, "LANDING_NOT_FOUND", "Landing was not found");
+    if (workflow === undefined)
+      throw new AppError(404, "LANDING_NOT_FOUND", "Landing was not found");
     return workflow;
   }
 
-  private async validateLanding(url: string, workflow: Record<string, unknown>): Promise<string[]> {
+  private async validateLanding(
+    url: string,
+    workflow: Record<string, unknown>,
+  ): Promise<string[]> {
     const issues: string[] = [];
-    if (!booleanValue(workflow.datos_propios)) issues.push("Municipality has insufficient first-party data");
-    if (!booleanValue(workflow.tiene_cobertura) || !stringArray(workflow.servicios_cubiertos).includes(stringValue(workflow.service))) {
+    if (!booleanValue(workflow.datos_propios))
+      issues.push("Municipality has insufficient first-party data");
+    if (
+      !booleanValue(workflow.tiene_cobertura) ||
+      !stringArray(workflow.servicios_cubiertos).includes(
+        stringValue(workflow.service),
+      )
+    ) {
       issues.push("Selected service is not covered in the municipality");
     }
-    if (numberValue(workflow.cuidadoras_disponibles_30d) < 8) issues.push("Local caregiver capacity is constrained");
-    const serialized = JSON.stringify(jsonRecord(workflow.content)).toLowerCase();
-    const forbidden = ["testimonio", "cura garantizada", "precio desde", "paciente", "diagnóstico"];
-    if (forbidden.some((term) => serialized.includes(term))) issues.push("Content contains a forbidden claim or personal/health wording");
+    if (numberValue(workflow.cuidadoras_disponibles_30d) < 8)
+      issues.push("Local caregiver capacity is constrained");
+    const serialized = JSON.stringify(
+      jsonRecord(workflow.content),
+    ).toLowerCase();
+    const forbidden = [
+      "testimonio",
+      "cura garantizada",
+      "precio desde",
+      "paciente",
+      "diagnóstico",
+    ];
+    if (forbidden.some((term) => serialized.includes(term)))
+      issues.push(
+        "Content contains a forbidden claim or personal/health wording",
+      );
     if (url.length > 500) issues.push("Landing URL exceeds the allowed length");
     return issues;
   }
@@ -1412,11 +2136,18 @@ export class PrismaGrowthRepository implements GrowthRepository {
   private async getLandingOrThrow(url: string): Promise<LandingRecord> {
     const result = await this.landings({ page: 1, pageSize: 1, search: url });
     const landing = result.items.find((item) => item.url === url);
-    if (landing === undefined) throw new AppError(404, "LANDING_NOT_FOUND", "Landing was not found");
+    if (landing === undefined)
+      throw new AppError(404, "LANDING_NOT_FOUND", "Landing was not found");
     return landing;
   }
 
-  private async audit(action: string, entityId: string, role: string, requestId: string, metadata: Record<string, unknown>): Promise<string> {
+  private async audit(
+    action: string,
+    entityId: string,
+    role: string,
+    requestId: string,
+    metadata: Record<string, unknown>,
+  ): Promise<string> {
     const auditId = randomUUID();
     await this.execute(
       `INSERT INTO audit_log (audit_id, action, entity_type, entity_id, actor_role, request_id, metadata, created_at)
@@ -1426,12 +2157,17 @@ export class PrismaGrowthRepository implements GrowthRepository {
     return auditId;
   }
 
-  public async seo(filters: Filters): Promise<{ rows: SeoRow[]; caveat: string }> {
+  public async seo(
+    filters: Filters,
+  ): Promise<{ rows: SeoRow[]; caveat: string }> {
     const builder = new SqlBuilder();
     const clauses: string[] = [];
     const gscClauses: string[] = [];
     const webClauses = ["canal = 'organic'"];
-    const leadClauses = ["tipo_contacto <> 'cuidadora_empleo'", "LOWER(canal) IN ('organic', 'seo')"];
+    const leadClauses = [
+      "tipo_contacto <> 'cuidadora_empleo'",
+      "LOWER(canal) IN ('organic', 'seo')",
+    ];
     if (filters.from !== undefined) {
       gscClauses.push(`fecha >= ${builder.add(filters.from)}::date`);
       webClauses.push(`fecha >= ${builder.add(filters.from)}::date`);
@@ -1440,11 +2176,16 @@ export class PrismaGrowthRepository implements GrowthRepository {
     if (filters.to !== undefined) {
       gscClauses.push(`fecha <= ${builder.add(filters.to)}::date`);
       webClauses.push(`fecha <= ${builder.add(filters.to)}::date`);
-      leadClauses.push(`fecha_creacion < (${builder.add(filters.to)}::date + interval '1 day')`);
+      leadClauses.push(
+        `fecha_creacion < (${builder.add(filters.to)}::date + interval '1 day')`,
+      );
     }
-    if (filters.province !== undefined) clauses.push(`m.provincia = ${builder.add(filters.province)}`);
-    if (filters.municipalityId !== undefined) clauses.push(`l.municipio_id = ${builder.add(filters.municipalityId)}`);
-    if (filters.language !== undefined) clauses.push(`l.idioma = ${builder.add(filters.language)}`);
+    if (filters.province !== undefined)
+      clauses.push(`m.provincia = ${builder.add(filters.province)}`);
+    if (filters.municipalityId !== undefined)
+      clauses.push(`l.municipio_id = ${builder.add(filters.municipalityId)}`);
+    if (filters.language !== undefined)
+      clauses.push(`l.idioma = ${builder.add(filters.language)}`);
     const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
     const rows = await this.query(
       `WITH search AS (
@@ -1482,25 +2223,46 @@ export class PrismaGrowthRepository implements GrowthRepository {
       rows: rows.map((row) => {
         const impressions = numberValue(row.impressions);
         return {
-          origin: stringValue(row.origin), status: stringValue(row.status), landings: numberValue(row.landings),
-          published: numberValue(row.published), indexed: numberValue(row.indexed), impressions,
-          clicks: numberValue(row.clicks), ctr: round(rate(numberValue(row.clicks), impressions)),
-          averagePosition: row.average_position === null ? null : round(numberValue(row.average_position), 2),
-          organicSessions: numberValue(row.organic_sessions), forms: numberValue(row.forms), sql: numberValue(row.sql_count), altas: numberValue(row.alta_count),
+          origin: stringValue(row.origin),
+          status: stringValue(row.status),
+          landings: numberValue(row.landings),
+          published: numberValue(row.published),
+          indexed: numberValue(row.indexed),
+          impressions,
+          clicks: numberValue(row.clicks),
+          ctr: round(rate(numberValue(row.clicks), impressions)),
+          averagePosition:
+            row.average_position === null
+              ? null
+              : round(numberValue(row.average_position), 2),
+          organicSessions: numberValue(row.organic_sessions),
+          forms: numberValue(row.forms),
+          sql: numberValue(row.sql_count),
+          altas: numberValue(row.alta_count),
         };
       }),
-      caveat: "Manual versus generated landing comparisons are descriptive and do not imply causal impact.",
+      caveat:
+        "Comparar landings manuales y generadas describe sus diferencias, pero no demuestra qué método causó el resultado.",
     };
   }
 
-  public async ads(filters: Filters): Promise<{ rows: AdsRow[]; caveats: string[] }> {
+  public async ads(
+    filters: Filters,
+  ): Promise<{ rows: AdsRow[]; caveats: string[] }> {
     const builder = new SqlBuilder();
     const clauses: string[] = [];
-    if (filters.from !== undefined) clauses.push(`a.fecha >= ${builder.add(filters.from)}::date`);
-    if (filters.to !== undefined) clauses.push(`a.fecha <= ${builder.add(filters.to)}::date`);
-    if (filters.municipalityId !== undefined) clauses.push(`a.municipio_id = ${builder.add(filters.municipalityId)}`);
-    if (filters.province !== undefined) clauses.push(`m.provincia = ${builder.add(filters.province)}`);
-    if (filters.channel !== undefined) clauses.push(`LOWER(a.plataforma) = LOWER(${builder.add(filters.channel)})`);
+    if (filters.from !== undefined)
+      clauses.push(`a.fecha >= ${builder.add(filters.from)}::date`);
+    if (filters.to !== undefined)
+      clauses.push(`a.fecha <= ${builder.add(filters.to)}::date`);
+    if (filters.municipalityId !== undefined)
+      clauses.push(`a.municipio_id = ${builder.add(filters.municipalityId)}`);
+    if (filters.province !== undefined)
+      clauses.push(`m.provincia = ${builder.add(filters.province)}`);
+    if (filters.channel !== undefined)
+      clauses.push(
+        `LOWER(a.plataforma) = LOWER(${builder.add(filters.channel)})`,
+      );
     const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
     const rows = await this.query(
       `WITH paid AS (
@@ -1541,27 +2303,48 @@ export class PrismaGrowthRepository implements GrowthRepository {
         const altas = numberValue(row.crm_altas);
         const municipalityId = nullableString(row.municipio_id);
         return {
-          platform: stringValue(row.plataforma), campaign: stringValue(row.campania), municipalityId,
-          spend: round(spend, 2), impressions: numberValue(row.impressions), clicks, cpc: round(rate(spend, clicks), 2),
-          platformConversions: numberValue(row.platform_conversions), crmSql: sql, crmAltas: altas,
-          costPerSql: sql === 0 ? null : round(spend / sql, 2), costPerAlta: altas === 0 ? null : round(spend / altas, 2),
-          allocationWarning: municipalityId === null ? "Campaign is not municipality-targeted; spend is not allocated to municipalities." : null,
+          platform: stringValue(row.plataforma),
+          campaign: stringValue(row.campania),
+          municipalityId,
+          spend: round(spend, 2),
+          impressions: numberValue(row.impressions),
+          clicks,
+          cpc: round(rate(spend, clicks), 2),
+          platformConversions: numberValue(row.platform_conversions),
+          crmSql: sql,
+          crmAltas: altas,
+          costPerSql: sql === 0 ? null : round(spend / sql, 2),
+          costPerAlta: altas === 0 ? null : round(spend / altas, 2),
+          allocationWarning:
+            municipalityId === null
+              ? "La campaña no está segmentada por municipio; la inversión no se reparte entre municipios."
+              : null,
         };
       }),
       caveats: [
-        "Platform conversions and CRM-reconciled SQL/altas use different measurement systems and are reported separately.",
-        "Channel credit is attribution, not evidence of causal incrementality.",
+        "Las conversiones de la plataforma publicitaria y los SQL o altas conciliados con el CRM usan sistemas de medición distintos y se muestran por separado.",
+        "El reparto por canal explica a qué contacto se asigna cada resultado; no demuestra cuántos resultados adicionales produjo el canal.",
       ],
     };
   }
 
-  public async experiments(input: PageRequest): Promise<Paginated<ExperimentSummary>> {
+  public async experiments(
+    input: PageRequest,
+  ): Promise<Paginated<ExperimentSummary>> {
     const builder = new SqlBuilder();
     const clauses: string[] = [];
-    if (input.from !== undefined) clauses.push(`ge.start_date >= ${builder.add(input.from)}::date`);
-    if (input.to !== undefined) clauses.push(`ge.start_date <= ${builder.add(input.to)}::date`);
-    if (input.municipalityId !== undefined) clauses.push(`EXISTS (SELECT 1 FROM experiment_assignment x WHERE x.experiment_id = ge.experiment_id AND x.municipio_id = ${builder.add(input.municipalityId)})`);
-    if (input.search !== undefined) clauses.push(`(ge.name ILIKE ${builder.add(`%${input.search}%`)} OR ge.hypothesis ILIKE ${builder.add(`%${input.search}%`)})`);
+    if (input.from !== undefined)
+      clauses.push(`ge.start_date >= ${builder.add(input.from)}::date`);
+    if (input.to !== undefined)
+      clauses.push(`ge.start_date <= ${builder.add(input.to)}::date`);
+    if (input.municipalityId !== undefined)
+      clauses.push(
+        `EXISTS (SELECT 1 FROM experiment_assignment x WHERE x.experiment_id = ge.experiment_id AND x.municipio_id = ${builder.add(input.municipalityId)})`,
+      );
+    if (input.search !== undefined)
+      clauses.push(
+        `(ge.name ILIKE ${builder.add(`%${input.search}%`)} OR ge.hypothesis ILIKE ${builder.add(`%${input.search}%`)})`,
+      );
     const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
     const limit = builder.add(input.pageSize);
     const offset = builder.add((input.page - 1) * input.pageSize);
@@ -1577,29 +2360,57 @@ export class PrismaGrowthRepository implements GrowthRepository {
        ORDER BY ge.start_date DESC, ge.experiment_id LIMIT ${limit} OFFSET ${offset}`,
       builder.values,
     );
-    const items = await Promise.all(rows.map(async (row) => {
-      const id = stringValue(row.experiment_id);
-      const analysis = await this.experimentAnalysis(id, stringValue(row.primary_metric));
-      return this.experimentSummaryFromRow(row, analysis);
-    }));
-    return { items, page: input.page, pageSize: input.pageSize, total: numberValue(rows[0]?.total) };
+    const items = await Promise.all(
+      rows.map(async (row) => {
+        const id = stringValue(row.experiment_id);
+        const analysis = await this.experimentAnalysis(
+          id,
+          stringValue(row.primary_metric),
+        );
+        return this.experimentSummaryFromRow(row, analysis);
+      }),
+    );
+    return {
+      items,
+      page: input.page,
+      pageSize: input.pageSize,
+      total: numberValue(rows[0]?.total),
+    };
   }
 
-  private experimentSummaryFromRow(row: Record<string, unknown>, analysis: ExperimentAnalysis): ExperimentSummary {
-    const bothGroupsObserved = analysis.treatmentSample > 0 && analysis.controlSample > 0;
+  private experimentSummaryFromRow(
+    row: Record<string, unknown>,
+    analysis: ExperimentAnalysis,
+  ): ExperimentSummary {
+    const bothGroupsObserved =
+      analysis.treatmentSample > 0 && analysis.controlSample > 0;
     const limitations = [
-      ...(!bothGroupsObserved ? ["At least one variant has no observed landing sessions"] : []),
-      ...(analysis.didEstimate === null ? ["Insufficient pre/post outcome data for Difference-in-Differences"] : []),
-      "The reported Difference-in-Differences is descriptive: no inferential parallel-trends test or significance test is implemented.",
-      "No causal claim is made.",
+      ...(!bothGroupsObserved
+        ? ["Una de las versiones no tiene sesiones observadas en sus landings."]
+        : []),
+      ...(analysis.didEstimate === null
+        ? [
+            "No hay suficientes datos antes y después del cambio para comparar ambas versiones.",
+          ]
+        : []),
+      "La comparación descuenta el cambio observado en la versión anterior, pero no incluye una prueba estadística que confirme que ambos grupos evolucionaban de forma equivalente.",
+      "El resultado orienta la decisión; por sí solo no demuestra que la landing causó el cambio.",
     ];
     return {
-      id: stringValue(row.experiment_id), name: stringValue(row.name), hypothesis: stringValue(row.hypothesis),
-      startDate: isoValue(row.start_date).slice(0, 10), endDate: nullableIso(row.end_date)?.slice(0, 10) ?? null,
-      status: stringValue(row.status), primaryMetric: stringValue(row.primary_metric), methodology: stringValue(row.methodology),
-      treatmentMunicipalities: numberValue(row.treatment_count), controlMunicipalities: numberValue(row.control_count),
-      observedDifference: analysis.observedDifference, didEstimate: analysis.didEstimate,
-      evidenceLevel: "descriptive", limitations,
+      id: stringValue(row.experiment_id),
+      name: stringValue(row.name),
+      hypothesis: stringValue(row.hypothesis),
+      startDate: isoValue(row.start_date).slice(0, 10),
+      endDate: nullableIso(row.end_date)?.slice(0, 10) ?? null,
+      status: stringValue(row.status),
+      primaryMetric: stringValue(row.primary_metric),
+      methodology: stringValue(row.methodology),
+      treatmentMunicipalities: numberValue(row.treatment_count),
+      controlMunicipalities: numberValue(row.control_count),
+      observedDifference: analysis.observedDifference,
+      didEstimate: analysis.didEstimate,
+      evidenceLevel: "descriptive",
+      limitations,
     };
   }
 
@@ -1616,7 +2427,10 @@ export class PrismaGrowthRepository implements GrowthRepository {
     );
     const row = rows[0];
     if (row === undefined) return null;
-    const commercial = row.primary_metric === "sql_per_municipality_week" ? await this.experimentSqlResult(id) : null;
+    const commercial =
+      row.primary_metric === "sql_per_municipality_week"
+        ? await this.experimentSqlResult(id)
+        : null;
     const [assignmentRows, seriesRows, analysis] = await Promise.all([
       this.query(
         `SELECT ea.municipio_id, m.nombre AS municipality, ea.variant, ea.assigned_at
@@ -1643,15 +2457,28 @@ export class PrismaGrowthRepository implements GrowthRepository {
     return {
       ...summary,
       assignments: assignmentRows.map((item) => ({
-        municipalityId: stringValue(item.municipio_id), municipality: stringValue(item.municipality),
-        variant: stringValue(item.variant), assignedAt: isoValue(item.assigned_at),
+        municipalityId: stringValue(item.municipio_id),
+        municipality: stringValue(item.municipality),
+        variant: stringValue(item.variant),
+        assignedAt: isoValue(item.assigned_at),
       })),
-      series: commercial ? commercial.weeks.map(w => ({ period: w.start, variant: w.group, value: w.sql / w.municipalities, sampleSize: w.municipalities })) : seriesRows.map((item) => ({
-        period: stringValue(item.period), variant: stringValue(item.variant), value: round(numberValue(item.value)), sampleSize: numberValue(item.sample_size),
-      })),
+      series: commercial
+        ? commercial.weeks.map((w) => ({
+            period: w.start,
+            variant: w.group,
+            value: w.sql / w.municipalities,
+            sampleSize: w.municipalities,
+          }))
+        : seriesRows.map((item) => ({
+            period: stringValue(item.period),
+            variant: stringValue(item.variant),
+            value: round(numberValue(item.value)),
+            sampleSize: numberValue(item.sample_size),
+          })),
       diagnostics: {
         parallelTrendsPass: null,
-        hasObservedDataInBothGroups: analysis.treatmentSample > 0 && analysis.controlSample > 0,
+        hasObservedDataInBothGroups:
+          analysis.treatmentSample > 0 && analysis.controlSample > 0,
         preTrendDifference: analysis.preTrendDifference,
       },
     };
@@ -1686,35 +2513,73 @@ export class PrismaGrowthRepository implements GrowthRepository {
       const rawPrimaryMetric = stringValue(metadata.primaryMetric);
       const rawGuardrailMetric = stringValue(metadata.guardrailMetric);
       return {
-        id: stringValue(row.audit_id), url: stringValue(row.url), municipality: nullableString(row.municipality), service: nullableString(row.service),
-        version: numberValue(row.version), actorRole: stringValue(row.actor_role), createdAt: isoValue(row.created_at),
-        decision: rawDecision === "stop" || rawDecision === "iterate" ? rawDecision : "keep",
+        id: stringValue(row.audit_id),
+        url: stringValue(row.url),
+        municipality: nullableString(row.municipality),
+        service: nullableString(row.service),
+        version: numberValue(row.version),
+        actorRole: stringValue(row.actor_role),
+        createdAt: isoValue(row.created_at),
+        decision:
+          rawDecision === "stop" || rawDecision === "iterate"
+            ? rawDecision
+            : "keep",
         ...decisionEvidence(metadata),
         hypothesis: stringValue(metadata.hypothesis),
-        primaryMetric: rawPrimaryMetric === "sql_per_municipality_week" || rawPrimaryMetric === "lead_to_sql" || rawPrimaryMetric === "sql_to_alta" ? rawPrimaryMetric : "session_to_lead",
-        guardrailMetric: rawGuardrailMetric === "sql_to_alta" || rawGuardrailMetric === "caregiver_capacity" ? rawGuardrailMetric : "lead_to_sql",
-        ...(nullableString(metadata.note) === null ? {} : { note: stringValue(metadata.note) }),
+        primaryMetric:
+          rawPrimaryMetric === "sql_per_municipality_week" ||
+          rawPrimaryMetric === "lead_to_sql" ||
+          rawPrimaryMetric === "sql_to_alta"
+            ? rawPrimaryMetric
+            : "session_to_lead",
+        guardrailMetric:
+          rawGuardrailMetric === "sql_to_alta" ||
+          rawGuardrailMetric === "caregiver_capacity"
+            ? rawGuardrailMetric
+            : "lead_to_sql",
+        ...(nullableString(metadata.note) === null
+          ? {}
+          : { note: stringValue(metadata.note) }),
       };
     });
-    const positive = experimentPage.items.filter((experiment) => (experiment.didEstimate ?? 0) > 0.005).length;
-    const negative = experimentPage.items.filter((experiment) => (experiment.didEstimate ?? 0) < -0.005).length;
+    const positive = experimentPage.items.filter(
+      (experiment) => (experiment.didEstimate ?? 0) > 0.005,
+    ).length;
+    const negative = experimentPage.items.filter(
+      (experiment) => (experiment.didEstimate ?? 0) < -0.005,
+    ).length;
     return {
       experiments: experimentPage.items,
       decisions,
-      totals: { experiments: experimentPage.total, positive, negative, inconclusive: experimentPage.total - positive - negative, decisions: decisions.length },
+      totals: {
+        experiments: experimentPage.total,
+        positive,
+        negative,
+        inconclusive: experimentPage.total - positive - negative,
+        decisions: decisions.length,
+      },
       caveats: [
         "Las decisiones son registros humanos auditados; no prueban que el cambio haya causado el resultado.",
-        "La clasificación positiva, negativa o inconclusa usa el estimador DiD sintético y mantiene visibles sus limitaciones.",
+        "La clasificación compara la evolución de la nueva landing con la versión anterior y mantiene visibles las limitaciones de esa comparación.",
       ],
     };
   }
 
-  private async experimentAnalysis(id: string, metric: string, cached?: SqlResult | null): Promise<ExperimentAnalysis> {
+  private async experimentAnalysis(
+    id: string,
+    metric: string,
+    cached?: SqlResult | null,
+  ): Promise<ExperimentAnalysis> {
     if (metric === "sql_per_municipality_week") {
-      const result = cached ?? await this.experimentSqlResult(id);
-      const post = result.weeks.filter(w => w.week >= 0 && w.mature);
-      return { observedDifference: null, didEstimate: result.difference, preTrendDifference: result.preTrendGap,
-        treatmentSample: post.filter(w => w.group === "treatment").length, controlSample: post.filter(w => w.group === "control").length };
+      const result = cached ?? (await this.experimentSqlResult(id));
+      const post = result.weeks.filter((w) => w.week >= 0 && w.mature);
+      return {
+        observedDifference: null,
+        didEstimate: result.difference,
+        preTrendDifference: result.preTrendGap,
+        treatmentSample: post.filter((w) => w.group === "treatment").length,
+        controlSample: post.filter((w) => w.group === "control").length,
+      };
     }
     const rows = await this.query(
       `WITH outcomes AS (
@@ -1735,10 +2600,17 @@ export class PrismaGrowthRepository implements GrowthRepository {
       [id],
     );
     const value = (variant: string, period: string): number | null => {
-      const row = rows.find((item) => item.variant === variant && item.period === period);
-      return row === undefined || row.conversion === null ? null : numberValue(row.conversion);
+      const row = rows.find(
+        (item) => item.variant === variant && item.period === period,
+      );
+      return row === undefined || row.conversion === null
+        ? null
+        : numberValue(row.conversion);
     };
-    const sample = (variant: string): number => rows.filter((item) => item.variant === variant).reduce((sum, item) => sum + numberValue(item.sample_size), 0);
+    const sample = (variant: string): number =>
+      rows
+        .filter((item) => item.variant === variant)
+        .reduce((sum, item) => sum + numberValue(item.sample_size), 0);
     const treatmentEarly = value("treatment", "pre_early");
     const treatmentPre = value("treatment", "pre_late");
     const treatmentPost = value("treatment", "post");
@@ -1746,17 +2618,39 @@ export class PrismaGrowthRepository implements GrowthRepository {
     const controlPre = value("control", "pre_late");
     const controlPost = value("control", "post");
     return {
-      observedDifference: treatmentPost === null || controlPost === null ? null : round(treatmentPost - controlPost),
-      didEstimate: treatmentPre === null || treatmentPost === null || controlPre === null || controlPost === null
-        ? null : round((treatmentPost - treatmentPre) - (controlPost - controlPre)),
-      preTrendDifference: treatmentEarly === null || treatmentPre === null || controlEarly === null || controlPre === null
-        ? null : round((treatmentPre - treatmentEarly) - (controlPre - controlEarly)),
-      treatmentSample: sample("treatment"), controlSample: sample("control"),
+      observedDifference:
+        treatmentPost === null || controlPost === null
+          ? null
+          : round(treatmentPost - controlPost),
+      didEstimate:
+        treatmentPre === null ||
+        treatmentPost === null ||
+        controlPre === null ||
+        controlPost === null
+          ? null
+          : round(treatmentPost - treatmentPre - (controlPost - controlPre)),
+      preTrendDifference:
+        treatmentEarly === null ||
+        treatmentPre === null ||
+        controlEarly === null ||
+        controlPre === null
+          ? null
+          : round(treatmentPre - treatmentEarly - (controlPre - controlEarly)),
+      treatmentSample: sample("treatment"),
+      controlSample: sample("control"),
     };
   }
 
   public async dataQuality(): Promise<DataQualityResponse> {
-    const [freshnessRows, identityRows, duplicateRows, integrityRows, missingRows, discrepancyRows, immatureRows] = await Promise.all([
+    const [
+      freshnessRows,
+      identityRows,
+      duplicateRows,
+      integrityRows,
+      missingRows,
+      discrepancyRows,
+      immatureRows,
+    ] = await Promise.all([
       this.query(
         `SELECT * FROM (VALUES
           ('lead', (SELECT MAX(fecha_creacion)::timestamp FROM lead)),
@@ -1821,37 +2715,103 @@ export class PrismaGrowthRepository implements GrowthRepository {
       generatedAt: new Date().toISOString(),
       freshness: freshnessRows.map((row) => {
         const latestAt = nullableIso(row.latest_at);
-        const lagDays = latestAt === null ? null : Math.max(0, Math.floor((Date.now() - new Date(latestAt).getTime()) / 86_400_000));
-        return { source: stringValue(row.source), latestAt, lagDays, status: lagDays === null ? "missing" : lagDays <= 7 ? "fresh" : "stale" };
+        const lagDays =
+          latestAt === null
+            ? null
+            : Math.max(
+                0,
+                Math.floor(
+                  (Date.now() - new Date(latestAt).getTime()) / 86_400_000,
+                ),
+              );
+        return {
+          source: stringValue(row.source),
+          latestAt,
+          lagDays,
+          status:
+            lagDays === null ? "missing" : lagDays <= 7 ? "fresh" : "stale",
+        };
       }),
       identity: {
-        totalEvents, unlinkedEvents: numberValue(identity.unlinked_events), ambiguousIdentities: numberValue(identity.ambiguous_identities),
-        traceabilityCoverage: round(rate(totalEvents - numberValue(identity.unlinked_events), totalEvents)),
+        totalEvents,
+        unlinkedEvents: numberValue(identity.unlinked_events),
+        ambiguousIdentities: numberValue(identity.ambiguous_identities),
+        traceabilityCoverage: round(
+          rate(
+            totalEvents - numberValue(identity.unlinked_events),
+            totalEvents,
+          ),
+        ),
       },
-      duplicates: { potentialLeadDuplicates: numberValue(duplicateRows[0]?.potential_duplicates), confirmedLinks: numberValue(duplicateRows[0]?.confirmed_links) },
+      duplicates: {
+        potentialLeadDuplicates: numberValue(
+          duplicateRows[0]?.potential_duplicates,
+        ),
+        confirmedLinks: numberValue(duplicateRows[0]?.confirmed_links),
+      },
       integrity: integrityRows.map((row) => ({
-        check: stringValue(row.check), failures: numberValue(row.failures),
-        severity: stringValue(row.severity) === "error" ? "error" : stringValue(row.severity) === "warning" ? "warning" : "info",
+        check: stringValue(row.check),
+        failures: numberValue(row.failures),
+        severity:
+          stringValue(row.severity) === "error"
+            ? "error"
+            : stringValue(row.severity) === "warning"
+              ? "warning"
+              : "info",
       })),
       missingness: missingRows.map((row) => {
-        const missing = numberValue(row.missing); const total = numberValue(row.total);
-        return { field: stringValue(row.field), missing, total, rate: round(rate(missing, total)) };
+        const missing = numberValue(row.missing);
+        const total = numberValue(row.total);
+        return {
+          field: stringValue(row.field),
+          missing,
+          total,
+          rate: round(rate(missing, total)),
+        };
       }),
       discrepancies: discrepancyRows.map((row) => {
-        const platform = numberValue(row.platform); const crm = numberValue(row.crm);
-        return { metric: stringValue(row.metric), platform, crm, difference: platform - crm };
+        const platform = numberValue(row.platform);
+        const crm = numberValue(row.crm);
+        return {
+          metric: stringValue(row.metric),
+          platform,
+          crm,
+          difference: platform - crm,
+        };
       }),
       pendingMaturitySql: numberValue(immatureRows[0]?.count),
-      limitations: ["Late events and intentionally incomplete attribution are retained rather than imputed."],
+      limitations: [
+        "Los eventos tardíos o sin enlace confirmado se conservan como tales; el sistema no inventa una relación.",
+      ],
       monitoringSignals: [
-        { signal: "unlinked_events", value: numberValue(identity.unlinked_events), unit: "count", source: "journey_event" },
-        { signal: "integrity_failures", value: integrityRows.reduce((sum, row) => sum + numberValue(row.failures), 0), unit: "count", source: "integrity_checks" },
-        { signal: "ambiguous_identities", value: numberValue(identity.ambiguous_identities), unit: "count", source: "identity_map" },
+        {
+          signal: "unlinked_events",
+          value: numberValue(identity.unlinked_events),
+          unit: "count",
+          source: "journey_event",
+        },
+        {
+          signal: "integrity_failures",
+          value: integrityRows.reduce(
+            (sum, row) => sum + numberValue(row.failures),
+            0,
+          ),
+          unit: "count",
+          source: "integrity_checks",
+        },
+        {
+          signal: "ambiguous_identities",
+          value: numberValue(identity.ambiguous_identities),
+          unit: "count",
+          source: "identity_map",
+        },
       ],
     };
   }
 
-  public async strategy(assumptions: StrategyAssumptions): Promise<StrategyResponse> {
+  public async strategy(
+    assumptions: StrategyAssumptions,
+  ): Promise<StrategyResponse> {
     const [opportunities, observedRows] = await Promise.all([
       this.opportunities({ page: 1, pageSize: 100 }),
       this.query(
@@ -1873,9 +2833,24 @@ export class PrismaGrowthRepository implements GrowthRepository {
       ),
     ]);
     const scenarioDefinitions = {
-      conservative: { demandCaptureRate: 0.015, leadToSqlRate: 0.35, sqlToAltaRate: 0.12, capacityUtilization: 0.5 },
-      base: { demandCaptureRate: 0.025, leadToSqlRate: 0.42, sqlToAltaRate: 0.18, capacityUtilization: 0.7 },
-      optimistic: { demandCaptureRate: 0.04, leadToSqlRate: 0.5, sqlToAltaRate: 0.24, capacityUtilization: 0.85 },
+      conservative: {
+        demandCaptureRate: 0.015,
+        leadToSqlRate: 0.35,
+        sqlToAltaRate: 0.12,
+        capacityUtilization: 0.5,
+      },
+      base: {
+        demandCaptureRate: 0.025,
+        leadToSqlRate: 0.42,
+        sqlToAltaRate: 0.18,
+        capacityUtilization: 0.7,
+      },
+      optimistic: {
+        demandCaptureRate: 0.04,
+        leadToSqlRate: 0.5,
+        sqlToAltaRate: 0.24,
+        capacityUtilization: 0.85,
+      },
     } as const;
     const impactMarkets = opportunities.items.map((row) => ({
       municipalityId: row.municipalityId,
@@ -1885,11 +2860,28 @@ export class PrismaGrowthRepository implements GrowthRepository {
       eligible: row.selectionEligibility === "eligible",
     }));
     const selectedImpact = calculateLandingImpact(impactMarkets, assumptions);
-    const impactByMarket = new Map(selectedImpact.rows.map((row) => [`${row.municipalityId}:${row.service}`, row]));
+    const impactByMarket = new Map(
+      selectedImpact.rows.map((row) => [
+        `${row.municipalityId}:${row.service}`,
+        row,
+      ]),
+    );
     const scenarioValues = {
-      conservative: calculateLandingImpact(impactMarkets, { ...scenarioDefinitions.conservative, months: assumptions.months, marketLimit: assumptions.marketLimit }).totals,
-      base: calculateLandingImpact(impactMarkets, { ...scenarioDefinitions.base, months: assumptions.months, marketLimit: assumptions.marketLimit }).totals,
-      optimistic: calculateLandingImpact(impactMarkets, { ...scenarioDefinitions.optimistic, months: assumptions.months, marketLimit: assumptions.marketLimit }).totals,
+      conservative: calculateLandingImpact(impactMarkets, {
+        ...scenarioDefinitions.conservative,
+        months: assumptions.months,
+        marketLimit: assumptions.marketLimit,
+      }).totals,
+      base: calculateLandingImpact(impactMarkets, {
+        ...scenarioDefinitions.base,
+        months: assumptions.months,
+        marketLimit: assumptions.marketLimit,
+      }).totals,
+      optimistic: calculateLandingImpact(impactMarkets, {
+        ...scenarioDefinitions.optimistic,
+        months: assumptions.months,
+        marketLimit: assumptions.marketLimit,
+      }).totals,
     };
     const makeBet = (row: OpportunityRow, rank: number): StrategyBet => {
       const eligible = row.selectionEligibility === "eligible";
@@ -1898,48 +2890,123 @@ export class PrismaGrowthRepository implements GrowthRepository {
       const scenarioAltas = impact?.scenarioAltas ?? 0;
       const highImpact = scenarioSql >= 10;
       return {
-        rank, municipalityId: row.municipalityId, municipality: row.municipality, service: row.service,
+        rank,
+        municipalityId: row.municipalityId,
+        municipality: row.municipality,
+        service: row.service,
         decision: eligible ? "prioritize" : "reject",
-        reason: eligible ? "Municipal data, coverage, capacity and persisted demand pass the versioned selection rules." : row.selectionReasons.join(" "),
+        reason: eligible
+          ? "Los datos municipales, la cobertura, la capacidad y la demanda cumplen las reglas de selección vigentes."
+          : row.selectionReasons.join(" "),
         impact: highImpact ? "high" : scenarioSql >= 4 ? "medium" : "low",
-        effort: row.competitors >= 5 || row.estimatedCpc >= 3 ? "high" : row.competitors >= 2 ? "medium" : "low",
-        dependencies: ["Landing policy review", "CRM campaign tagging", ...(row.caregiversAvailable < 12 ? ["Capacity confirmation"] : [])],
-        owner: eligible ? "Growth + Local Operations" : "Local Operations",
-        scenarioSql, scenarioAltas,
-        hypothesis: `A local ${row.service} test in ${row.municipality} can convert a bounded share of observed demand into eligible SQL.`,
-        mvp: "Launch one reviewed landing and one geo-targeted campaign with a capped budget and holdout comparison.",
-        exclusions: ["Caregiver job contacts", "Immature cohorts", "Unlinked CRM conversions"],
-        successCriteria: ["Policy-safe published landing", "Complete campaign-to-CRM tracking for observed conversions", "Predeclared experiment readout completed on a mature cohort"],
+        effort:
+          row.competitors >= 5 || row.estimatedCpc >= 3
+            ? "high"
+            : row.competitors >= 2
+              ? "medium"
+              : "low",
+        dependencies: [
+          "Revisión de la landing",
+          "Etiquetado de campaña en el CRM",
+          ...(row.caregiversAvailable < 12
+            ? ["Confirmación de capacidad"]
+            : []),
+        ],
+        owner: eligible ? "Growth + Operaciones" : "Operaciones",
+        scenarioSql,
+        scenarioAltas,
+        hypothesis: `Una prueba local de ${row.service} en ${row.municipality} puede convertir una parte acotada de la demanda observada en SQL elegibles.`,
+        mvp: "Publicar una landing revisada y una campaña geográfica con presupuesto limitado, manteniendo municipios comparables con la versión anterior.",
+        exclusions: [
+          "Contactos de empleo de cuidadoras",
+          "SQL con menos de 90 días de seguimiento",
+          "Conversiones del CRM sin enlace confirmado",
+        ],
+        successCriteria: [
+          "Landing publicada tras superar los controles",
+          "Seguimiento completo desde la campaña hasta el CRM para las conversiones observadas",
+          "Comparación predefinida completada con SQL que ya tienen 90 días de seguimiento",
+        ],
         decisionCriteria: {
-          continue: "Observed outcomes meet the predeclared experiment target, the cohort matures, and capacity remains healthy.",
-          modify: "Demand is observed but conversion, traceability, or creative performance misses target.",
-          stop: "No observed improvement in eligible SQL, policy failure, or sustained capacity constraint.",
+          continue:
+            "Los resultados alcanzan el objetivo definido, los SQL completan su periodo de seguimiento y la capacidad se mantiene estable.",
+          modify:
+            "Hay demanda, pero la conversión, la trazabilidad o el rendimiento de la landing no alcanzan el objetivo.",
+          stop: "No mejora el número de SQL elegibles, se incumple una restricción o la capacidad permanece limitada.",
         },
       };
     };
-    const prioritizedRows = opportunities.items.filter((row) => impactByMarket.has(`${row.municipalityId}:${row.service}`));
-    const rejectedRows = opportunities.items.filter((row) => row.selectionEligibility !== "eligible").slice(0, 12);
-    const prioritizedBets = prioritizedRows.map((row, index) => makeBet(row, index + 1));
-    const rejectedBets = rejectedRows.map((row, index) => makeBet(row, index + 1));
-    const sqlScenarioValues = Object.values(scenarioValues).map((value) => value.sql);
-    const altaScenarioValues = Object.values(scenarioValues).map((value) => value.altas);
+    const prioritizedRows = opportunities.items.filter((row) =>
+      impactByMarket.has(`${row.municipalityId}:${row.service}`),
+    );
+    const rejectedRows = opportunities.items
+      .filter((row) => row.selectionEligibility !== "eligible")
+      .slice(0, 12);
+    const prioritizedBets = prioritizedRows.map((row, index) =>
+      makeBet(row, index + 1),
+    );
+    const rejectedBets = rejectedRows.map((row, index) =>
+      makeBet(row, index + 1),
+    );
+    const sqlScenarioValues = Object.values(scenarioValues).map(
+      (value) => value.sql,
+    );
+    const altaScenarioValues = Object.values(scenarioValues).map(
+      (value) => value.altas,
+    );
     const observedFilteredSql = numberValue(observedRows[0]?.sql_count);
     const observedPaidSql = numberValue(observedRows[0]?.paid_sql_count);
-    const qualificationRateChanges = { conservative: 0.01, base: 0.02, optimistic: 0.03 } as const;
-    const paidEfficiencyChanges = { conservative: 0.05, base: 0.1, optimistic: 0.15 } as const;
+    const qualificationRateChanges = {
+      conservative: 0.01,
+      base: 0.02,
+      optimistic: 0.03,
+    } as const;
+    const paidEfficiencyChanges = {
+      conservative: 0.05,
+      base: 0.1,
+      optimistic: 0.15,
+    } as const;
     const qualificationValues = {
-      conservative: calculatePlanningDelta({ baselineMonthlyVolume: observedFilteredSql, months: assumptions.months, assumedRateChange: qualificationRateChanges.conservative }),
-      base: calculatePlanningDelta({ baselineMonthlyVolume: observedFilteredSql, months: assumptions.months, assumedRateChange: qualificationRateChanges.base }),
-      optimistic: calculatePlanningDelta({ baselineMonthlyVolume: observedFilteredSql, months: assumptions.months, assumedRateChange: qualificationRateChanges.optimistic }),
+      conservative: calculatePlanningDelta({
+        baselineMonthlyVolume: observedFilteredSql,
+        months: assumptions.months,
+        assumedRateChange: qualificationRateChanges.conservative,
+      }),
+      base: calculatePlanningDelta({
+        baselineMonthlyVolume: observedFilteredSql,
+        months: assumptions.months,
+        assumedRateChange: qualificationRateChanges.base,
+      }),
+      optimistic: calculatePlanningDelta({
+        baselineMonthlyVolume: observedFilteredSql,
+        months: assumptions.months,
+        assumedRateChange: qualificationRateChanges.optimistic,
+      }),
     };
     const paidValues = {
-      conservative: calculatePlanningDelta({ baselineMonthlyVolume: observedPaidSql, months: assumptions.months, assumedRateChange: paidEfficiencyChanges.conservative }),
-      base: calculatePlanningDelta({ baselineMonthlyVolume: observedPaidSql, months: assumptions.months, assumedRateChange: paidEfficiencyChanges.base }),
-      optimistic: calculatePlanningDelta({ baselineMonthlyVolume: observedPaidSql, months: assumptions.months, assumedRateChange: paidEfficiencyChanges.optimistic }),
+      conservative: calculatePlanningDelta({
+        baselineMonthlyVolume: observedPaidSql,
+        months: assumptions.months,
+        assumedRateChange: paidEfficiencyChanges.conservative,
+      }),
+      base: calculatePlanningDelta({
+        baselineMonthlyVolume: observedPaidSql,
+        months: assumptions.months,
+        assumedRateChange: paidEfficiencyChanges.base,
+      }),
+      optimistic: calculatePlanningDelta({
+        baselineMonthlyVolume: observedPaidSql,
+        months: assumptions.months,
+        assumedRateChange: paidEfficiencyChanges.optimistic,
+      }),
     };
     return {
       label: "Synthetic planning demonstration — not a forecast",
-      baseline: { sqlPerMonth: 2000, source: "planning_brief", observedFilteredSql },
+      baseline: {
+        sqlPerMonth: 2000,
+        source: "planning_brief",
+        observedFilteredSql,
+      },
       assumptions,
       scenarios: scenarioDefinitions,
       planningModel: {
@@ -1948,7 +3015,11 @@ export class PrismaGrowthRepository implements GrowthRepository {
         candidateRowsEvaluated: opportunities.items.length,
         eligibleMarketsInCandidateSet: selectedImpact.eligibleMarketsAvailable,
         marketsIncluded: selectedImpact.marketsIncluded,
-        exclusions: ["Municipios sin cobertura", "Municipios con capacidad restringida", "Contactos de empleo de cuidadoras"],
+        exclusions: [
+          "Municipios sin cobertura",
+          "Municipios con capacidad restringida",
+          "Contactos de empleo de cuidadoras",
+        ],
       },
       scenarioProjection: {
         sql: selectedImpact.totals.sql,
@@ -1956,56 +3027,120 @@ export class PrismaGrowthRepository implements GrowthRepository {
         periodMonths: assumptions.months,
       },
       impactRange: {
-        sql: { min: Math.min(...sqlScenarioValues), max: Math.max(...sqlScenarioValues) },
-        altas: { min: Math.min(...altaScenarioValues), max: Math.max(...altaScenarioValues) },
+        sql: {
+          min: Math.min(...sqlScenarioValues),
+          max: Math.max(...sqlScenarioValues),
+        },
+        altas: {
+          min: Math.min(...altaScenarioValues),
+          max: Math.max(...altaScenarioValues),
+        },
         periodMonths: assumptions.months,
         scenarioValues,
       },
-      enablingInitiatives: [{
-        name: "Reparar trazabilidad",
-        directScenarioSql: 0,
-        directScenarioAltas: 0,
-        value: "Permite reconciliar exposición, landing, campaña y resultado CRM; habilita decisiones fiables, pero no se contabiliza como crecimiento directo.",
-      }],
-      portfolioInitiatives: [
+      enablingInitiatives: [
         {
-          id: "local_landings", rank: 1, name: "Landings locales elegibles", outcome: "sql", evidence: "planning_assumption",
-          formula: selectedImpact.formula,
-          inputs: [`${String(selectedImpact.marketsIncluded)} municipios únicos`, `${String(assumptions.months)} meses`, "demanda persistida", "cobertura y capacidad"],
-          scenarioValues: { conservative: scenarioValues.conservative.sql, base: scenarioValues.base.sql, optimistic: scenarioValues.optimistic.sql },
-          range: { min: Math.min(...sqlScenarioValues), max: Math.max(...sqlScenarioValues) }, periodMonths: assumptions.months,
-        },
-        {
-          id: "qualification", rank: 2, name: "Mejorar SQL → alta", outcome: "altas", evidence: "planning_assumption",
-          formula: "SQL observados en los últimos 30 días × meses × mejora absoluta asumida de SQL→alta",
-          inputs: [`${String(observedFilteredSql)} SQL/mes observados`, "mejora de 1, 2 o 3 puntos porcentuales"],
-          scenarioValues: qualificationValues,
-          range: { min: qualificationValues.conservative, max: qualificationValues.optimistic }, periodMonths: assumptions.months,
-        },
-        {
-          id: "paid_reallocation", rank: 3, name: "Reasignar inversión con resultado CRM", outcome: "sql", evidence: "planning_assumption",
-          formula: "SQL de pago reconciliados en los últimos 30 días × meses × mejora relativa asumida de eficiencia",
-          inputs: [`${String(observedPaidSql)} SQL de pago reconciliados/mes`, "mejora de 5 %, 10 % o 15 % con presupuesto constante"],
-          scenarioValues: paidValues,
-          range: { min: paidValues.conservative, max: paidValues.optimistic }, periodMonths: assumptions.months,
-        },
-        {
-          id: "traceability", rank: 4, name: "Reparar trazabilidad", outcome: "enabler", evidence: "enabling_initiative",
-          formula: "No se atribuye crecimiento directo a una mejora de medición",
-          inputs: ["0 SQL directos", "0 altas directas"],
-          scenarioValues: { conservative: 0, base: 0, optimistic: 0 },
-          range: { min: 0, max: 0 }, periodMonths: assumptions.months,
+          name: "Reparar trazabilidad",
+          directScenarioSql: 0,
+          directScenarioAltas: 0,
+          value:
+            "Permite reconciliar exposición, landing, campaña y resultado CRM; habilita decisiones fiables, pero no se contabiliza como crecimiento directo.",
         },
       ],
-      prioritizedBets, rejectedBets,
+      portfolioInitiatives: [
+        {
+          id: "local_landings",
+          rank: 1,
+          name: "Landings locales elegibles",
+          outcome: "sql",
+          evidence: "planning_assumption",
+          formula: selectedImpact.formula,
+          inputs: [
+            `${String(selectedImpact.marketsIncluded)} municipios únicos`,
+            `${String(assumptions.months)} meses`,
+            "demanda persistida",
+            "cobertura y capacidad",
+          ],
+          scenarioValues: {
+            conservative: scenarioValues.conservative.sql,
+            base: scenarioValues.base.sql,
+            optimistic: scenarioValues.optimistic.sql,
+          },
+          range: {
+            min: Math.min(...sqlScenarioValues),
+            max: Math.max(...sqlScenarioValues),
+          },
+          periodMonths: assumptions.months,
+        },
+        {
+          id: "qualification",
+          rank: 2,
+          name: "Mejorar SQL → alta",
+          outcome: "altas",
+          evidence: "planning_assumption",
+          formula:
+            "SQL observados en los últimos 30 días × meses × mejora absoluta asumida de SQL→alta",
+          inputs: [
+            `${String(observedFilteredSql)} SQL/mes observados`,
+            "mejora de 1, 2 o 3 puntos porcentuales",
+          ],
+          scenarioValues: qualificationValues,
+          range: {
+            min: qualificationValues.conservative,
+            max: qualificationValues.optimistic,
+          },
+          periodMonths: assumptions.months,
+        },
+        {
+          id: "paid_reallocation",
+          rank: 3,
+          name: "Reasignar inversión con resultado CRM",
+          outcome: "sql",
+          evidence: "planning_assumption",
+          formula:
+            "SQL de pago reconciliados en los últimos 30 días × meses × mejora relativa asumida de eficiencia",
+          inputs: [
+            `${String(observedPaidSql)} SQL de pago reconciliados/mes`,
+            "mejora de 5 %, 10 % o 15 % con presupuesto constante",
+          ],
+          scenarioValues: paidValues,
+          range: { min: paidValues.conservative, max: paidValues.optimistic },
+          periodMonths: assumptions.months,
+        },
+        {
+          id: "traceability",
+          rank: 4,
+          name: "Reparar trazabilidad",
+          outcome: "enabler",
+          evidence: "enabling_initiative",
+          formula:
+            "No se atribuye crecimiento directo a una mejora de medición",
+          inputs: ["0 SQL directos", "0 altas directas"],
+          scenarioValues: { conservative: 0, base: 0, optimistic: 0 },
+          range: { min: 0, max: 0 },
+          periodMonths: assumptions.months,
+        },
+      ],
+      prioritizedBets,
+      rejectedBets,
       milestones: {
-        first90Days: ["Confirm capacity and tracking for the first three bets", "Publish policy-reviewed landing MVPs", "Run geo holdouts and weekly quality checks", "Read only mature eligible cohorts"],
-        sixMonths: ["Scale only bets meeting continue criteria", "Document modified and stopped bets", "Refresh opportunity ranking from persisted outcomes", "Review portfolio incrementality and operational load"],
+        first90Days: [
+          "Confirm capacity and tracking for the first three bets",
+          "Publish policy-reviewed landing MVPs",
+          "Run geo holdouts and weekly quality checks",
+          "Read only mature eligible cohorts",
+        ],
+        sixMonths: [
+          "Ampliar solo las apuestas que cumplen los criterios para continuar",
+          "Documentar las apuestas modificadas y detenidas",
+          "Actualizar la priorización con los resultados observados",
+          "Revisar el efecto adicional y la carga operativa del conjunto de landings",
+        ],
       },
       caveats: [
-        "Coefficients are editable, bounded planning assumptions applied to synthetic data; they are not learned model parameters.",
-        "Scenario outputs are planning arithmetic, not incremental estimates or causal forecasts. Experiments and holdouts are required for validation.",
-        "The conservative-to-optimistic range uses the declared default coefficients; a manual override is reported separately in scenarioProjection.",
+        "Los coeficientes son supuestos editables y acotados para planificar con los datos de la demostración; no proceden de un modelo entrenado.",
+        "Los escenarios sirven para planificar y no predicen el efecto real. La comparación con una versión anterior permite validarlos.",
+        "El rango conservador–optimista usa los coeficientes declarados; cualquier ajuste manual se muestra por separado.",
       ],
     };
   }
@@ -2147,184 +3282,645 @@ WHERE l.tipo_contacto <> 'cuidadora_empleo'
   AND l.fecha_sql > CURRENT_DATE - interval '90 days'
   AND m.tiene_cobertura AND m.cuidadoras_disponibles_30d >= 8`;
 
-    const [opportunityRows, landingRows, experimentRows, traceabilityRows, integrityRows, maturityRows] = await Promise.all([
-      this.query(opportunitySql), this.query(landingPerformanceSql), this.query(experimentCatalogSql),
-      this.query(traceabilitySql), this.query(integritySql), this.query(maturitySql),
+    const [
+      opportunityRows,
+      landingRows,
+      experimentRows,
+      traceabilityRows,
+      integrityRows,
+      maturityRows,
+    ] = await Promise.all([
+      this.query(opportunitySql),
+      this.query(landingPerformanceSql),
+      this.query(experimentCatalogSql),
+      this.query(traceabilitySql),
+      this.query(integritySql),
+      this.query(maturitySql),
     ]);
     const sampleLandingUrl = nullableString(landingRows[0]?.url);
-    const sampleExperiment = experimentRows.find(row => row.primary_metric === "formularios_por_sesion");
+    const sampleExperiment = experimentRows.find(
+      (row) => row.primary_metric === "formularios_por_sesion",
+    );
     const sampleExperimentId = nullableString(sampleExperiment?.experiment_id);
     const [monthlyRows, experimentOutcomeRows] = await Promise.all([
-      sampleLandingUrl === null ? Promise.resolve([]) : this.query(landingMonthlySql, [sampleLandingUrl]),
-      sampleExperimentId === null ? Promise.resolve([]) : this.query(experimentOutcomesSql, [sampleExperimentId]),
+      sampleLandingUrl === null
+        ? Promise.resolve([])
+        : this.query(landingMonthlySql, [sampleLandingUrl]),
+      sampleExperimentId === null
+        ? Promise.resolve([])
+        : this.query(experimentOutcomesSql, [sampleExperimentId]),
     ]);
-    const experimentValue = (variant: string, period: string): number | null => {
-      const row = experimentOutcomeRows.find((item) => item.variant === variant && item.period === period);
-      return row === undefined || row.conversion === null ? null : numberValue(row.conversion);
+    const experimentValue = (
+      variant: string,
+      period: string,
+    ): number | null => {
+      const row = experimentOutcomeRows.find(
+        (item) => item.variant === variant && item.period === period,
+      );
+      return row === undefined || row.conversion === null
+        ? null
+        : numberValue(row.conversion);
     };
     const treatmentPre = experimentValue("treatment", "pre_late");
     const treatmentPost = experimentValue("treatment", "post");
     const controlPre = experimentValue("control", "pre_late");
     const controlPost = experimentValue("control", "post");
-    const didEstimate = treatmentPre === null || treatmentPost === null || controlPre === null || controlPost === null
-      ? null
-      : round((treatmentPost - treatmentPre) - (controlPost - controlPre), 4);
+    const didEstimate =
+      treatmentPre === null ||
+      treatmentPost === null ||
+      controlPre === null ||
+      controlPost === null
+        ? null
+        : round(treatmentPost - treatmentPre - (controlPost - controlPre), 4);
     const landingResultRows = landingRows.map((row) => ({
-      url: stringValue(row.url), municipio: nullableString(row.municipality), sesiones: numberValue(row.sessions),
-      leads: numberValue(row.leads), sql: numberValue(row.sql_count), altas: numberValue(row.alta_count),
-      sesion_a_lead: round(rate(numberValue(row.leads), numberValue(row.sessions)), 4),
-      lead_a_sql: round(rate(numberValue(row.sql_count), numberValue(row.leads)), 4),
-      sql_a_alta: round(rate(numberValue(row.alta_count), numberValue(row.sql_count)), 4),
+      url: stringValue(row.url),
+      municipio: nullableString(row.municipality),
+      sesiones: numberValue(row.sessions),
+      leads: numberValue(row.leads),
+      sql: numberValue(row.sql_count),
+      altas: numberValue(row.alta_count),
+      sesion_a_lead: round(
+        rate(numberValue(row.leads), numberValue(row.sessions)),
+        4,
+      ),
+      lead_a_sql: round(
+        rate(numberValue(row.sql_count), numberValue(row.leads)),
+        4,
+      ),
+      sql_a_alta: round(
+        rate(numberValue(row.alta_count), numberValue(row.sql_count)),
+        4,
+      ),
     }));
     const traceability = traceabilityRows[0] ?? {};
     const totalEvents = numberValue(traceability.total_events);
     const unlinkedEvents = numberValue(traceability.unlinked_events);
     const qualityRows: Array<Record<string, unknown>> = [
-      ...integrityRows.map((row) => ({ control: stringValue(row.check), casos: numberValue(row.failures) })),
-      { control: "sql_pending_maturity", casos: numberValue(maturityRows[0]?.pending_maturity_sql) },
+      ...integrityRows.map((row) => ({
+        control: stringValue(row.check),
+        casos: numberValue(row.failures),
+      })),
+      {
+        control: "sql_pending_maturity",
+        casos: numberValue(maturityRows[0]?.pending_maturity_sql),
+      },
     ];
     const queries: WorkbenchQuery[] = [
       {
-        id: "opportunity_score", area: "Oportunidades", title: "Puntuación de oportunidad por municipio y servicio",
-        question: "¿Dónde coinciden demanda, baja captación y capacidad suficiente para hacer una prueba?",
-        grain: "Una fila por municipio y servicio", evidence: "descriptive",
-        implementation: { endpoint: "GET /opportunities", method: "PrismaGrowthRepository.opportunities" },
-        statements: [{ title: "Demanda, embudo y puntuación", purpose: "Une las señales y aplica la regla versionada de priorización.", sql: opportunitySql, parameters: [] }],
-        dataUsed: ["motor_demanda_busqueda", "motor_municipio", "lead", "motor_voz_cliente", "motor_competencia"],
+        id: "opportunity_score",
+        area: "Oportunidades",
+        title: "Puntuación de oportunidad por municipio y servicio",
+        question:
+          "¿Dónde coinciden demanda, baja captación y capacidad suficiente para hacer una prueba?",
+        grain: "Una fila por municipio y servicio",
+        evidence: "descriptive",
+        implementation: {
+          endpoint: "GET /opportunities",
+          method: "PrismaGrowthRepository.opportunities",
+        },
+        statements: [
+          {
+            title: "Demanda, embudo y puntuación",
+            purpose:
+              "Une las señales y aplica la regla versionada de priorización.",
+            sql: opportunitySql,
+            parameters: [],
+          },
+        ],
+        dataUsed: [
+          "motor_demanda_busqueda",
+          "motor_municipio",
+          "lead",
+          "motor_voz_cliente",
+          "motor_competencia",
+        ],
         joins: [
-          { left: "motor_demanda_busqueda", right: "motor_municipio", on: "municipio_id", purpose: "Añadir cobertura, datos propios y capacidad." },
-          { left: "demanda", right: "lead", on: "municipio_id + servicio", purpose: "Comparar búsquedas con leads, SQL y altas." },
-          { left: "demanda", right: "motor_voz_cliente", on: "municipio_id + tema", purpose: "Añadir frecuencia de la necesidad en llamadas." },
+          {
+            left: "motor_demanda_busqueda",
+            right: "motor_municipio",
+            on: "municipio_id",
+            purpose: "Añadir cobertura, datos propios y capacidad.",
+          },
+          {
+            left: "demanda",
+            right: "lead",
+            on: "municipio_id + servicio",
+            purpose: "Comparar búsquedas con leads, SQL y altas.",
+          },
+          {
+            left: "demanda",
+            right: "motor_voz_cliente",
+            on: "municipio_id + tema",
+            purpose: "Añadir frecuencia de la necesidad en llamadas.",
+          },
         ],
         metrics: [
-          { name: "Búsquedas mensuales", definition: "Media mensual de búsquedas del tema en el municipio.", calculation: "AVG(motor_demanda_busqueda.busquedas)", calculatedIn: "sql", displayedAs: "Oportunidades · Demanda" },
-          { name: "Brecha entre demanda y SQL", definition: "Parte de la demanda que no se refleja en SQL observados.", calculation: "min(max(búsquedas - SQL × 3, 0) / 30, 25)", calculatedIn: "sql", displayedAs: "Ficha de oportunidad · factor de captación" },
-          { name: "Puntuación", definition: "Regla de ordenación; no es una predicción.", calculation: "demanda (35) + brecha (25) + capacidad (20) + voz (10) + conversión (10) - penalización de capacidad", calculatedIn: "sql", displayedAs: "Oportunidades · puntuación" },
-          { name: "SQL → alta", definition: "Proporción de SQL que terminan en alta.", calculation: "altas / SQL", calculatedIn: "application", displayedAs: "Ficha de oportunidad · conversión" },
+          {
+            name: "Búsquedas mensuales",
+            definition: "Media mensual de búsquedas del tema en el municipio.",
+            calculation: "AVG(motor_demanda_busqueda.busquedas)",
+            calculatedIn: "sql",
+            displayedAs: "Oportunidades · Demanda",
+          },
+          {
+            name: "Demanda sin respuesta comercial",
+            definition:
+              "Parte de la demanda que no se refleja en SQL observados.",
+            calculation: "min(max(búsquedas - SQL × 3, 0) / 30, 25)",
+            calculatedIn: "sql",
+            displayedAs: "Ficha de oportunidad · factor de captación",
+          },
+          {
+            name: "Puntuación",
+            definition: "Regla de ordenación; no es una predicción.",
+            calculation:
+              "demanda (35) + demanda sin respuesta comercial (25) + capacidad (20) + voz del cliente (10) + conversión (10) - penalización de capacidad",
+            calculatedIn: "sql",
+            displayedAs: "Oportunidades · puntuación",
+          },
+          {
+            name: "SQL → alta",
+            definition: "Proporción de SQL que terminan en alta.",
+            calculation: "altas / SQL",
+            calculatedIn: "application",
+            displayedAs: "Ficha de oportunidad · conversión",
+          },
         ],
-        shownIn: [{ page: "Oportunidades", component: "Ranking y factores" }, { page: "Ficha de oportunidad", component: "Demanda, embudo, capacidad y reglas" }],
-        resultRows: this.workbenchRows(opportunityRows), resultDescription: "Primeras 20 combinaciones ordenadas por la misma regla de la pantalla Oportunidades.",
-        exclusions: ["Contactos de empleo de cuidadoras", "Demanda de otros servicios", "Municipios sin cobertura reciben puntuación 0"],
-        caveats: ["La puntuación ordena casos para revisar; no estima altas futuras."],
+        shownIn: [
+          { page: "Oportunidades", component: "Ranking y factores" },
+          {
+            page: "Ficha de oportunidad",
+            component: "Demanda, embudo, capacidad y reglas",
+          },
+        ],
+        resultRows: this.workbenchRows(opportunityRows),
+        resultDescription:
+          "Primeras 20 combinaciones ordenadas por la misma regla de la pantalla Oportunidades.",
+        exclusions: [
+          "Contactos de empleo de cuidadoras",
+          "Demanda de otros servicios",
+          "Municipios sin cobertura reciben puntuación 0",
+        ],
+        caveats: [
+          "La puntuación ordena casos para revisar; no estima altas futuras.",
+        ],
       },
       {
-        id: "landing_performance", area: "Landings", title: "Rendimiento atribuido por landing",
-        question: "¿Qué tráfico y resultados CRM se pueden enlazar con cada URL de entrada?",
-        grain: "Una fila por URL de landing", evidence: "attribution",
-        implementation: { endpoint: "GET /landing-insights", method: "PrismaGrowthRepository.landingInsights" },
-        statements: [{ title: "Web, Google y CRM por URL", purpose: "Agrupa cada fuente y las une mediante la URL de la landing.", sql: landingPerformanceSql, parameters: [] }],
-        dataUsed: ["landing", "web_sesiones_diarias", "gsc_diario", "lead", "motor_municipio"],
+        id: "landing_performance",
+        area: "Landings",
+        title: "Rendimiento atribuido por landing",
+        question:
+          "¿Qué tráfico y resultados CRM se pueden enlazar con cada URL de entrada?",
+        grain: "Una fila por URL de landing",
+        evidence: "attribution",
+        implementation: {
+          endpoint: "GET /landing-insights",
+          method: "PrismaGrowthRepository.landingInsights",
+        },
+        statements: [
+          {
+            title: "Web, Google y CRM por URL",
+            purpose:
+              "Agrupa cada fuente y las une mediante la URL de la landing.",
+            sql: landingPerformanceSql,
+            parameters: [],
+          },
+        ],
+        dataUsed: [
+          "landing",
+          "web_sesiones_diarias",
+          "gsc_diario",
+          "lead",
+          "motor_municipio",
+        ],
         joins: [
-          { left: "web_sesiones_diarias.url_entrada", right: "landing.url", on: "URL exacta", purpose: "Atribuir sesiones y formularios." },
-          { left: "lead.url_entrada", right: "landing.url", on: "URL exacta", purpose: "Atribuir leads, SQL y altas CRM." },
-          { left: "gsc_diario.url", right: "landing.url", on: "URL exacta", purpose: "Añadir impresiones, clics y posición orgánica." },
+          {
+            left: "web_sesiones_diarias.url_entrada",
+            right: "landing.url",
+            on: "URL exacta",
+            purpose: "Atribuir sesiones y formularios.",
+          },
+          {
+            left: "lead.url_entrada",
+            right: "landing.url",
+            on: "URL exacta",
+            purpose: "Atribuir leads, SQL y altas CRM.",
+          },
+          {
+            left: "gsc_diario.url",
+            right: "landing.url",
+            on: "URL exacta",
+            purpose: "Añadir impresiones, clics y posición orgánica.",
+          },
         ],
         metrics: [
-          { name: "Sesión → lead", definition: "Capacidad de la landing para generar un lead atribuido.", calculation: "leads / sesiones", calculatedIn: "application", displayedAs: "Landings y ficha · embudo" },
-          { name: "Lead → SQL", definition: "Calidad comercial de los leads atribuidos.", calculation: "SQL / leads", calculatedIn: "application", displayedAs: "Landings y ficha · embudo" },
-          { name: "SQL → alta", definition: "Resultado final del embudo CRM atribuido a la URL.", calculation: "altas / SQL", calculatedIn: "application", displayedAs: "Landings y ficha · embudo" },
-          { name: "Evaluación", definition: "Media de visibilidad, captación, calidad y operabilidad.", calculation: "(visibilidad + captación + calidad + operabilidad) / 4", calculatedIn: "application", displayedAs: "Ficha de landing · evaluación multidimensional" },
+          {
+            name: "Sesión → lead",
+            definition:
+              "Capacidad de la landing para generar un lead atribuido.",
+            calculation: "leads / sesiones",
+            calculatedIn: "application",
+            displayedAs: "Landings y ficha · embudo",
+          },
+          {
+            name: "Lead → SQL",
+            definition: "Calidad comercial de los leads atribuidos.",
+            calculation: "SQL / leads",
+            calculatedIn: "application",
+            displayedAs: "Landings y ficha · embudo",
+          },
+          {
+            name: "SQL → alta",
+            definition: "Resultado final del embudo CRM atribuido a la URL.",
+            calculation: "altas / SQL",
+            calculatedIn: "application",
+            displayedAs: "Landings y ficha · embudo",
+          },
+          {
+            name: "Evaluación",
+            definition:
+              "Media de visibilidad, captación, calidad y operabilidad.",
+            calculation:
+              "(visibilidad + captación + calidad + operabilidad) / 4",
+            calculatedIn: "application",
+            displayedAs: "Ficha de landing · evaluación multidimensional",
+          },
         ],
-        shownIn: [{ page: "Landings", component: "Listado, totales y tasas" }, { page: "Ficha de landing", component: "Embudo, benchmark y evaluación" }],
-        resultRows: this.workbenchRows(landingResultRows), resultDescription: "Landings ordenadas por SQL y sesiones; las tasas se calculan después de leer los recuentos.",
-        exclusions: ["Contactos de empleo de cuidadoras", "Leads sin URL de entrada", "Resultados no enlazados a la URL"],
-        caveats: ["La URL permite atribuir el resultado observado, pero no demuestra que la landing lo causó."],
+        shownIn: [
+          { page: "Landings", component: "Listado, totales y tasas" },
+          {
+            page: "Ficha de landing",
+            component: "Embudo, comparación y evaluación",
+          },
+        ],
+        resultRows: this.workbenchRows(landingResultRows),
+        resultDescription:
+          "Landings ordenadas por SQL y sesiones; las tasas se calculan después de leer los recuentos.",
+        exclusions: [
+          "Contactos de empleo de cuidadoras",
+          "Leads sin URL de entrada",
+          "Resultados no enlazados a la URL",
+        ],
+        caveats: [
+          "La URL permite atribuir el resultado observado, pero no demuestra que la landing lo causó.",
+        ],
       },
       {
-        id: "landing_monthly_funnel", area: "Landings", title: "Evolución mensual de una landing",
-        question: "¿Cómo cambian el tráfico y los resultados CRM de la misma landing a lo largo del tiempo?",
-        grain: "Una fila por landing y mes", evidence: "attribution",
-        implementation: { endpoint: "GET /landing-insights/:url", method: "PrismaGrowthRepository.landingInsight" },
-        statements: [{ title: "Serie mensual por URL", purpose: "Alinea web y CRM en el mismo mes para dibujar las gráficas.", sql: landingMonthlySql, parameters: [{ name: "$1", value: sampleLandingUrl ?? "Sin landing disponible" }] }],
+        id: "landing_monthly_funnel",
+        area: "Landings",
+        title: "Evolución mensual de una landing",
+        question:
+          "¿Cómo cambian el tráfico y los resultados CRM de la misma landing a lo largo del tiempo?",
+        grain: "Una fila por landing y mes",
+        evidence: "attribution",
+        implementation: {
+          endpoint: "GET /landing-insights/:url",
+          method: "PrismaGrowthRepository.landingInsight",
+        },
+        statements: [
+          {
+            title: "Serie mensual por URL",
+            purpose:
+              "Alinea web y CRM en el mismo mes para dibujar las gráficas.",
+            sql: landingMonthlySql,
+            parameters: [
+              {
+                name: "$1",
+                value: sampleLandingUrl ?? "Sin landing disponible",
+              },
+            ],
+          },
+        ],
         dataUsed: ["web_sesiones_diarias", "lead"],
-        joins: [{ left: "web.period", right: "leads.period", on: "mes YYYY-MM", purpose: "Mostrar tráfico y embudo en el mismo eje temporal." }],
-        metrics: [
-          { name: "Sesiones mensuales", definition: "Sesiones cuya URL de entrada es la landing seleccionada.", calculation: "SUM(sesiones) por mes", calculatedIn: "sql", displayedAs: "Ficha de landing · evolución de tráfico" },
-          { name: "Leads, SQL y altas mensuales", definition: "Resultados CRM atribuidos a la misma URL y mes.", calculation: "COUNT(lead), COUNT WHERE es_sql, COUNT WHERE es_alta", calculatedIn: "sql", displayedAs: "Ficha de landing · evolución del resultado" },
-          { name: "Sesión → lead mensual", definition: "Conversión observada de cada mes.", calculation: "leads / sesiones", calculatedIn: "application", displayedAs: "Datos de la serie y tooltips" },
-        ],
-        shownIn: [{ page: "Ficha de landing", component: "Gráficas de tráfico y resultado" }],
-        resultRows: this.workbenchRows(monthlyRows), resultDescription: sampleLandingUrl === null ? "No hay una landing disponible para ejecutar el ejemplo." : `Serie ejecutada para ${sampleLandingUrl}.`,
-        exclusions: ["Contactos de empleo de cuidadoras", "Actividad de otras URL"],
-        caveats: ["Un cambio mensual puede deberse a estacionalidad o mezcla de canales."],
-      },
-      {
-        id: "experiment_effect", area: "Medición", title: "Cambio estimado con tratamiento y control",
-        question: "¿La conversión cambió más en los municipios con la nueva landing que en el grupo de control?",
-        grain: "Un resultado por experimento", evidence: "quasi_experimental",
-        implementation: { endpoint: "GET /learning", method: "PrismaGrowthRepository.experimentAnalysis" },
-        statements: [
-          { title: "Definición y tamaño de grupos", purpose: "Identifica tratamiento, control y métrica declarada.", sql: experimentCatalogSql, parameters: [] },
-          { title: "Conversión antes y después", purpose: "Calcula formularios por sesión en cada grupo y periodo.", sql: experimentOutcomesSql, parameters: [{ name: "$1", value: sampleExperimentId ?? "Sin experimento disponible" }] },
-        ],
-        dataUsed: ["growth_experiment", "experiment_assignment", "landing", "web_sesiones_diarias"],
         joins: [
-          { left: "growth_experiment", right: "experiment_assignment", on: "experiment_id", purpose: "Saber qué municipios pertenecen a cada grupo." },
-          { left: "experiment_assignment", right: "landing", on: "municipio_id", purpose: "Relacionar cada grupo con sus landings." },
-          { left: "landing", right: "web_sesiones_diarias", on: "URL de entrada", purpose: "Medir sesiones y formularios pre/post." },
+          {
+            left: "web.period",
+            right: "leads.period",
+            on: "mes YYYY-MM",
+            purpose: "Mostrar tráfico y embudo en el mismo eje temporal.",
+          },
         ],
         metrics: [
-          { name: "Conversión por grupo", definition: "Formularios divididos por sesiones en cada periodo.", calculation: "SUM(formularios) / SUM(sesiones)", calculatedIn: "sql", displayedAs: "Medición · resultado del experimento" },
-          { name: "Cambio estimado", definition: "Diferencia entre el cambio de tratamiento y el cambio de control.", calculation: "(tratamiento_después - tratamiento_antes) - (control_después - control_antes)", calculatedIn: "application", displayedAs: "Medición · cambio estimado" },
+          {
+            name: "Sesiones mensuales",
+            definition:
+              "Sesiones cuya URL de entrada es la landing seleccionada.",
+            calculation: "SUM(sesiones) por mes",
+            calculatedIn: "sql",
+            displayedAs: "Ficha de landing · evolución de tráfico",
+          },
+          {
+            name: "Leads, SQL y altas mensuales",
+            definition: "Resultados CRM atribuidos a la misma URL y mes.",
+            calculation: "COUNT(lead), COUNT WHERE es_sql, COUNT WHERE es_alta",
+            calculatedIn: "sql",
+            displayedAs: "Ficha de landing · evolución del resultado",
+          },
+          {
+            name: "Sesión → lead mensual",
+            definition: "Conversión observada de cada mes.",
+            calculation: "leads / sesiones",
+            calculatedIn: "application",
+            displayedAs: "Datos de la serie y tooltips",
+          },
         ],
-        shownIn: [{ page: "Medición", component: "Resumen y tabla de experimentos" }, { page: "Ficha de landing", component: "Experimentos relacionados" }],
-        resultRows: sampleExperimentId === null ? [] : this.workbenchRows([{
-          experimento: stringValue(sampleExperiment?.name), tratamiento_antes: treatmentPre, tratamiento_despues: treatmentPost,
-          control_antes: controlPre, control_despues: controlPost, cambio_estimado: didEstimate,
-        }]),
-        resultDescription: sampleExperimentId === null ? "No hay un experimento disponible para ejecutar el ejemplo." : "Resultado pre/post del experimento más reciente y cálculo aplicado por la API.",
-        exclusions: ["Municipios no asignados al experimento", "Datos anteriores a la ventana de 90 días"],
-        caveats: ["La demo no implementa una prueba estadística de tendencias paralelas ni significación; el resultado se etiqueta como descriptivo."],
+        shownIn: [
+          {
+            page: "Ficha de landing",
+            component: "Gráficas de tráfico y resultado",
+          },
+        ],
+        resultRows: this.workbenchRows(monthlyRows),
+        resultDescription:
+          sampleLandingUrl === null
+            ? "No hay una landing disponible para ejecutar el ejemplo."
+            : `Serie ejecutada para ${sampleLandingUrl}.`,
+        exclusions: [
+          "Contactos de empleo de cuidadoras",
+          "Actividad de otras URL",
+        ],
+        caveats: [
+          "Un cambio mensual puede deberse a estacionalidad o mezcla de canales.",
+        ],
       },
       {
-        id: "traceability_coverage", area: "Medición", title: "Cobertura de trazabilidad entre eventos e identidad",
-        question: "¿Qué porcentaje de eventos puede enlazarse con una persona seudónima o una oportunidad?",
-        grain: "Un control global de trazabilidad", evidence: "quality",
-        implementation: { endpoint: "GET /data-quality", method: "PrismaGrowthRepository.dataQuality" },
-        statements: [{ title: "Eventos enlazados", purpose: "Cuenta eventos totales, no enlazados e identidades ambiguas.", sql: traceabilitySql, parameters: [] }],
+        id: "experiment_effect",
+        area: "Medición",
+        title: "Resultado de la nueva landing frente a la versión anterior",
+        question:
+          "¿La conversión mejoró más en los municipios con la nueva landing que en municipios similares que mantuvieron la versión anterior?",
+        grain: "Un resultado por experimento",
+        evidence: "quasi_experimental",
+        implementation: {
+          endpoint: "GET /learning",
+          method: "PrismaGrowthRepository.experimentAnalysis",
+        },
+        statements: [
+          {
+            title: "Definición y tamaño de los grupos",
+            purpose:
+              "Identifica los municipios con nueva landing, los que mantienen la versión anterior y la métrica que se va a comparar.",
+            sql: experimentCatalogSql,
+            parameters: [],
+          },
+          {
+            title: "Conversión antes y después",
+            purpose: "Calcula formularios por sesión en cada grupo y periodo.",
+            sql: experimentOutcomesSql,
+            parameters: [
+              {
+                name: "$1",
+                value: sampleExperimentId ?? "Sin experimento disponible",
+              },
+            ],
+          },
+        ],
+        dataUsed: [
+          "growth_experiment",
+          "experiment_assignment",
+          "landing",
+          "web_sesiones_diarias",
+        ],
+        joins: [
+          {
+            left: "growth_experiment",
+            right: "experiment_assignment",
+            on: "experiment_id",
+            purpose: "Saber qué municipios pertenecen a cada grupo.",
+          },
+          {
+            left: "experiment_assignment",
+            right: "landing",
+            on: "municipio_id",
+            purpose: "Relacionar cada grupo con sus landings.",
+          },
+          {
+            left: "landing",
+            right: "web_sesiones_diarias",
+            on: "URL de entrada",
+            purpose: "Medir sesiones y formularios pre/post.",
+          },
+        ],
+        metrics: [
+          {
+            name: "Conversión por grupo",
+            definition: "Formularios divididos por sesiones en cada periodo.",
+            calculation: "SUM(formularios) / SUM(sesiones)",
+            calculatedIn: "sql",
+            displayedAs: "Medición · resultado del experimento",
+          },
+          {
+            name: "Resultado comparado",
+            definition:
+              "Mejora de la nueva landing después de descontar el cambio que también se produjo en la versión anterior.",
+            calculation:
+              "(nueva landing después - nueva landing antes) - (versión anterior después - versión anterior antes)",
+            calculatedIn: "application",
+            displayedAs: "Medición · resultado frente a versión anterior",
+          },
+        ],
+        shownIn: [
+          { page: "Medición", component: "Resumen y tabla de experimentos" },
+          { page: "Ficha de landing", component: "Experimentos relacionados" },
+        ],
+        resultRows:
+          sampleExperimentId === null
+            ? []
+            : this.workbenchRows([
+                {
+                  experimento: stringValue(sampleExperiment?.name),
+                  tratamiento_antes: treatmentPre,
+                  tratamiento_despues: treatmentPost,
+                  control_antes: controlPre,
+                  control_despues: controlPost,
+                  cambio_estimado: didEstimate,
+                },
+              ]),
+        resultDescription:
+          sampleExperimentId === null
+            ? "No hay un experimento disponible para ejecutar el ejemplo."
+            : "Resultado pre/post del experimento más reciente y cálculo aplicado por la API.",
+        exclusions: [
+          "Municipios no asignados al experimento",
+          "Datos anteriores a la ventana de 90 días",
+        ],
+        caveats: [
+          "Esta comparación aproxima el efecto de la landing, pero no basta por sí sola para demostrar que la landing causó el cambio.",
+        ],
+      },
+      {
+        id: "traceability_coverage",
+        area: "Medición",
+        title: "Cobertura de trazabilidad entre eventos e identidad",
+        question:
+          "¿Qué porcentaje de eventos puede enlazarse con una persona seudónima o una oportunidad?",
+        grain: "Un control global de trazabilidad",
+        evidence: "quality",
+        implementation: {
+          endpoint: "GET /data-quality",
+          method: "PrismaGrowthRepository.dataQuality",
+        },
+        statements: [
+          {
+            title: "Eventos enlazados",
+            purpose:
+              "Cuenta eventos totales, no enlazados e identidades ambiguas.",
+            sql: traceabilitySql,
+            parameters: [],
+          },
+        ],
         dataUsed: ["journey_event", "identity_map"],
-        joins: [{ left: "journey_event.person_id / opportunity_id", right: "identity_map.person_id", on: "Identificadores seudónimos deterministas", purpose: "Separar eventos enlazados, no enlazados y ambiguos." }],
-        metrics: [
-          { name: "Eventos enlazados", definition: "Porcentaje de eventos con person_id u opportunity_id.", calculation: "(eventos totales - eventos no enlazados) / eventos totales", calculatedIn: "application", displayedAs: "Medición y Modelo de datos" },
-          { name: "Identidades ambiguas", definition: "Identidades que el sistema conserva separadas por falta de coincidencia determinista.", calculation: "COUNT(identity_map WHERE ambiguous)", calculatedIn: "sql", displayedAs: "Medición · calidad del dato" },
+        joins: [
+          {
+            left: "journey_event.person_id / opportunity_id",
+            right: "identity_map.person_id",
+            on: "Identificadores seudónimos deterministas",
+            purpose: "Separar eventos enlazados, no enlazados y ambiguos.",
+          },
         ],
-        shownIn: [{ page: "Medición", component: "Eventos enlazados" }, { page: "Modelo de datos", component: "Cabecera y calidad" }],
-        resultRows: this.workbenchRows([{
-          eventos_totales: totalEvents, eventos_enlazados: totalEvents - unlinkedEvents, eventos_sin_enlace: unlinkedEvents,
-          cobertura: round(rate(totalEvents - unlinkedEvents, totalEvents), 4), identidades_ambiguas: numberValue(traceability.ambiguous_identities),
-        }]),
-        resultDescription: "Control calculado sobre todos los eventos persistidos de la demo.",
-        exclusions: ["Las identidades ambiguas no se fusionan", "No se infieren coincidencias probabilísticas"],
-        caveats: ["Un evento no enlazado se conserva; no se imputa a una persona."],
+        metrics: [
+          {
+            name: "Eventos enlazados",
+            definition: "Porcentaje de eventos con person_id u opportunity_id.",
+            calculation:
+              "(eventos totales - eventos no enlazados) / eventos totales",
+            calculatedIn: "application",
+            displayedAs: "Medición y Modelo de datos",
+          },
+          {
+            name: "Identidades ambiguas",
+            definition:
+              "Identidades que el sistema conserva separadas por falta de coincidencia determinista.",
+            calculation: "COUNT(identity_map WHERE ambiguous)",
+            calculatedIn: "sql",
+            displayedAs: "Medición · calidad del dato",
+          },
+        ],
+        shownIn: [
+          { page: "Medición", component: "Eventos enlazados" },
+          { page: "Modelo de datos", component: "Cabecera y calidad" },
+        ],
+        resultRows: this.workbenchRows([
+          {
+            eventos_totales: totalEvents,
+            eventos_enlazados: totalEvents - unlinkedEvents,
+            eventos_sin_enlace: unlinkedEvents,
+            cobertura: round(
+              rate(totalEvents - unlinkedEvents, totalEvents),
+              4,
+            ),
+            identidades_ambiguas: numberValue(
+              traceability.ambiguous_identities,
+            ),
+          },
+        ]),
+        resultDescription:
+          "Control calculado sobre todos los eventos persistidos de la demo.",
+        exclusions: [
+          "Las identidades ambiguas no se fusionan",
+          "No se infieren coincidencias probabilísticas",
+        ],
+        caveats: [
+          "Un evento no enlazado se conserva; no se imputa a una persona.",
+        ],
       },
       {
-        id: "quality_controls", area: "Calidad", title: "Integridad del embudo y maduración",
-        question: "¿Los datos cumplen la cronología del embudo y qué SQL todavía no deben entrar en SQL → alta?",
-        grain: "Un resultado por control", evidence: "quality",
-        implementation: { endpoint: "GET /data-quality", method: "PrismaGrowthRepository.dataQuality" },
+        id: "quality_controls",
+        area: "Calidad",
+        title: "Calidad del embudo y tiempo de seguimiento",
+        question:
+          "¿Los datos cumplen la cronología del embudo y qué SQL todavía no deben entrar en SQL → alta?",
+        grain: "Un resultado por control",
+        evidence: "quality",
+        implementation: {
+          endpoint: "GET /data-quality",
+          method: "PrismaGrowthRepository.dataQuality",
+        },
         statements: [
-          { title: "Reglas de integridad", purpose: "Detecta fechas imposibles, altas huérfanas y clics orgánicos sin indexación.", sql: integritySql, parameters: [] },
-          { title: "SQL pendientes de madurar", purpose: "Cuenta SQL elegibles con menos de 90 días desde fecha_sql.", sql: maturitySql, parameters: [] },
+          {
+            title: "Reglas de integridad",
+            purpose:
+              "Detecta fechas imposibles, altas huérfanas y clics orgánicos sin indexación.",
+            sql: integritySql,
+            parameters: [],
+          },
+          {
+            title: "SQL aún en seguimiento",
+            purpose:
+              "Cuenta los SQL que todavía no han completado 90 días desde su creación.",
+            sql: maturitySql,
+            parameters: [],
+          },
         ],
-        dataUsed: ["lead", "care_opportunity", "landing", "gsc_diario", "motor_municipio"],
+        dataUsed: [
+          "lead",
+          "care_opportunity",
+          "landing",
+          "gsc_diario",
+          "motor_municipio",
+        ],
         joins: [
-          { left: "lead", right: "care_opportunity", on: "lead_id", purpose: "Comprobar que cada alta pertenece a una oportunidad familiar." },
-          { left: "gsc_diario", right: "landing", on: "URL", purpose: "Impedir clics orgánicos en landings no indexadas." },
-          { left: "lead", right: "motor_municipio", on: "municipio_id", purpose: "Aplicar cobertura y capacidad al conjunto pendiente." },
+          {
+            left: "lead",
+            right: "care_opportunity",
+            on: "lead_id",
+            purpose:
+              "Comprobar que cada alta pertenece a una oportunidad familiar.",
+          },
+          {
+            left: "gsc_diario",
+            right: "landing",
+            on: "URL",
+            purpose: "Impedir clics orgánicos en landings no indexadas.",
+          },
+          {
+            left: "lead",
+            right: "motor_municipio",
+            on: "municipio_id",
+            purpose: "Aplicar cobertura y capacidad al conjunto pendiente.",
+          },
         ],
         metrics: [
-          { name: "Fallos de integridad", definition: "Suma de registros que incumplen invariantes del modelo.", calculation: "SUM(failures) de los cuatro controles", calculatedIn: "application", displayedAs: "Medición · fallos de integridad" },
-          { name: "SQL pendientes de madurar", definition: "SQL elegibles con menos de 90 días; no entran en el denominador SQL → alta.", calculation: "COUNT(SQL WHERE fecha_sql > hoy - 90 días AND cobertura AND cuidadoras >= 8)", calculatedIn: "sql", displayedAs: "Medición · SQL pendientes de madurar" },
+          {
+            name: "Fallos de integridad",
+            definition:
+              "Suma de registros que incumplen invariantes del modelo.",
+            calculation: "SUM(failures) de los cuatro controles",
+            calculatedIn: "application",
+            displayedAs: "Medición · fallos de integridad",
+          },
+          {
+            name: "SQL aún en seguimiento",
+            definition:
+              "SQL con menos de 90 días. Se muestran, pero todavía no entran en el cálculo de conversión a alta.",
+            calculation:
+              "COUNT(SQL WHERE fecha_sql > hoy - 90 días AND cobertura AND cuidadoras >= 8)",
+            calculatedIn: "sql",
+            displayedAs: "Medición · SQL aún en seguimiento",
+          },
         ],
-        shownIn: [{ page: "Medición", component: "Calidad del dato" }, { page: "Modelo de datos", component: "Reglas de integridad" }],
-        resultRows: this.workbenchRows(qualityRows), resultDescription: "Un resultado por regla; cero significa que el control no encontró incidencias.",
-        exclusions: ["Contactos de empleo de cuidadoras en el control de maduración", "SQL sin cobertura o con capacidad restringida"],
-        caveats: ["Pendiente de madurar no significa fallo: evita comparar oportunidades que aún no han tenido tiempo de convertirse en alta."],
+        shownIn: [
+          { page: "Medición", component: "Calidad del dato" },
+          { page: "Modelo de datos", component: "Reglas de integridad" },
+        ],
+        resultRows: this.workbenchRows(qualityRows),
+        resultDescription:
+          "Un resultado por regla; cero significa que el control no encontró incidencias.",
+        exclusions: [
+          "Contactos de empleo de cuidadoras en el cálculo del seguimiento",
+          "SQL sin cobertura o con capacidad restringida",
+        ],
+        caveats: [
+          "Un SQL con menos de 90 días no es un error. Se excluye temporalmente para no tratar como pérdida una oportunidad que todavía puede convertirse en alta.",
+        ],
       },
     ];
     return {
-      executionMode: "curated_read_only", generatedAt: new Date().toISOString(), queries,
-      warning: "El catálogo solo ejecuta SQL de lectura definido en el servidor. No acepta SQL escrito por el usuario.",
+      executionMode: "curated_read_only",
+      generatedAt: new Date().toISOString(),
+      queries,
+      warning:
+        "El catálogo solo ejecuta SQL de lectura definido en el servidor. No acepta SQL escrito por el usuario.",
     };
   }
 
@@ -2335,9 +3931,14 @@ WHERE l.tipo_contacto <> 'cuidadora_empleo'
       date.setUTCDate(start.getUTCDate() + day - 1);
       return date.toISOString().slice(0, 10);
     };
-    const recurringDates = (firstDay: number, lastDay: number, step: number): string[] => {
+    const recurringDates = (
+      firstDay: number,
+      lastDay: number,
+      step: number,
+    ): string[] => {
       const dates: string[] = [];
-      for (let day = firstDay; day <= lastDay; day += step) dates.push(dateAtDay(day));
+      for (let day = firstDay; day <= lastDay; day += step)
+        dates.push(dateAtDay(day));
       return dates;
     };
 
@@ -2348,190 +3949,781 @@ WHERE l.tipo_contacto <> 'cuidadora_empleo'
       totalDays: 90,
       decisionMetric: "SQL familiares elegibles por municipio-semana",
       phases: [
-        { id: "prepare", name: "Preparar y congelar", startDay: 1, endDay: 14, outcome: "Protocolo, elegibilidad, asignación e instrumentación aprobados.", owner: "Growth + Datos" },
-        { id: "launch", name: "Publicar con control", startDay: 15, endDay: 28, outcome: "Primera ola publicada, indexada y trazable tras aprobación humana.", owner: "Marketing + Tech" },
-        { id: "exposure", name: "Medir exposición", startDay: 29, endDay: 56, outcome: "Exposición estable sin declarar ganadores; incidencias y controles registrados.", owner: "Growth + Datos + Operaciones" },
-        { id: "maturation", name: "Madurar y decidir", startDay: 57, endDay: 90, outcome: "Cohorte cerrada, lectura causal diagnosticada y decisión humana registrada.", owner: "Growth" },
+        {
+          id: "prepare",
+          name: "Preparar y congelar",
+          startDay: 1,
+          endDay: 14,
+          outcome:
+            "Protocolo, elegibilidad, asignación e instrumentación aprobados.",
+          owner: "Growth + Datos",
+        },
+        {
+          id: "launch",
+          name: "Publicar con control",
+          startDay: 15,
+          endDay: 28,
+          outcome:
+            "Primera ola publicada, indexada y trazable tras aprobación humana.",
+          owner: "Marketing + Tech",
+        },
+        {
+          id: "exposure",
+          name: "Medir exposición",
+          startDay: 29,
+          endDay: 56,
+          outcome:
+            "Exposición estable sin declarar ganadores; incidencias y controles registrados.",
+          owner: "Growth + Datos + Operaciones",
+        },
+        {
+          id: "maturation",
+          name: "Completar seguimiento y decidir",
+          startDay: 57,
+          endDay: 90,
+          outcome:
+            "SQL con seguimiento suficiente, comparación revisada y decisión humana registrada.",
+          owner: "Growth",
+        },
       ],
       restrictions: [
-        { id: "no_prices", rule: "No publicar precios.", evidence: "El manifiesto de contenido y la validación previa no contienen importes ni promesas económicas.", owner: "Marketing" },
-        { id: "unique_qida_value", rule: "Cada landing debe aportar datos propios de Qida.", evidence: "La ficha conserva la instantánea municipal propia; no se publica si solo existe agregado provincial.", owner: "Datos + Marketing" },
-        { id: "privacy_consent", rule: "No exponer datos personales, transcripciones ni testimonios sin consentimiento.", evidence: "La validación de privacidad pasa y cada testimonio publicado conserva una referencia de consentimiento.", owner: "Tech + Legal/Marketing" },
-        { id: "marketing_approval", rule: "SEO y tono de marca requieren aprobación de Marketing.", evidence: "La versión aprobada, la persona revisora y la fecha quedan en el flujo y el registro de auditoría.", owner: "Dirección de Marketing" },
-        { id: "no_health_claims", rule: "No hacer afirmaciones sanitarias.", evidence: "El control de contenido no detecta diagnósticos, resultados clínicos ni promesas de salud.", owner: "Marketing" },
-        { id: "capacity_before_demand", rule: "No captar demanda sin cobertura y capacidad para atenderla.", evidence: "Operaciones confirma cobertura y umbral de cuidadoras antes de asignar y durante la exposición.", owner: "Operaciones" },
+        {
+          id: "no_prices",
+          rule: "No publicar precios.",
+          evidence:
+            "El manifiesto de contenido y la validación previa no contienen importes ni promesas económicas.",
+          owner: "Marketing",
+        },
+        {
+          id: "unique_qida_value",
+          rule: "Cada landing debe aportar datos propios de Qida.",
+          evidence:
+            "La ficha conserva la instantánea municipal propia; no se publica si solo existe agregado provincial.",
+          owner: "Datos + Marketing",
+        },
+        {
+          id: "privacy_consent",
+          rule: "No exponer datos personales, transcripciones ni testimonios sin consentimiento.",
+          evidence:
+            "La validación de privacidad pasa y cada testimonio publicado conserva una referencia de consentimiento.",
+          owner: "Tech + Legal/Marketing",
+        },
+        {
+          id: "marketing_approval",
+          rule: "SEO y tono de marca requieren aprobación de Marketing.",
+          evidence:
+            "La versión aprobada, la persona revisora y la fecha quedan en el flujo y el registro de auditoría.",
+          owner: "Dirección de Marketing",
+        },
+        {
+          id: "no_health_claims",
+          rule: "No hacer afirmaciones sanitarias.",
+          evidence:
+            "El control de contenido no detecta diagnósticos, resultados clínicos ni promesas de salud.",
+          owner: "Marketing",
+        },
+        {
+          id: "capacity_before_demand",
+          rule: "No captar demanda sin cobertura y capacidad para atenderla.",
+          evidence:
+            "Operaciones confirma cobertura y umbral de cuidadoras antes de asignar y durante la exposición.",
+          owner: "Operaciones",
+        },
       ],
       meetings: [
         {
-          id: "kickoff", name: "Inicio y congelación del protocolo", category: "decision", cadence: "Una vez · día 1", dates: [dateAtDay(1)], owner: "Growth",
+          id: "kickoff",
+          name: "Inicio y congelación del protocolo",
+          category: "decision",
+          cadence: "Una vez · día 1",
+          dates: [dateAtDay(1)],
+          owner: "Growth",
           attendees: ["Growth", "Datos", "Marketing", "Tech", "Operaciones"],
-          purpose: "Acordar qué decisión habilita la prueba y congelar hipótesis, unidad, métrica y responsabilidades.",
-          inputs: ["Protocolo v0.1", "Clasificación de elegibilidad", "Matriz de responsabilidades", "Riesgos conocidos"],
-          agenda: [
-            { title: "Decisión y alcance", minutes: 5, content: "Abrir con la decisión de ampliar, modificar o detener; un servicio y municipio como unidad." },
-            { title: "Hipótesis y métrica", minutes: 8, content: "Presentar SQL familiares elegibles por municipio-semana y separar mecanismos de guardarraíles." },
-            { title: "Restricciones", minutes: 10, content: "Asignar dueño y evidencia exigida para las seis restricciones del caso." },
-            { title: "Calendario y cierre", minutes: 7, content: "Confirmar hitos, foros, asistentes y decisiones pendientes con fecha." },
+          purpose:
+            "Acordar qué decisión habilita la prueba y congelar hipótesis, unidad, métrica y responsabilidades.",
+          inputs: [
+            "Protocolo v0.1",
+            "Clasificación de elegibilidad",
+            "Matriz de responsabilidades",
+            "Riesgos conocidos",
           ],
-          decisions: ["Aprobar unidad experimental y métrica", "Aceptar el umbral de 15 % como hipótesis inicial", "Nombrar responsables"],
-          outputs: ["Protocolo versionado", "Responsabilidades aprobadas", "Registro de decisiones"],
-          restrictionIds: ["no_prices", "unique_qida_value", "privacy_consent", "marketing_approval", "no_health_claims", "capacity_before_demand"],
+          agenda: [
+            {
+              title: "Decisión y alcance",
+              minutes: 5,
+              content:
+                "Abrir con la decisión de ampliar, modificar o detener; un servicio y municipio como unidad.",
+            },
+            {
+              title: "Hipótesis y métrica",
+              minutes: 8,
+              content:
+                "Presentar SQL familiares elegibles por municipio y semana, junto con los controles que no deben empeorar.",
+            },
+            {
+              title: "Restricciones",
+              minutes: 10,
+              content:
+                "Asignar dueño y evidencia exigida para las seis restricciones del caso.",
+            },
+            {
+              title: "Calendario y cierre",
+              minutes: 7,
+              content:
+                "Confirmar hitos, foros, asistentes y decisiones pendientes con fecha.",
+            },
+          ],
+          decisions: [
+            "Aprobar unidad experimental y métrica",
+            "Aceptar el umbral de 15 % como hipótesis inicial",
+            "Nombrar responsables",
+          ],
+          outputs: [
+            "Protocolo versionado",
+            "Responsabilidades aprobadas",
+            "Registro de decisiones",
+          ],
+          restrictionIds: [
+            "no_prices",
+            "unique_qida_value",
+            "privacy_consent",
+            "marketing_approval",
+            "no_health_claims",
+            "capacity_before_demand",
+          ],
         },
         {
-          id: "eligibility", name: "Revisión de elegibilidad y potencia", category: "control", cadence: "Una vez · día 5", dates: [dateAtDay(5)], owner: "Datos",
-          attendees: ["Datos", "Growth", "Operaciones"], purpose: "Cerrar el conjunto candidato, los pares y el tipo de conclusión que permite la prueba.",
-          inputs: ["12 semanas históricas", "Reglas de elegibilidad", "Simulación de potencia", "Mapa de campañas incompatibles"],
-          agenda: [
-            { title: "Población candidata", minutes: 8, content: "Mostrar exclusiones por dato propio, cobertura, capacidad, demanda y trazabilidad." },
-            { title: "Emparejamiento", minutes: 8, content: "Comparar pares, solapamiento geográfico y equilibrio previo." },
-            { title: "Potencia", minutes: 10, content: "Presentar probabilidad de detectar 15 % y etiquetar como experimento o piloto de viabilidad." },
-            { title: "Decisión", minutes: 4, content: "Congelar conjunto, semilla y versión o devolver el diseño." },
+          id: "eligibility",
+          name: "Revisión de elegibilidad y potencia",
+          category: "control",
+          cadence: "Una vez · día 5",
+          dates: [dateAtDay(5)],
+          owner: "Datos",
+          attendees: ["Datos", "Growth", "Operaciones"],
+          purpose:
+            "Cerrar el conjunto candidato, los pares y el tipo de conclusión que permite la prueba.",
+          inputs: [
+            "12 semanas históricas",
+            "Reglas de elegibilidad",
+            "Simulación de potencia",
+            "Mapa de campañas incompatibles",
           ],
-          decisions: ["Aprobar conjunto y pares", "Clasificar experimento o piloto", "Congelar semilla y versión"],
-          outputs: ["Asignación reproducible", "Informe de potencia", "Lista de exclusiones"],
-          restrictionIds: ["unique_qida_value", "privacy_consent", "capacity_before_demand"],
+          agenda: [
+            {
+              title: "Población candidata",
+              minutes: 8,
+              content:
+                "Mostrar exclusiones por dato propio, cobertura, capacidad, demanda y trazabilidad.",
+            },
+            {
+              title: "Emparejamiento",
+              minutes: 8,
+              content:
+                "Comparar pares, solapamiento geográfico y equilibrio previo.",
+            },
+            {
+              title: "Potencia",
+              minutes: 10,
+              content:
+                "Presentar probabilidad de detectar 15 % y etiquetar como experimento o piloto de viabilidad.",
+            },
+            {
+              title: "Decisión",
+              minutes: 4,
+              content:
+                "Congelar conjunto, semilla y versión o devolver el diseño.",
+            },
+          ],
+          decisions: [
+            "Aprobar conjunto y pares",
+            "Clasificar experimento o piloto",
+            "Congelar semilla y versión",
+          ],
+          outputs: [
+            "Asignación reproducible",
+            "Informe de potencia",
+            "Lista de exclusiones",
+          ],
+          restrictionIds: [
+            "unique_qida_value",
+            "privacy_consent",
+            "capacity_before_demand",
+          ],
         },
         {
-          id: "content_gate", name: "Control de contenido, SEO y privacidad", category: "approval", cadence: "Antes de cada ola · días 12 y 26", dates: [dateAtDay(12), dateAtDay(26)], owner: "Marketing",
-          attendees: ["Marketing", "Dirección de Marketing", "Tech", "Datos"], purpose: "Aprobar únicamente versiones útiles, verificables y seguras antes de publicación.",
-          inputs: ["Landing versionada", "Instantánea de datos", "Informe SEO", "Validación de privacidad", "Consentimientos"],
-          agenda: [
-            { title: "Valor local", minutes: 8, content: "Demostrar qué datos propios diferencian la página y qué fallback queda excluido." },
-            { title: "Contenido seguro", minutes: 8, content: "Revisar precios, PII, testimonios, afirmaciones sanitarias, cifras y tono." },
-            { title: "SEO técnico", minutes: 7, content: "Revisar indexabilidad, canonical, hreflang, datos estructurados y riesgo de contenido en serie." },
-            { title: "Aprobación", minutes: 7, content: "Aprobar una versión inmutable o devolver incidencias con responsable y fecha." },
+          id: "content_gate",
+          name: "Control de contenido, SEO y privacidad",
+          category: "approval",
+          cadence: "Antes de cada ola · días 12 y 26",
+          dates: [dateAtDay(12), dateAtDay(26)],
+          owner: "Marketing",
+          attendees: ["Marketing", "Dirección de Marketing", "Tech", "Datos"],
+          purpose:
+            "Aprobar únicamente versiones útiles, verificables y seguras antes de publicación.",
+          inputs: [
+            "Landing versionada",
+            "Instantánea de datos",
+            "Informe SEO",
+            "Validación de privacidad",
+            "Consentimientos",
           ],
-          decisions: ["Aprobar o rechazar versión", "Autorizar indexación", "Registrar incidencias críticas"],
-          outputs: ["Aprobación humana auditada", "Checklist SEO", "Informe de contenido y privacidad"],
-          restrictionIds: ["no_prices", "unique_qida_value", "privacy_consent", "marketing_approval", "no_health_claims"],
+          agenda: [
+            {
+              title: "Valor local",
+              minutes: 8,
+              content:
+                "Demostrar qué datos propios diferencian la página y qué fallback queda excluido.",
+            },
+            {
+              title: "Contenido seguro",
+              minutes: 8,
+              content:
+                "Revisar precios, PII, testimonios, afirmaciones sanitarias, cifras y tono.",
+            },
+            {
+              title: "SEO técnico",
+              minutes: 7,
+              content:
+                "Revisar indexabilidad, canonical, hreflang, datos estructurados y riesgo de contenido en serie.",
+            },
+            {
+              title: "Aprobación",
+              minutes: 7,
+              content:
+                "Aprobar una versión inmutable o devolver incidencias con responsable y fecha.",
+            },
+          ],
+          decisions: [
+            "Aprobar o rechazar versión",
+            "Autorizar indexación",
+            "Registrar incidencias críticas",
+          ],
+          outputs: [
+            "Aprobación humana auditada",
+            "Checklist SEO",
+            "Informe de contenido y privacidad",
+          ],
+          restrictionIds: [
+            "no_prices",
+            "unique_qida_value",
+            "privacy_consent",
+            "marketing_approval",
+            "no_health_claims",
+          ],
         },
         {
-          id: "launch_readiness", name: "Decisión de publicación", category: "decision", cadence: "Una vez · día 15", dates: [dateAtDay(15)], owner: "Tech",
-          attendees: ["Tech", "Datos", "Marketing", "Operaciones", "Growth"], purpose: "Comprobar que publicación, medición y capacidad están listas antes de activar el grupo tratado.",
-          inputs: ["Versión aprobada", "Eventos de prueba", "Asignación congelada", "Capacidad confirmada", "Plan de reversión"],
-          agenda: [
-            { title: "Publicación", minutes: 5, content: "Mostrar versión, URL, canonical, idioma y recibo esperado." },
-            { title: "Medición", minutes: 8, content: "Reproducir sesión de prueba hasta CRM y verificar identidad no ambigua." },
-            { title: "Operación", minutes: 7, content: "Confirmar cobertura, capacidad y umbral de parada." },
-            { title: "Decisión", minutes: 5, content: "Registrar decisión, responsable, hora y condición de reversión." },
+          id: "launch_readiness",
+          name: "Decisión de publicación",
+          category: "decision",
+          cadence: "Una vez · día 15",
+          dates: [dateAtDay(15)],
+          owner: "Tech",
+          attendees: ["Tech", "Datos", "Marketing", "Operaciones", "Growth"],
+          purpose:
+            "Comprobar que publicación, medición y capacidad están listas antes de activar el grupo tratado.",
+          inputs: [
+            "Versión aprobada",
+            "Eventos de prueba",
+            "Asignación congelada",
+            "Capacidad confirmada",
+            "Plan de reversión",
           ],
-          decisions: ["Publicar, retrasar o cancelar", "Activar monitorización", "Confirmar reversión"],
-          outputs: ["Recibo de publicación", "Prueba de instrumentación", "Decisión de publicación"],
-          restrictionIds: ["privacy_consent", "marketing_approval", "capacity_before_demand"],
+          agenda: [
+            {
+              title: "Publicación",
+              minutes: 5,
+              content:
+                "Mostrar versión, URL, canonical, idioma y recibo esperado.",
+            },
+            {
+              title: "Medición",
+              minutes: 8,
+              content:
+                "Reproducir sesión de prueba hasta CRM y verificar identidad no ambigua.",
+            },
+            {
+              title: "Operación",
+              minutes: 7,
+              content: "Confirmar cobertura, capacidad y umbral de parada.",
+            },
+            {
+              title: "Decisión",
+              minutes: 5,
+              content:
+                "Registrar decisión, responsable, hora y condición de reversión.",
+            },
+          ],
+          decisions: [
+            "Publicar, retrasar o cancelar",
+            "Activar monitorización",
+            "Confirmar reversión",
+          ],
+          outputs: [
+            "Recibo de publicación",
+            "Prueba de instrumentación",
+            "Decisión de publicación",
+          ],
+          restrictionIds: [
+            "privacy_consent",
+            "marketing_approval",
+            "capacity_before_demand",
+          ],
         },
         {
-          id: "development_review", name: "Revisión de desarrollo", category: "working", cadence: "Semanal · 13 sesiones", dates: recurringDates(4, 88, 7), owner: "Tech",
-          attendees: ["Tech", "Datos", "Growth"], purpose: "Mostrar el incremento que funciona, resolver dudas y cerrar el siguiente bloque de desarrollo.",
-          inputs: ["Versión ejecutable", "Pruebas automáticas", "Dudas técnicas", "Bloqueos y dependencias"],
-          agenda: [
-            { title: "Demostración", minutes: 10, content: "Recorrer la funcionalidad terminada con datos de la API y comprobar el criterio de aceptación." },
-            { title: "Calidad", minutes: 5, content: "Mostrar pruebas, errores abiertos y cualquier efecto sobre trazabilidad o privacidad." },
-            { title: "Dudas", minutes: 10, content: "Resolver decisiones de producto, datos o integración que bloquean el siguiente incremento." },
-            { title: "Siguiente entrega", minutes: 5, content: "Confirmar alcance, responsable y fecha de la próxima versión ejecutable." },
+          id: "development_review",
+          name: "Revisión de desarrollo",
+          category: "working",
+          cadence: "Semanal · 13 sesiones",
+          dates: recurringDates(4, 88, 7),
+          owner: "Tech",
+          attendees: ["Tech", "Datos", "Growth"],
+          purpose:
+            "Mostrar el incremento que funciona, resolver dudas y cerrar el siguiente bloque de desarrollo.",
+          inputs: [
+            "Versión ejecutable",
+            "Pruebas automáticas",
+            "Dudas técnicas",
+            "Bloqueos y dependencias",
           ],
-          decisions: ["Aceptar o corregir el incremento", "Resolver dudas de alcance", "Confirmar la siguiente entrega"],
-          outputs: ["Incremento aceptado", "Dudas resueltas o escaladas", "Trabajo siguiente priorizado"],
+          agenda: [
+            {
+              title: "Demostración",
+              minutes: 10,
+              content:
+                "Recorrer la funcionalidad terminada con datos de la API y comprobar el criterio de aceptación.",
+            },
+            {
+              title: "Calidad",
+              minutes: 5,
+              content:
+                "Mostrar pruebas, errores abiertos y cualquier efecto sobre trazabilidad o privacidad.",
+            },
+            {
+              title: "Dudas",
+              minutes: 10,
+              content:
+                "Resolver decisiones de producto, datos o integración que bloquean el siguiente incremento.",
+            },
+            {
+              title: "Siguiente entrega",
+              minutes: 5,
+              content:
+                "Confirmar alcance, responsable y fecha de la próxima versión ejecutable.",
+            },
+          ],
+          decisions: [
+            "Aceptar o corregir el incremento",
+            "Resolver dudas de alcance",
+            "Confirmar la siguiente entrega",
+          ],
+          outputs: [
+            "Incremento aceptado",
+            "Dudas resueltas o escaladas",
+            "Trabajo siguiente priorizado",
+          ],
           restrictionIds: ["privacy_consent", "capacity_before_demand"],
         },
         {
-          id: "product_demo", name: "Demostración de producto", category: "working", cadence: "Quincenal · 6 sesiones", dates: recurringDates(14, 84, 14), owner: "Growth + Tech",
-          attendees: ["Growth", "Tech", "Datos", "Marketing", "Operaciones"], purpose: "Presentar avances completos, recoger dudas de cada equipo y validar que la solución sirve para tomar decisiones.",
-          inputs: ["Versión ejecutable", "Datos de demostración", "Cambios desde la sesión anterior", "Preguntas abiertas"],
-          agenda: [
-            { title: "Avance", minutes: 5, content: "Recordar qué se acordó y qué parte está terminada." },
-            { title: "Recorrido", minutes: 15, content: "Usar la aplicación como lo haría Growth, desde la oportunidad hasta la medición." },
-            { title: "Preguntas", minutes: 10, content: "Recoger dudas sobre datos, operación, contenido y uso diario." },
-            { title: "Cierre", minutes: 5, content: "Aceptar el avance o registrar cambios con responsable y fecha." },
+          id: "product_demo",
+          name: "Demostración de producto",
+          category: "working",
+          cadence: "Quincenal · 6 sesiones",
+          dates: recurringDates(14, 84, 14),
+          owner: "Growth + Tech",
+          attendees: ["Growth", "Tech", "Datos", "Marketing", "Operaciones"],
+          purpose:
+            "Presentar avances completos, recoger dudas de cada equipo y validar que la solución sirve para tomar decisiones.",
+          inputs: [
+            "Versión ejecutable",
+            "Datos de demostración",
+            "Cambios desde la sesión anterior",
+            "Preguntas abiertas",
           ],
-          decisions: ["Aceptar el avance", "Cambiar una prioridad", "Escalar una dependencia"],
-          outputs: ["Acta de demostración", "Cambios priorizados", "Dudas con responsable"],
-          restrictionIds: ["unique_qida_value", "privacy_consent", "marketing_approval", "capacity_before_demand"],
+          agenda: [
+            {
+              title: "Avance",
+              minutes: 5,
+              content: "Recordar qué se acordó y qué parte está terminada.",
+            },
+            {
+              title: "Recorrido",
+              minutes: 15,
+              content:
+                "Usar la aplicación como lo haría Growth, desde la oportunidad hasta la medición.",
+            },
+            {
+              title: "Preguntas",
+              minutes: 10,
+              content:
+                "Recoger dudas sobre datos, operación, contenido y uso diario.",
+            },
+            {
+              title: "Cierre",
+              minutes: 5,
+              content:
+                "Aceptar el avance o registrar cambios con responsable y fecha.",
+            },
+          ],
+          decisions: [
+            "Aceptar el avance",
+            "Cambiar una prioridad",
+            "Escalar una dependencia",
+          ],
+          outputs: [
+            "Acta de demostración",
+            "Cambios priorizados",
+            "Dudas con responsable",
+          ],
+          restrictionIds: [
+            "unique_qida_value",
+            "privacy_consent",
+            "marketing_approval",
+            "capacity_before_demand",
+          ],
         },
         {
-          id: "weekly", name: "Revisión semanal", category: "working", cadence: "Semanal · 12 sesiones", dates: recurringDates(8, 85, 7), owner: "Growth",
-          attendees: ["Growth", "Datos", "Tech", "Operaciones", "Marketing"], purpose: "Resolver incidencias y vigilar la exposición sin declarar un ganador antes de madurez.",
-          inputs: ["Calidad y trazabilidad", "Capacidad", "Indexación", "SQL por grupo", "Registro de incidencias"],
-          agenda: [
-            { title: "Datos", minutes: 5, content: "Empezar por frescura, eventos perdidos, identidad y contaminación." },
-            { title: "Capacidad", minutes: 5, content: "Revisar cobertura, cuidadoras y municipios restringidos." },
-            { title: "Exposición", minutes: 5, content: "Revisar publicación, indexación y alcance por grupo." },
-            { title: "Métricas", minutes: 7, content: "Mostrar principal y mecanismos como lectura provisional, nunca como ganador." },
-            { title: "Acciones", minutes: 3, content: "Cerrar responsables, fechas y motivos de cualquier parada temprana." },
+          id: "weekly",
+          name: "Revisión semanal",
+          category: "working",
+          cadence: "Semanal · 12 sesiones",
+          dates: recurringDates(8, 85, 7),
+          owner: "Growth",
+          attendees: ["Growth", "Datos", "Tech", "Operaciones", "Marketing"],
+          purpose:
+            "Resolver incidencias y revisar la evolución sin declarar una versión ganadora antes de completar el periodo de seguimiento.",
+          inputs: [
+            "Calidad y trazabilidad",
+            "Capacidad",
+            "Indexación",
+            "SQL por grupo",
+            "Registro de incidencias",
           ],
-          decisions: ["Continuar monitorizando", "Corregir medición", "Detener solo por seguridad, calidad, privacidad o capacidad"],
-          outputs: ["Acta semanal", "Incidencias asignadas", "Decisiones auditadas"],
+          agenda: [
+            {
+              title: "Datos",
+              minutes: 5,
+              content:
+                "Empezar por frescura, eventos perdidos, identidad y contaminación.",
+            },
+            {
+              title: "Capacidad",
+              minutes: 5,
+              content:
+                "Revisar cobertura, cuidadoras y municipios restringidos.",
+            },
+            {
+              title: "Exposición",
+              minutes: 5,
+              content: "Revisar publicación, indexación y alcance por grupo.",
+            },
+            {
+              title: "Métricas",
+              minutes: 7,
+              content:
+                "Mostrar principal y mecanismos como lectura provisional, nunca como ganador.",
+            },
+            {
+              title: "Acciones",
+              minutes: 3,
+              content:
+                "Cerrar responsables, fechas y motivos de cualquier parada temprana.",
+            },
+          ],
+          decisions: [
+            "Continuar monitorizando",
+            "Corregir medición",
+            "Detener solo por seguridad, calidad, privacidad o capacidad",
+          ],
+          outputs: [
+            "Acta semanal",
+            "Incidencias asignadas",
+            "Decisiones auditadas",
+          ],
           restrictionIds: ["privacy_consent", "capacity_before_demand"],
         },
         {
-          id: "data_clinic", name: "Clínica de datos e instrumentación", category: "control", cadence: "Semanal durante exposición · 8 sesiones", dates: recurringDates(5, 54, 7), owner: "Datos + Tech",
-          attendees: ["Datos", "Tech"], purpose: "Resolver fallos de enlace, eventos, CRM e indexación antes de que invaliden la lectura.",
-          inputs: ["Frescura", "Eventos sin enlace", "Discrepancias plataforma/CRM", "Errores de Search Console"],
-          agenda: [
-            { title: "Señales rojas", minutes: 5, content: "Ordenar por pérdida de trazabilidad y volumen afectado." },
-            { title: "Diagnóstico", minutes: 10, content: "Seguir la clave seudónima desde landing hasta oportunidad CRM." },
-            { title: "Reparación", minutes: 10, content: "Asignar corrección, recuperación permitida y prueba de regresión." },
-            { title: "Cierre", minutes: 5, content: "Registrar impacto sobre la validez y contaminación." },
+          id: "data_clinic",
+          name: "Clínica de datos e instrumentación",
+          category: "control",
+          cadence: "Semanal durante exposición · 8 sesiones",
+          dates: recurringDates(5, 54, 7),
+          owner: "Datos + Tech",
+          attendees: ["Datos", "Tech"],
+          purpose:
+            "Resolver fallos de enlace, eventos, CRM e indexación antes de que invaliden la lectura.",
+          inputs: [
+            "Frescura",
+            "Eventos sin enlace",
+            "Discrepancias plataforma/CRM",
+            "Errores de Search Console",
           ],
-          decisions: ["Corregir o aceptar limitación", "Excluir periodo contaminado", "Escalar incidencia crítica"],
-          outputs: ["Ticket técnico", "Evidencia de regresión", "Anotación de calidad"],
+          agenda: [
+            {
+              title: "Señales rojas",
+              minutes: 5,
+              content:
+                "Ordenar por pérdida de trazabilidad y volumen afectado.",
+            },
+            {
+              title: "Diagnóstico",
+              minutes: 10,
+              content:
+                "Seguir la clave seudónima desde landing hasta oportunidad CRM.",
+            },
+            {
+              title: "Reparación",
+              minutes: 10,
+              content:
+                "Asignar corrección, recuperación permitida y prueba de regresión.",
+            },
+            {
+              title: "Cierre",
+              minutes: 5,
+              content: "Registrar impacto sobre la validez y contaminación.",
+            },
+          ],
+          decisions: [
+            "Corregir o aceptar limitación",
+            "Excluir periodo contaminado",
+            "Escalar incidencia crítica",
+          ],
+          outputs: [
+            "Ticket técnico",
+            "Evidencia de regresión",
+            "Anotación de calidad",
+          ],
           restrictionIds: ["privacy_consent"],
         },
         {
-          id: "capacity_review", name: "Revisión de capacidad", category: "control", cadence: "Quincenal · 6 sesiones", dates: recurringDates(10, 80, 14), owner: "Operaciones",
-          attendees: ["Operaciones", "Growth", "Datos"], purpose: "Evitar que la captación supere la capacidad real del municipio o deteriore el servicio.",
-          inputs: ["Cuidadoras disponibles 30d", "Cobertura", "SQL abiertos", "Descartes por capacidad"],
-          agenda: [
-            { title: "Mapa operativo", minutes: 7, content: "Mostrar capacidad y cobertura por municipio tratado." },
-            { title: "Presión de demanda", minutes: 7, content: "Comparar SQL nuevos, cartera abierta y motivos de descarte." },
-            { title: "Umbrales", minutes: 6, content: "Identificar municipios que cruzan restricción o requieren pausa." },
-            { title: "Decisión", minutes: 5, content: "Mantener, limitar o pausar exposición con evidencia." },
+          id: "capacity_review",
+          name: "Revisión de capacidad",
+          category: "control",
+          cadence: "Quincenal · 6 sesiones",
+          dates: recurringDates(10, 80, 14),
+          owner: "Operaciones",
+          attendees: ["Operaciones", "Growth", "Datos"],
+          purpose:
+            "Evitar que la captación supere la capacidad real del municipio o deteriore el servicio.",
+          inputs: [
+            "Cuidadoras disponibles 30d",
+            "Cobertura",
+            "SQL abiertos",
+            "Descartes por capacidad",
           ],
-          decisions: ["Mantener capacidad", "Restringir municipio", "Pausar captación"],
-          outputs: ["Estado operativo por municipio", "Límites actualizados", "Decisión de pausa si aplica"],
+          agenda: [
+            {
+              title: "Mapa operativo",
+              minutes: 7,
+              content: "Mostrar capacidad y cobertura por municipio tratado.",
+            },
+            {
+              title: "Presión de demanda",
+              minutes: 7,
+              content:
+                "Comparar SQL nuevos, cartera abierta y motivos de descarte.",
+            },
+            {
+              title: "Umbrales",
+              minutes: 6,
+              content:
+                "Identificar municipios que cruzan restricción o requieren pausa.",
+            },
+            {
+              title: "Decisión",
+              minutes: 5,
+              content: "Mantener, limitar o pausar exposición con evidencia.",
+            },
+          ],
+          decisions: [
+            "Mantener capacidad",
+            "Restringir municipio",
+            "Pausar captación",
+          ],
+          outputs: [
+            "Estado operativo por municipio",
+            "Límites actualizados",
+            "Decisión de pausa si aplica",
+          ],
           restrictionIds: ["capacity_before_demand"],
         },
         {
-          id: "day30", name: "Revisión del día 30", category: "control", cadence: "Una vez · día 30", dates: [dateAtDay(30)], owner: "Growth + Datos",
-          attendees: ["Growth", "Datos", "Marketing", "Tech", "Operaciones"], purpose: "Validar exposición y calidad sin tomar una decisión de impacto temprana.",
-          inputs: ["Cuatro semanas de exposición", "Diagnósticos de datos", "Capacidad", "Indexación"],
-          agenda: [
-            { title: "Validez", minutes: 8, content: "Abrir con trazabilidad, contaminación y equilibrio de exposición." },
-            { title: "Mecanismos", minutes: 8, content: "Mostrar impresiones, sesiones y tasas como señales provisionales." },
-            { title: "Guardarraíles", minutes: 7, content: "Revisar capacidad, descartes e incidencias de publicación." },
-            { title: "Siguientes 30 días", minutes: 7, content: "Acordar correcciones permitidas sin reescribir la hipótesis." },
+          id: "day30",
+          name: "Revisión del día 30",
+          category: "control",
+          cadence: "Una vez · día 30",
+          dates: [dateAtDay(30)],
+          owner: "Growth + Datos",
+          attendees: ["Growth", "Datos", "Marketing", "Tech", "Operaciones"],
+          purpose:
+            "Validar exposición y calidad sin tomar una decisión de impacto temprana.",
+          inputs: [
+            "Cuatro semanas de exposición",
+            "Diagnósticos de datos",
+            "Capacidad",
+            "Indexación",
           ],
-          decisions: ["Continuar exposición", "Corregir instrumentación", "Parar por guardarraíl crítico"],
-          outputs: ["Informe descriptivo", "Riesgos actualizados", "Acciones hasta día 60"],
+          agenda: [
+            {
+              title: "Validez",
+              minutes: 8,
+              content:
+                "Abrir con trazabilidad, contaminación y equilibrio de exposición.",
+            },
+            {
+              title: "Mecanismos",
+              minutes: 8,
+              content:
+                "Mostrar impresiones, sesiones y tasas como señales provisionales.",
+            },
+            {
+              title: "Controles que no deben empeorar",
+              minutes: 7,
+              content:
+                "Revisar capacidad, descartes e incidencias de publicación.",
+            },
+            {
+              title: "Siguientes 30 días",
+              minutes: 7,
+              content:
+                "Acordar correcciones permitidas sin reescribir la hipótesis.",
+            },
+          ],
+          decisions: [
+            "Continuar exposición",
+            "Corregir instrumentación",
+            "Parar si empeora un control crítico",
+          ],
+          outputs: [
+            "Informe descriptivo",
+            "Riesgos actualizados",
+            "Acciones hasta día 60",
+          ],
           restrictionIds: ["privacy_consent", "capacity_before_demand"],
         },
         {
-          id: "day60", name: "Revisión del día 60", category: "control", cadence: "Una vez · día 60", dates: [dateAtDay(60)], owner: "Datos",
-          attendees: ["Datos", "Growth", "Operaciones", "Marketing"], purpose: "Cerrar exposición, congelar cohorte principal y comenzar la maduración de SQL.",
-          inputs: ["Cohorte de días 1–56", "Estado de pares", "Pre-tendencias", "Guardarraíles"],
-          agenda: [
-            { title: "Cierre de cohorte", minutes: 7, content: "Confirmar qué leads entran y excluir los posteriores al día 56." },
-            { title: "Diagnósticos", minutes: 10, content: "Mostrar tendencias previas, contaminación y pares extremos." },
-            { title: "Lectura provisional", minutes: 8, content: "Separar descripción, atribución y estimación cuasi experimental." },
-            { title: "Maduración", minutes: 5, content: "Congelar cambios y acordar seguimiento hasta el día 90." },
+          id: "day60",
+          name: "Revisión del día 60",
+          category: "control",
+          cadence: "Una vez · día 60",
+          dates: [dateAtDay(60)],
+          owner: "Datos",
+          attendees: ["Datos", "Growth", "Operaciones", "Marketing"],
+          purpose:
+            "Cerrar el periodo de cambios y seguir observando los SQL hasta completar 90 días.",
+          inputs: [
+            "SQL de los días 1–56",
+            "Comparabilidad de municipios",
+            "Evolución anterior al cambio",
+            "Controles que no deben empeorar",
           ],
-          decisions: ["Congelar cohorte", "Aceptar o limitar el análisis", "Definir sensibilidades"],
-          outputs: ["Cohorte congelada", "Plan de análisis", "Registro de limitaciones"],
+          agenda: [
+            {
+              title: "Cierre de cohorte",
+              minutes: 7,
+              content:
+                "Confirmar qué leads entran y excluir los posteriores al día 56.",
+            },
+            {
+              title: "Diagnósticos",
+              minutes: 10,
+              content:
+                "Mostrar tendencias previas, contaminación y pares extremos.",
+            },
+            {
+              title: "Lectura provisional",
+              minutes: 8,
+              content:
+                "Explicar qué resultados están conectados por URL y cuáles proceden de comparar las dos versiones.",
+            },
+            {
+              title: "Seguimiento pendiente",
+              minutes: 5,
+              content:
+                "Congelar cambios y acordar el seguimiento hasta el día 90.",
+            },
+          ],
+          decisions: [
+            "Congelar cohorte",
+            "Aceptar o limitar el análisis",
+            "Definir sensibilidades",
+          ],
+          outputs: [
+            "Cohorte congelada",
+            "Plan de análisis",
+            "Registro de limitaciones",
+          ],
           restrictionIds: ["privacy_consent", "capacity_before_demand"],
         },
         {
-          id: "day90", name: "Decisión día 90", category: "decision", cadence: "Una vez · día 90", dates: [dateAtDay(90)], owner: "Growth",
-          attendees: ["Growth", "Dirección de Marketing", "Datos", "Operaciones", "Tech"], purpose: "Decidir continuar, modificar o detener usando evidencia madura y controles.",
-          inputs: ["Diferencia en diferencias y diagnóstico", "Intervalos", "SQL→alta madura disponible", "Capacidad", "Incidencias", "Coste de escalar"],
+          id: "day90",
+          name: "Decisión día 90",
+          category: "decision",
+          cadence: "Una vez · día 90",
+          dates: [dateAtDay(90)],
+          owner: "Growth",
+          attendees: [
+            "Growth",
+            "Dirección de Marketing",
+            "Datos",
+            "Operaciones",
+            "Tech",
+          ],
+          purpose:
+            "Decidir continuar, modificar o detener con los datos que ya han completado el seguimiento y los controles del producto.",
+          inputs: [
+            "Comparación con la versión anterior",
+            "Rango de incertidumbre",
+            "Conversión a alta para SQL con 90 días",
+            "Capacidad",
+            "Incidencias",
+            "Coste de escalar",
+          ],
           agenda: [
-            { title: "Pregunta y protocolo", minutes: 5, content: "Recordar hipótesis y criterios congelados antes de mostrar resultados." },
-            { title: "Validez", minutes: 8, content: "Presentar trazabilidad, tendencias previas, contaminación y sensibilidad." },
-            { title: "Resultado", minutes: 10, content: "Mostrar efecto e intervalo; separar mecanismos, atribución y causalidad." },
-            { title: "Guardarraíles", minutes: 7, content: "Revisar calidad comercial, capacidad y cumplimiento de publicación." },
-            { title: "Decisión", minutes: 10, content: "Aplicar criterios de continuar, modificar o detener y registrar la siguiente hipótesis." },
+            {
+              title: "Pregunta y protocolo",
+              minutes: 5,
+              content:
+                "Recordar hipótesis y criterios congelados antes de mostrar resultados.",
+            },
+            {
+              title: "Validez",
+              minutes: 8,
+              content:
+                "Presentar trazabilidad, tendencias previas, contaminación y sensibilidad.",
+            },
+            {
+              title: "Resultado",
+              minutes: 10,
+              content:
+                "Mostrar la comparación con la versión anterior, su incertidumbre y los factores que pueden explicar el cambio.",
+            },
+            {
+              title: "Controles que no deben empeorar",
+              minutes: 7,
+              content:
+                "Revisar calidad comercial, capacidad y cumplimiento de publicación.",
+            },
+            {
+              title: "Decisión",
+              minutes: 10,
+              content:
+                "Aplicar criterios de continuar, modificar o detener y registrar la siguiente hipótesis.",
+            },
           ],
           decisions: ["Continuar y ampliar", "Modificar y repetir", "Detener"],
-          outputs: ["Decisión firmada", "Evidencia enlazada", "Siguiente versión o cierre"],
-          restrictionIds: ["no_prices", "unique_qida_value", "privacy_consent", "marketing_approval", "no_health_claims", "capacity_before_demand"],
+          outputs: [
+            "Decisión firmada",
+            "Evidencia enlazada",
+            "Siguiente versión o cierre",
+          ],
+          restrictionIds: [
+            "no_prices",
+            "unique_qida_value",
+            "privacy_consent",
+            "marketing_approval",
+            "no_health_claims",
+            "capacity_before_demand",
+          ],
         },
       ],
     };
@@ -2541,52 +4733,220 @@ WHERE l.tipo_contacto <> 'cuidadora_empleo'
     return {
       product: "Inteligencia de Growth de Qida",
       architectureStages: [
-        { stage: 1, name: "Gobernar datos", purpose: "Actualizar y validar las tablas originales del motor sin cambiar su significado.", owner: "Datos", status: "existing", inputs: ["Fuentes de Qida", "Demanda pública", "Voz del cliente", "Competencia"], outputs: ["Tablas validadas en Databricks"] },
-        { stage: 2, name: "Seleccionar", purpose: "Aplicar reglas versionadas de datos, cobertura, capacidad y demanda.", owner: "Growth + Datos", status: "demo", inputs: ["Tablas del motor", "Reglas de selección"], outputs: ["Municipios y servicios elegibles"] },
-        { stage: 3, name: "Generar", purpose: "Crear una landing local desde una plantilla fija y una instantánea de datos.", owner: "Tech + Marketing", status: "existing", inputs: ["Candidato", "Instantánea de generación"], outputs: ["Borrador versionado", "Manifiesto de datos"] },
-        { stage: 4, name: "Validar", purpose: "Comprobar privacidad, valor local, datos estructurados y SEO técnico.", owner: "Tech", status: "demo", inputs: ["Versión de landing", "Versión de políticas"], outputs: ["Resultado de validación"] },
-        { stage: 5, name: "Aprobar", purpose: "Exigir una persona revisora de Marketing antes de publicar.", owner: "Marketing", status: "demo", inputs: ["Versión validada"], outputs: ["Aprobación auditada"] },
-        { stage: 6, name: "Publicar", purpose: "Enviar a Strapi la versión aprobada e inmutable y guardar el recibo.", owner: "Tech", status: "proposed", inputs: ["Orden de publicación"], outputs: ["URL de qida.es", "Recibo de publicación"] },
-        { stage: 7, name: "Medir", purpose: "Conciliar web, buscador, teléfono y CRM por municipio y cohorte.", owner: "Datos + Tech", status: "proposed", inputs: ["Analítica web y Search Console", "HubSpot/Odoo", "Aircall"], outputs: ["Resultado del experimento", "Controles de calidad"] },
-        { stage: 8, name: "Decidir", purpose: "Registrar la decisión humana y la evidencia que la justifica.", owner: "Growth", status: "proposed", inputs: ["Resultado", "Capacidad", "Controles"], outputs: ["Decisión versionada", "Siguiente hipótesis"] },
+        {
+          stage: 1,
+          name: "Gobernar datos",
+          purpose:
+            "Actualizar y validar las tablas originales del motor sin cambiar su significado.",
+          owner: "Datos",
+          status: "existing",
+          inputs: [
+            "Fuentes de Qida",
+            "Demanda pública",
+            "Voz del cliente",
+            "Competencia",
+          ],
+          outputs: ["Tablas validadas en Databricks"],
+        },
+        {
+          stage: 2,
+          name: "Seleccionar",
+          purpose:
+            "Aplicar reglas versionadas de datos, cobertura, capacidad y demanda.",
+          owner: "Growth + Datos",
+          status: "demo",
+          inputs: ["Tablas del motor", "Reglas de selección"],
+          outputs: ["Municipios y servicios elegibles"],
+        },
+        {
+          stage: 3,
+          name: "Generar",
+          purpose:
+            "Crear una landing local desde una plantilla fija y una instantánea de datos.",
+          owner: "Tech + Marketing",
+          status: "existing",
+          inputs: ["Candidato", "Instantánea de generación"],
+          outputs: ["Borrador versionado", "Manifiesto de datos"],
+        },
+        {
+          stage: 4,
+          name: "Validar",
+          purpose:
+            "Comprobar privacidad, valor local, datos estructurados y SEO técnico.",
+          owner: "Tech",
+          status: "demo",
+          inputs: ["Versión de landing", "Versión de políticas"],
+          outputs: ["Resultado de validación"],
+        },
+        {
+          stage: 5,
+          name: "Aprobar",
+          purpose:
+            "Exigir una persona revisora de Marketing antes de publicar.",
+          owner: "Marketing",
+          status: "demo",
+          inputs: ["Versión validada"],
+          outputs: ["Aprobación auditada"],
+        },
+        {
+          stage: 6,
+          name: "Publicar",
+          purpose:
+            "Enviar a Strapi la versión aprobada e inmutable y guardar el recibo.",
+          owner: "Tech",
+          status: "proposed",
+          inputs: ["Orden de publicación"],
+          outputs: ["URL de qida.es", "Recibo de publicación"],
+        },
+        {
+          stage: 7,
+          name: "Medir",
+          purpose:
+            "Conciliar web, buscador, teléfono y CRM por municipio y cohorte.",
+          owner: "Datos + Tech",
+          status: "proposed",
+          inputs: ["Analítica web y Search Console", "HubSpot/Odoo", "Aircall"],
+          outputs: ["Resultado del experimento", "Controles de calidad"],
+        },
+        {
+          stage: 8,
+          name: "Decidir",
+          purpose:
+            "Registrar la decisión humana y la evidencia que la justifica.",
+          owner: "Growth",
+          status: "proposed",
+          inputs: ["Resultado", "Capacidad", "Controles"],
+          outputs: ["Decisión versionada", "Siguiente hipótesis"],
+        },
       ],
       ownership: [
-        { domain: "Motor, calidad y análisis", owner: "Datos", paths: ["Databricks", "prisma", "packages/analytics"], tools: ["Databricks", "Sigma/Metabase", "Vitest"] },
-        { domain: "Fábrica, Strapi e instrumentación", owner: "Tech", paths: ["Fábrica de landings", "Strapi", "apps/api"], tools: ["AWS", "Strapi", "OpenAPI"] },
-        { domain: "Contenido, tono y aprobación SEO", owner: "Marketing", paths: ["landing_version", "validation_run"], tools: ["Strapi", "Search Console", "Semrush"] },
-        { domain: "Cobertura y capacidad", owner: "Operaciones", paths: ["motor_municipio", "reglas de selección"], tools: ["Odoo", "Acuerdo de nivel de servicio"] },
-        { domain: "Cartera y decisiones", owner: "Growth", paths: ["apps/web", "landing_decision"], tools: ["Jira", "Slack", "Inteligencia de landings"] },
+        {
+          domain: "Motor, calidad y análisis",
+          owner: "Datos",
+          paths: ["Databricks", "prisma", "packages/analytics"],
+          tools: ["Databricks", "Sigma/Metabase", "Vitest"],
+        },
+        {
+          domain: "Fábrica, Strapi e instrumentación",
+          owner: "Tech",
+          paths: ["Fábrica de landings", "Strapi", "apps/api"],
+          tools: ["AWS", "Strapi", "OpenAPI"],
+        },
+        {
+          domain: "Contenido, tono y aprobación SEO",
+          owner: "Marketing",
+          paths: ["landing_version", "validation_run"],
+          tools: ["Strapi", "Search Console", "Semrush"],
+        },
+        {
+          domain: "Cobertura y capacidad",
+          owner: "Operaciones",
+          paths: ["motor_municipio", "reglas de selección"],
+          tools: ["Odoo", "Acuerdo de nivel de servicio"],
+        },
+        {
+          domain: "Cartera y decisiones",
+          owner: "Growth",
+          paths: ["apps/web", "landing_decision"],
+          tools: ["Jira", "Slack", "Inteligencia de landings"],
+        },
       ],
       integrations: [
-        { name: "Motor de Databricks", mode: "existing", boundary: "Se representa en la demo local; no existe conexión remota." },
-        { name: "Fábrica de landings", mode: "existing", boundary: "Los registros locales representan su versión y flujo de aprobación." },
-        { name: "Analítica de demostración", mode: "existing", boundary: "Todas las métricas visibles proceden de datos sintéticos persistidos a través de la API." },
-        { name: "Inicio de sesión empresarial", mode: "proposed", boundary: "Sustituirá el rol local por identidad y permisos verificados." },
-        { name: "Publicación en Strapi", mode: "simulated", boundary: "La publicación solo cambia el estado local auditado." },
-        { name: "Generación con modelo de lenguaje", mode: "simulated", boundary: "El borrador es determinista y usa datos estructurados persistidos." },
-        { name: "Analítica y CRM de producción", mode: "proposed", boundary: "Conectará analítica, HubSpot, Odoo y Aircall con claves seudónimas." },
+        {
+          name: "Motor de Databricks",
+          mode: "existing",
+          boundary:
+            "Se representa en la demo local; no existe conexión remota.",
+        },
+        {
+          name: "Fábrica de landings",
+          mode: "existing",
+          boundary:
+            "Los registros locales representan su versión y flujo de aprobación.",
+        },
+        {
+          name: "Analítica de demostración",
+          mode: "existing",
+          boundary:
+            "Todas las métricas visibles proceden de datos sintéticos persistidos a través de la API.",
+        },
+        {
+          name: "Inicio de sesión empresarial",
+          mode: "proposed",
+          boundary:
+            "Sustituirá el rol local por identidad y permisos verificados.",
+        },
+        {
+          name: "Publicación en Strapi",
+          mode: "simulated",
+          boundary: "La publicación solo cambia el estado local auditado.",
+        },
+        {
+          name: "Generación con modelo de lenguaje",
+          mode: "simulated",
+          boundary:
+            "El borrador es determinista y usa datos estructurados persistidos.",
+        },
+        {
+          name: "Analítica y CRM de producción",
+          mode: "proposed",
+          boundary:
+            "Conectará analítica, HubSpot, Odoo y Aircall con claves seudónimas.",
+        },
       ],
       controls: {
-        validation: ["Zod en los límites HTTP", "Paginación y coeficientes acotados", "SQL parametrizado y revisado", "Controles de cobertura, capacidad y contenido"],
-        monitoring: ["Retraso de actualización", "Identidades sin enlace o ambiguas", "Integridad de fechas y referencias", "Diferencias entre plataforma y CRM", "Cohortes sin madurar"],
-        approval: "Una persona con rol autorizado debe aprobar antes de la publicación simulada; cada cambio genera un identificador de auditoría.",
-        privacy: "Solo se exponen identidades sintéticas y seudónimas; los identificadores de origen se protegen y no aparecen en los registros.",
+        validation: [
+          "Zod en los límites HTTP",
+          "Paginación y coeficientes acotados",
+          "SQL parametrizado y revisado",
+          "Controles de cobertura, capacidad y contenido",
+        ],
+        monitoring: [
+          "Retraso de actualización",
+          "Identidades sin enlace o ambiguas",
+          "Fechas y relaciones incoherentes",
+          "Diferencias entre plataforma y CRM",
+          "SQL con menos de 90 días de seguimiento",
+        ],
+        approval:
+          "Una persona con rol autorizado debe aprobar antes de la publicación simulada; cada cambio genera un identificador de auditoría.",
+        privacy:
+          "Solo se exponen identidades sintéticas y seudónimas; los identificadores de origen se protegen y no aparecen en los registros.",
         evidenceLabels: [
-          { label: "correlation", meaning: "Dos variables se mueven juntas sin asignar crédito ni causa." },
-          { label: "attribution", meaning: "Una regla asigna la conversión a un canal observado." },
-          { label: "causal", meaning: "Resultado de un diseño experimental o cuasiexperimental con controles válidos." },
+          {
+            label: "correlation",
+            meaning:
+              "Dos variables se mueven juntas sin asignar crédito ni causa.",
+          },
+          {
+            label: "attribution",
+            meaning: "Una regla asigna la conversión a un canal observado.",
+          },
+          {
+            label: "causal",
+            meaning:
+              "Resultado de una comparación diseñada para aislar el cambio de la landing y revisada con controles válidos.",
+          },
         ],
       },
     };
   }
 
-  private workbenchRows(rows: Array<Record<string, unknown>>): Array<Record<string, string | number | boolean | null>> {
+  private workbenchRows(
+    rows: Array<Record<string, unknown>>,
+  ): Array<Record<string, string | number | boolean | null>> {
     return rows.map((row) => {
-      const entries: Array<[string, string | number | boolean | null]> = Object.entries(row).map(([key, value]) => {
-        if (value === null || typeof value === "string" || typeof value === "boolean") return [key, value];
-        if (value instanceof Date) return [key, value.toISOString()];
-        return [key, numberValue(value)];
-      });
+      const entries: Array<[string, string | number | boolean | null]> =
+        Object.entries(row).map(([key, value]) => {
+          if (
+            value === null ||
+            typeof value === "string" ||
+            typeof value === "boolean"
+          )
+            return [key, value];
+          if (value instanceof Date) return [key, value.toISOString()];
+          return [key, numberValue(value)];
+        });
       return Object.fromEntries(entries);
     });
   }

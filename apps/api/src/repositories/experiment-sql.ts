@@ -43,7 +43,7 @@ WITH bounds AS (
 )
 SELECT c.week, to_char(w.start,'YYYY-MM-DD') AS start, c.variant AS "group",
   (SELECT COUNT(*)::int FROM assigned a WHERE a.variant=c.variant) AS municipalities,
-  w.start + 6 + 34 <= w.cutoff AS mature, c.sql,c.altas,c.mature AS "matureSql",c.phone,c.paid,COALESCE(t.sessions,0) AS sessions
+  w.start + 6 <= w.cutoff AS mature, c.sql,c.altas,c.mature AS "matureSql",c.phone,c.paid,COALESCE(t.sessions,0) AS sessions
 FROM crm c JOIN weeks w USING (week) LEFT JOIN traffic t USING (week,variant) ORDER BY c.week,c.variant`;
 
 export function sqlReadout(asOf: string, raw: unknown): SqlResult {
@@ -83,9 +83,7 @@ export function sqlReadout(asOf: string, raw: unknown): SqlResult {
       "Faltan semanas previas comunes para comprobar las tendencias.",
     );
   if (weeks.filter((r) => r.week >= 0 && r.mature).length < 16)
-    warnings.push(
-      "La ventana de ocho semanas todavía no está completa y madura.",
-    );
+    warnings.push("Todavía no hay ocho semanas completas después del cambio.");
   if (weeks.some((r) => r.municipalities < 10) || difference === null)
     warnings.push("Muestra municipal insuficiente.");
   if (
@@ -107,7 +105,7 @@ export function sqlReadout(asOf: string, raw: unknown): SqlResult {
     )
   )
     warnings.push(
-      "Hay un grupo sin SQL maduros observados durante la exposición.",
+      "Una de las versiones no registra SQL durante las semanas analizadas.",
     );
   for (const field of ["phone", "paid"] as const) {
     if ((delta(gap(0, 8, field), gap(-12, 0, field)) ?? 0) < 0)

@@ -52,7 +52,7 @@ La inteligencia artificial puede ayudar a resumir señales, redactar borradores 
 
 ## 3. Las diferentes partes del producto
 
-Una persona empieza viendo el portfolio de landings, abre una URL para comprender su rendimiento, consulta oportunidades cuando necesita priorizar, revisa medición cuando existe un cambio y utiliza el plan de 90 días para coordinar el trabajo. En cualquier momento puede abrir Modelo de datos para comprobar de dónde sale una métrica.
+Una persona empieza viendo el conjunto de landings, abre una URL para comprender su rendimiento, consulta Oportunidades cuando necesita priorizar y revisa Medición cuando existe un cambio. Estas tres pantallas forman la navegación principal. El plan de 90 días y el modelo de datos se conservan como material de apoyo para las reuniones y la presentación técnica, accesible por enlace directo pero fuera del menú cotidiano.
 
 ### 3.1 Landings
 
@@ -68,23 +68,23 @@ Desde la oportunidad puede abrirse una landing real de demostración. Esto permi
 
 ### 3.3 Medición
 
-Medición reúne experimentos, calidad del enlace entre web y CRM, madurez de las oportunidades y decisiones registradas. La pantalla evita presentar un cambio como ganador únicamente porque subió una cifra. Primero comprueba si tratamiento y control tienen datos, si las tendencias previas son comparables, si las cohortes han tenido tiempo de convertirse y si otros canales se han desplazado.
+Medición reúne las comparaciones entre versiones, la calidad del enlace entre web y CRM, el tiempo de seguimiento de los SQL y las decisiones registradas. La pantalla evita presentar una landing como ganadora únicamente porque subió una cifra. Primero comprueba si hay datos de la nueva landing y de la versión anterior, si ambos grupos evolucionaban de forma parecida antes del cambio, si las semanas están completas y si otros canales explican parte de la variación.
 
 ### 3.4 Plan de 90 días
 
-La vista presenta fases, reuniones, restricciones y actas semanales. Cada sesión tiene entradas, agenda, decisiones esperadas, responsable y próxima revisión. El calendario incluye trabajo de desarrollo, calidad de datos, capacidad operativa, aprobación de Marketing y decisiones de los días 30, 60 y 90.
+Esta vista de apoyo presenta fases, reuniones, restricciones y actas semanales. Cada sesión tiene entradas, agenda, decisiones esperadas, responsable y próxima revisión. El calendario incluye trabajo de desarrollo, calidad de datos, capacidad operativa, aprobación de Marketing y decisiones de los días 30, 60 y 90.
 
 ### 3.5 Modelo de datos
 
-Modelo de datos es la capa de confianza del producto. En Flujo se ve cómo llegan los sistemas. En Tablas puede abrirse cada entidad y entender qué representa una fila. En Lógica se explica qué datos se combinan y qué reglas producen cada métrica, sin exponer código. Calidad muestra frescura, integridad, trazabilidad, identidades ambiguas y oportunidades todavía inmaduras.
+Esta vista técnica de apoyo explica cómo se obtiene cada valor. En Flujo se ve cómo llegan los sistemas. En Tablas puede abrirse cada entidad y entender qué representa una fila. En Lógica se explica qué datos se combinan y qué reglas producen cada métrica; el SQL puede consultarse cuando se necesita revisar la implementación. Calidad muestra actualización de fuentes, coherencia de fechas, eventos conectados con CRM, identidades sin confirmar y SQL que aún no han completado 90 días de seguimiento.
 
 | Pantalla | Pregunta principal | Decisión que facilita |
 | --- | --- | --- |
 | Landings | ¿Dónde se rompe el recorrido de esta URL? | Investigar, mantener o proponer un cambio |
 | Oportunidades | ¿Dónde coinciden demanda y capacidad? | Elegir el siguiente caso de análisis |
 | Medición | ¿Qué ocurrió después del cambio? | Continuar, modificar o parar una prueba |
-| Plan de 90 días | ¿Quién debe revisar qué y cuándo? | Coordinar equipos y dejar acuerdos |
-| Modelo de datos | ¿De dónde sale este valor? | Validar la lectura antes de actuar |
+| Plan de 90 días (apoyo) | ¿Quién debe revisar qué y cuándo? | Coordinar equipos y dejar acuerdos |
+| Modelo de datos (apoyo) | ¿De dónde sale este valor? | Validar la lectura antes de actuar |
 
 ## 4. La data
 
@@ -126,15 +126,15 @@ La secuencia permite localizar dónde aparece la diferencia. Muchas impresiones 
 
 #### Medir el efecto de un cambio
 
-Antes de publicar un cambio se asignan municipios comparables a un grupo que recibe la nueva versión y a otro que mantiene la versión anterior. La aplicación cuenta los SQL de familias por municipio y semana, conserva también las semanas con cero resultados y espera el tiempo necesario antes de considerar madura una cohorte.
+Antes de publicar un cambio se asignan municipios comparables a un grupo que recibe la nueva landing y a otro que mantiene la versión anterior. La aplicación cuenta los SQL de familias por municipio y semana y conserva también las semanas con cero resultados. Una semana entra en la comparación cuando ha terminado; no necesita esperar 90 días porque la métrica semanal es el número de SQL, no el número de altas.
 
-La lectura compara cuánto cambia el grupo modificado y descuenta el cambio observado en el grupo de control durante las mismas fechas. Así se reduce el efecto de la estacionalidad y de movimientos generales del canal. El resultado se presenta como inconcluso cuando faltan semanas maduras, hay pocos municipios o ambos grupos ya evolucionaban de forma diferente antes del cambio.
+La lectura compara cuánto cambia la nueva landing y descuenta el cambio observado en la versión anterior durante las mismas fechas. Así se reduce el efecto de la estacionalidad y de movimientos generales del canal. El resultado se presenta como inconcluso cuando faltan semanas completas, hay pocos municipios o ambos grupos ya evolucionaban de forma diferente antes del cambio.
 
 ### 4.2 Arquitectura y control de la IA
 
 En producción, Databricks prepararía tablas certificadas y métricas versionadas. La API expondría contratos validados; la aplicación mostraría el mismo dato en portfolio, ficha y medición. Strapi conservaría las versiones publicables y CRM seguiría siendo la fuente de SQL y altas.
 
-Antes de publicar, una validación automática debe comprobar cobertura, capacidad, datos propios, consentimiento, originalidad local, SEO técnico y expresiones prohibidas. Marketing revisa tono y posicionamiento; Operaciones confirma que la demanda se puede atender. Después de publicar se vigilan indexación, trazabilidad, integridad y guardarraíles.
+Antes de publicar, una validación automática debe comprobar cobertura, capacidad, datos propios, consentimiento, originalidad local, SEO técnico y expresiones prohibidas. Marketing revisa tono y posicionamiento; Operaciones confirma que la demanda se puede atender. Después de publicar se vigilan indexación, trazabilidad, coherencia de los datos y controles que no deben empeorar, como calidad comercial o capacidad.
 
 El fragmento delicado puede resumirse así:
 
@@ -155,27 +155,29 @@ publicar una versión identificable y registrar la auditoría
 
 ## 5. Métricas previstas
 
-La métrica que decide la primera apuesta es SQL familiares maduros por municipio y semana. Se elige porque está más cerca del valor comercial que una sesión o un formulario, pero madura antes que el alta. Las altas se mantienen como resultado final y se leen cuando la cohorte ha tenido tiempo suficiente para contratar.
+La métrica que decide la primera apuesta es SQL familiares elegibles por municipio y semana completa. Se elige porque está más cerca del valor comercial que una sesión o un formulario y puede leerse antes que el alta. Una semana completa significa que ya han terminado sus siete días y se han recibido los datos previstos.
+
+La conversión SQL → alta utiliza una condición distinta: cada SQL necesita 90 días de seguimiento antes de entrar en ese cálculo. El plazo evita contar como pérdida una oportunidad que todavía puede contratar. Los 90 días son una hipótesis inicial que debe calibrarse con el histórico real de Qida; no se presentan como una regla universal.
 
 | Nivel | Métricas | Función en la decisión |
 | --- | --- | --- |
-| Resultado | SQL maduros por municipio-semana; altas maduras | Determinan si merece la pena continuar |
+| Resultado | SQL elegibles por municipio y semana completa; altas de SQL con 90 días de seguimiento | Determinan si merece la pena continuar |
 | Embudo | Sesión a lead; lead a SQL; SQL a alta | Localizan dónde aparece la diferencia |
 | Visibilidad | Impresiones, clics, CTR y posición | Explican si la página está consiguiendo exposición orgánica |
-| Guardarraíles | Capacidad, NPS cuando sea publicable, descartes y canibalización | Evitan mejorar captación a costa de servicio o de otro canal |
-| Calidad | Trazabilidad, frescura, integridad, identidades ambiguas y madurez | Indican si la lectura es suficientemente fiable |
+| Controles que no deben empeorar | Capacidad, NPS cuando sea publicable, descartes y desplazamiento desde otros canales | Evitan mejorar captación a costa del servicio o de otro canal |
+| Calidad | Eventos conectados con CRM, actualización de fuentes, coherencia de fechas, identidades sin confirmar y SQL aún en seguimiento | Indican si la lectura es suficientemente fiable |
 
 ### 5.1 Cómo separar señal y causalidad
 
-Relacionar un SQL con una URL es atribución observada, no demuestra que el contenido haya causado el resultado. Para aproximarnos al efecto se seleccionan municipios comparables, se asignan tratamiento y control antes de publicar y se observan las mismas fechas. La diferencia de diferencias reduce el efecto de estacionalidad y cambios generales, pero no elimina todos los sesgos.
+Relacionar un SQL con una URL permite saber qué landing aparece en su recorrido, pero no demuestra que el contenido haya causado el resultado. Para aproximarnos al efecto se seleccionan municipios comparables, se decide antes de publicar cuáles reciben la nueva landing y cuáles mantienen la versión anterior, y se observan las mismas fechas. Después se descuenta de la mejora de la nueva landing el cambio que también aparece en la versión anterior. Esta comparación reduce el efecto de la estacionalidad y de cambios generales, pero no elimina todas las diferencias entre municipios.
 
-Antes de decidir se revisan tendencias previas, tamaño de muestra, exposición real a la versión, cambios simultáneos, desplazamiento desde pago o teléfono y tiempo de maduración. En producción añadiríamos intervalos de confianza, análisis de potencia y sensibilidad. Si el grupo tratado mejora pero también lo hace el control, no se atribuye toda la subida a la landing.
+Antes de decidir se revisa cómo evolucionaban ambos grupos antes del cambio, cuántos municipios participan, qué versión vio realmente cada persona, qué otros cambios coincidieron en el tiempo y si parte del resultado procede de pago o teléfono. En producción añadiríamos un rango de incertidumbre y cálculos para saber si la muestra es suficiente. Si la nueva landing mejora pero también lo hace la versión anterior, no se atribuye toda la subida a la landing.
 
 ### 5.2 Problemas de datos que debemos controlar
 
 Las fechas de creación, SQL y alta deben respetar el orden temporal. Los contactos de empleo de cuidadoras no pueden entrar en el embudo familiar. Una landing no indexada no debe producir clics orgánicos. Las URLs modificadas necesitan una relación de versiones para evitar partir el histórico. Los municipios sin datos propios deben identificarse como agregados provinciales y no mezclarse silenciosamente con datos municipales.
 
-También es importante conservar los ceros. Si un municipio asignado no produce SQL durante una semana, esa semana no puede desaparecer del denominador. Las identidades ambiguas permanecen separadas y las cohortes recientes no se utilizan para calcular altas maduras.
+También es importante conservar los ceros. Si un municipio asignado no produce SQL durante una semana, esa semana no puede desaparecer del denominador. Las identidades sin confirmación permanecen separadas y los SQL con menos de 90 días no se utilizan todavía para calcular la conversión a alta.
 
 ## 6. Planificación del proyecto
 
@@ -184,13 +186,13 @@ Los primeros 90 días buscan responder una pregunta, no construir toda la plataf
 | Periodo | Trabajo principal | Resultado esperado |
 | --- | --- | --- |
 | Días 1 a 14 | Validar tracking, capacidad, URLs, métricas y selección de municipios | Protocolo aprobado y línea base reproducible |
-| Días 15 a 28 | Preparar versiones, controles editoriales y publicación limitada | Tratamiento y control activos sin incumplir restricciones |
+| Días 15 a 28 | Preparar versiones, controles editoriales y publicación limitada | Nueva landing y versión anterior activas sin incumplir restricciones |
 | Días 29 a 56 | Vigilar exposición, indexación, integridad y capacidad | Confirmación de que la prueba se está ejecutando como fue diseñada |
-| Días 57 a 90 | Cerrar cohortes, calcular resultado y revisar guardarraíles | Decisión documentada: continuar, modificar o parar |
+| Días 57 a 90 | Completar el seguimiento, calcular el resultado y revisar los controles | Decisión documentada: continuar, modificar o parar |
 
 La primera versión incluye el portfolio de landings, la ficha por URL, la selección de oportunidades, la lectura de experimentos, el linaje de métricas y el registro de decisiones. Quedan fuera la publicación automática, las recomendaciones autónomas, el análisis estadístico avanzado y la expansión masiva a nuevos municipios.
 
-Al final de los 90 días continuaríamos si existe una mejora consistente en SQL maduros, la trazabilidad es suficiente y capacidad o calidad no empeoran. Modificaríamos el enfoque si aparece una señal positiva con problemas de exposición, muestra o mensaje. Pararíamos si no hay mejora relevante, se degrada la calidad comercial o la demanda adicional no puede atenderse.
+Al final de los 90 días continuaríamos si existe una mejora consistente en SQL elegibles, la conexión entre web y CRM es suficiente y la capacidad o la calidad no empeoran. Modificaríamos el enfoque si aparece una señal positiva con problemas de exposición, muestra o mensaje. Pararíamos si no hay mejora relevante, se degrada la calidad comercial o la demanda adicional no puede atenderse.
 
 ### 6.1 Equipos y reuniones
 
@@ -209,5 +211,3 @@ Los valores mostrados sirven para explicar el funcionamiento del producto. No re
 La versión real no publicaría precios ni afirmaciones sanitarias. Ninguna familia o cuidadora puede identificarse. Las transcripciones y testimonios necesitan privacidad y consentimiento. Marketing aprueba todo lo que afecte a marca o posicionamiento. Los municipios sin capacidad quedan fuera aunque tengan demanda. La IA redacta o resume dentro de límites, pero no decide qué publicar ni puede inventar evidencias.
 
 Para pasar a producción faltaría conectar Databricks, Strapi y CRM, añadir autenticación y permisos, calibrar reglas con históricos reales, completar inferencia estadística y convertir los controles de publicación en verificaciones auditables.
-
-Qida Growth Intelligence relaciona cada landing con el contexto que la originó, su resultado y las decisiones posteriores. El valor no está en mostrar más datos, sino en hacer que cada cambio pueda entenderse, medirse y convertirse en una decisión responsable.

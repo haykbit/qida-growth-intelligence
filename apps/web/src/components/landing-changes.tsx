@@ -151,8 +151,9 @@ function DecisionEditor({
             </fieldset>
           )}
           <p className="text-sm text-muted-foreground">
-            Métrica de decisión: SQL familiares por municipio-semana.
-            Guardarraíl: SQL → alta de cohorte madura.
+            Métrica de decisión: SQL familiares por municipio-semana. Control
+            que no debe empeorar: conversión de SQL a alta usando únicamente SQL
+            con 90 días de seguimiento.
           </p>
           {(message || save.error) && (
             <p role="alert">{message || save.error?.message}</p>
@@ -220,8 +221,8 @@ export function LandingChanges({
             <p className="text-sm text-muted-foreground">
               {selected.author ?? selected.actorRole} ·{" "}
               {formatDate(selected.createdAt)} ·{" "}
-              {metricNames[selected.primaryMetric]} · Guardarraíl:{" "}
-              {metricNames[selected.guardrailMetric]}
+              {metricNames[selected.primaryMetric]} · Control que no debe
+              empeorar: {metricNames[selected.guardrailMetric]}
             </p>
             {selected.note && <p className="text-sm">{selected.note}</p>}
             {change && source ? (
@@ -303,7 +304,12 @@ export function LandingChanges({
       ) : change?.experimentId ? (
         <CommercialResult id={change.experimentId} />
       ) : (
-        change && <p>Pendiente de asignar tratamiento y control.</p>
+        change && (
+          <p>
+            Pendiente de asignar municipios a la nueva landing y a la versión
+            anterior.
+          </p>
+        )
       )}
       <DecisionEditor
         key={selected?.id ?? data.url}

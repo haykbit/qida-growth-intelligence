@@ -16,42 +16,181 @@ export type MetricTree = {
 
 export const metricTree: MetricTree = {
   business: [
-    { key: "mature_sql_to_alta", label: "SQL → alta de cohorte madura", formula: "altas / oportunidades SQL elegibles maduras", sources: ["care_opportunity", "lead"], grain: "cohorte de SQL y servicio", window: "60 días de maduración por defecto", limitations: "No prueba causalidad; excluye cuidadoras y cohortes inmaduras." },
-    { key: "cost_per_reconciled_alta", label: "Coste por alta reconciliada", formula: "coste Ads / altas CRM atribuibles", sources: ["ads_diario", "journey_event", "care_opportunity"], grain: "campaña y mes", window: "mensual", limitations: "No reparte campañas sin segmentación municipal y no equivale a incrementalidad." },
-    { key: "eligible_opportunity_value", label: "Oportunidades elegibles priorizadas", formula: "recuento de recomendaciones elegibles por reglas", sources: ["growth_recommendation", "motor_municipio"], grain: "municipio-servicio", window: "snapshot", limitations: "Score de reglas, no predicción validada." },
+    {
+      key: "mature_sql_to_alta",
+      label: "SQL → alta con seguimiento completo",
+      formula: "altas / SQL elegibles con al menos 90 días de seguimiento",
+      sources: ["care_opportunity", "lead"],
+      grain: "SQL agrupados por servicio y fecha",
+      window: "90 días de seguimiento",
+      limitations:
+        "No demuestra que la landing causara el alta; excluye contactos de cuidadoras y SQL más recientes.",
+    },
+    {
+      key: "cost_per_reconciled_alta",
+      label: "Coste por alta reconciliada",
+      formula: "coste Ads / altas CRM atribuibles",
+      sources: ["ads_diario", "journey_event", "care_opportunity"],
+      grain: "campaña y mes",
+      window: "mensual",
+      limitations:
+        "No reparte campañas sin segmentación municipal y no equivale a incrementalidad.",
+    },
+    {
+      key: "eligible_opportunity_value",
+      label: "Oportunidades elegibles priorizadas",
+      formula: "recuento de recomendaciones elegibles por reglas",
+      sources: ["growth_recommendation", "motor_municipio"],
+      grain: "municipio-servicio",
+      window: "snapshot",
+      limitations: "Score de reglas, no predicción validada.",
+    },
   ],
   operational: [
-    { key: "family_sql", label: "SQL de familias", formula: "count(lead) where es_sql and tipo_contacto = familia_cuidado", sources: ["lead"], grain: "fecha de creación y canal", window: "diaria/mensual", limitations: "La fecha de creación no debe confundirse con fecha_sql." },
-    { key: "landing_form_rate", label: "Formularios por sesión", formula: "sum(formularios) / sum(sesiones)", sources: ["web_sesiones_diarias"], grain: "landing, canal y dispositivo", window: "diaria", limitations: "Describe conversión web; puede canibalizar teléfono u otros canales." },
-    { key: "indexation_rate", label: "Cobertura de indexación", formula: "landings indexadas / landings publicadas", sources: ["landing"], grain: "origen e idioma", window: "snapshot", limitations: "La indexación no garantiza tráfico ni demanda incremental." },
+    {
+      key: "family_sql",
+      label: "SQL de familias",
+      formula: "count(lead) where es_sql and tipo_contacto = familia_cuidado",
+      sources: ["lead"],
+      grain: "fecha de creación y canal",
+      window: "diaria/mensual",
+      limitations: "La fecha de creación no debe confundirse con fecha_sql.",
+    },
+    {
+      key: "landing_form_rate",
+      label: "Formularios por sesión",
+      formula: "sum(formularios) / sum(sesiones)",
+      sources: ["web_sesiones_diarias"],
+      grain: "landing, canal y dispositivo",
+      window: "diaria",
+      limitations:
+        "Describe conversión web; puede canibalizar teléfono u otros canales.",
+    },
+    {
+      key: "indexation_rate",
+      label: "Cobertura de indexación",
+      formula: "landings indexadas / landings publicadas",
+      sources: ["landing"],
+      grain: "origen e idioma",
+      window: "snapshot",
+      limitations: "La indexación no garantiza tráfico ni demanda incremental.",
+    },
   ],
   guardrails: [
-    { key: "capacity_constrained_demand", label: "Demanda restringida por capacidad", formula: "búsquedas en municipios cubiertos con <4 cuidadoras", sources: ["motor_demanda_busqueda", "motor_municipio"], grain: "municipio-servicio-mes", window: "mensual", limitations: "El umbral es operativo y versionable." },
-    { key: "unidentified_event_rate", label: "Eventos sin identidad", formula: "eventos sin person_id / eventos", sources: ["journey_event"], grain: "source_system", window: "diaria", limitations: "Una identidad ausente no implica un evento inválido." },
-    { key: "channel_cannibalization", label: "Señal de canibalización", formula: "cambio tratamiento en canal objetivo versus cambio en otros canales", sources: ["experiment_assignment", "web_sesiones_diarias", "lead"], grain: "experimento, variante y canal", window: "pre/post", limitations: "Señal diagnóstica; exige grupos comparables y control de estacionalidad." },
-    { key: "negative_experiment_guardrail", label: "Experimentos con deterioro", formula: "DiD observada < 0 en métrica primaria o guardrail", sources: ["growth_experiment", "experiment_assignment", "web_sesiones_diarias"], grain: "experimento", window: "pre/post", limitations: "No implica significación estadística." },
+    {
+      key: "capacity_constrained_demand",
+      label: "Demanda restringida por capacidad",
+      formula: "búsquedas en municipios cubiertos con <4 cuidadoras",
+      sources: ["motor_demanda_busqueda", "motor_municipio"],
+      grain: "municipio-servicio-mes",
+      window: "mensual",
+      limitations: "El umbral es operativo y versionable.",
+    },
+    {
+      key: "unidentified_event_rate",
+      label: "Eventos sin identidad",
+      formula: "eventos sin person_id / eventos",
+      sources: ["journey_event"],
+      grain: "source_system",
+      window: "diaria",
+      limitations: "Una identidad ausente no implica un evento inválido.",
+    },
+    {
+      key: "channel_cannibalization",
+      label: "Señal de canibalización",
+      formula:
+        "cambio tratamiento en canal objetivo versus cambio en otros canales",
+      sources: ["experiment_assignment", "web_sesiones_diarias", "lead"],
+      grain: "experimento, variante y canal",
+      window: "pre/post",
+      limitations:
+        "Señal diagnóstica; exige grupos comparables y control de estacionalidad.",
+    },
+    {
+      key: "negative_experiment_guardrail",
+      label: "Experimentos con deterioro",
+      formula: "DiD observada < 0 en métrica primaria o guardrail",
+      sources: [
+        "growth_experiment",
+        "experiment_assignment",
+        "web_sesiones_diarias",
+      ],
+      grain: "experimento",
+      window: "pre/post",
+      limitations: "No implica significación estadística.",
+    },
   ],
 };
 
 export type MonitoringSignal = {
-  key: "indexation" | "traffic" | "conversion" | "staleness" | "coverage" | "quality" | "negative_experiment";
+  key:
+    | "indexation"
+    | "traffic"
+    | "conversion"
+    | "staleness"
+    | "coverage"
+    | "quality"
+    | "negative_experiment";
   condition: string;
   severity: "info" | "warning" | "critical";
   sources: string[];
 };
 
 export const monitoringSignals: MonitoringSignal[] = [
-  { key: "indexation", condition: "published for 21 days without fecha_primera_indexacion", severity: "warning", sources: ["landing"] },
-  { key: "traffic", condition: "sessions down >30% versus comparable prior 28 days", severity: "warning", sources: ["web_sesiones_diarias"] },
-  { key: "conversion", condition: "form rate down >25% with at least 100 sessions", severity: "warning", sources: ["web_sesiones_diarias"] },
-  { key: "staleness", condition: "latest source date older than its expected refresh SLA", severity: "critical", sources: ["gsc_diario", "web_sesiones_diarias", "ads_diario", "lead"] },
-  { key: "coverage", condition: "demand exists where coverage is absent or capacity <4", severity: "info", sources: ["motor_municipio", "motor_demanda_busqueda"] },
-  { key: "quality", condition: "invalid chronology, orphan conversion, or unidentified-event rate above 15%", severity: "critical", sources: ["lead", "care_opportunity", "journey_event"] },
-  { key: "negative_experiment", condition: "observed DiD below zero in primary or guardrail metric", severity: "warning", sources: ["growth_experiment", "experiment_assignment", "web_sesiones_diarias"] },
+  {
+    key: "indexation",
+    condition: "published for 21 days without fecha_primera_indexacion",
+    severity: "warning",
+    sources: ["landing"],
+  },
+  {
+    key: "traffic",
+    condition: "sessions down >30% versus comparable prior 28 days",
+    severity: "warning",
+    sources: ["web_sesiones_diarias"],
+  },
+  {
+    key: "conversion",
+    condition: "form rate down >25% with at least 100 sessions",
+    severity: "warning",
+    sources: ["web_sesiones_diarias"],
+  },
+  {
+    key: "staleness",
+    condition: "latest source date older than its expected refresh SLA",
+    severity: "critical",
+    sources: ["gsc_diario", "web_sesiones_diarias", "ads_diario", "lead"],
+  },
+  {
+    key: "coverage",
+    condition: "demand exists where coverage is absent or capacity <4",
+    severity: "info",
+    sources: ["motor_municipio", "motor_demanda_busqueda"],
+  },
+  {
+    key: "quality",
+    condition:
+      "invalid chronology, orphan conversion, or unidentified-event rate above 15%",
+    severity: "critical",
+    sources: ["lead", "care_opportunity", "journey_event"],
+  },
+  {
+    key: "negative_experiment",
+    condition: "observed DiD below zero in primary or guardrail metric",
+    severity: "warning",
+    sources: [
+      "growth_experiment",
+      "experiment_assignment",
+      "web_sesiones_diarias",
+    ],
+  },
 ];
 
 export type WorkbenchQuery = {
-  id: "municipality_prioritization" | "landing_cohort_comparison" | "quality_and_losses";
+  id:
+    | "municipality_prioritization"
+    | "landing_cohort_comparison"
+    | "quality_and_losses";
   title: string;
   sql: string;
   originalTables: string[];
@@ -91,7 +230,12 @@ ORDER BY r.score DESC NULLS LAST, d.busquedas DESC;`,
   {
     id: "landing_cohort_comparison",
     title: "Cohortes de landings y grupos comparables",
-    originalTables: ["landing", "web_sesiones_diarias", "lead", "motor_municipio"],
+    originalTables: [
+      "landing",
+      "web_sesiones_diarias",
+      "lead",
+      "motor_municipio",
+    ],
     extensionTables: ["experiment_assignment", "growth_experiment"],
     interpretation: "causal_candidate",
     sql: `WITH landing_daily AS (

@@ -2,8 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Badge, Button, Input, Select, cn } from "@qida/ui";
 import {
   Clock3,
-  CalendarRange,
-  Database,
   Filter,
   FlaskConical,
   Menu,
@@ -32,8 +30,6 @@ export const navigationGroups: Array<{
       { to: "/", label: "Landings", icon: PanelsTopLeft },
       { to: "/opportunities", label: "Oportunidades", icon: Target },
       { to: "/measurement", label: "Medición", icon: FlaskConical },
-      { to: "/planning", label: "Plan de 90 días", icon: CalendarRange },
-      { to: "/data-model", label: "Modelo de datos", icon: Database },
     ],
   },
 ];
@@ -272,7 +268,13 @@ function readHistory(): HistoryItem[] {
   }
 }
 
-function AppSidebar({ close, mobile = false }: { close: () => void; mobile?: boolean }) {
+function AppSidebar({
+  close,
+  mobile = false,
+}: {
+  close: () => void;
+  mobile?: boolean;
+}) {
   const items = navigationGroups.flatMap((group) => group.items);
   const staticDemo = import.meta.env.VITE_STATIC_DEMO === "true";
   return (
@@ -285,23 +287,40 @@ function AppSidebar({ close, mobile = false }: { close: () => void; mobile?: boo
       data-component-id="app-sidebar"
     >
       <div className="flex h-16 items-center border-b px-5">
-        <Link className="flex min-w-0 items-center gap-3" onClick={close} to="/">
-          <span className="grid size-8 shrink-0 place-items-center rounded-md bg-primary text-sm font-bold text-primary-foreground">Q</span>
+        <Link
+          className="flex min-w-0 items-center gap-3"
+          onClick={close}
+          to="/"
+        >
+          <span className="grid size-8 shrink-0 place-items-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
+            Q
+          </span>
           <span className="min-w-0">
-            <span className="block truncate text-sm font-semibold">Inteligencia de landings</span>
-            <span className="block text-xs text-muted-foreground">Área de Growth</span>
+            <span className="block truncate text-sm font-semibold">
+              Inteligencia de landings
+            </span>
+            <span className="block text-xs text-muted-foreground">
+              Área de Growth
+            </span>
           </span>
         </Link>
       </div>
       <nav className="flex flex-1 flex-col gap-1 p-3">
         {items.map((item) => (
-          <NavigationLink key={item.to} item={item} close={close} mobile={mobile} />
+          <NavigationLink
+            key={item.to}
+            item={item}
+            close={close}
+            mobile={mobile}
+          />
         ))}
       </nav>
       <div className="border-t p-4">
         <p className="text-xs font-medium">Entorno de demostración</p>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          {staticDemo ? "Datos sintéticos desde JSON · cambios solo en este navegador" : "Datos sintéticos persistidos · v2"}
+          {staticDemo
+            ? "Datos sintéticos desde JSON · cambios solo en este navegador"
+            : "Datos sintéticos persistidos · v2"}
         </p>
       </div>
     </aside>
@@ -320,20 +339,32 @@ function WorkspaceHeader({
   const location = useLocation();
   const { activeCount } = useFilters();
   const [history, setHistory] = useState<HistoryItem[]>(readHistory);
-  const current = { label: pageLabel(location.pathname), to: `${location.pathname}${location.search}` };
+  const current = {
+    label: pageLabel(location.pathname),
+    to: `${location.pathname}${location.search}`,
+  };
 
   useEffect(() => {
     setFiltersOpen(false);
     setHistory((existing) => {
-      const next = [...existing.filter((item) => item.to !== current.to), current].slice(-5);
+      const next = [
+        ...existing.filter((item) => item.to !== current.to),
+        current,
+      ].slice(-5);
       window.sessionStorage.setItem("qida-page-history", JSON.stringify(next));
       return next;
     });
   }, [location.pathname, location.search]);
 
-  const previousPages = history.filter((item) => item.to !== current.to).slice(-3).reverse();
+  const previousPages = history
+    .filter((item) => item.to !== current.to)
+    .slice(-3)
+    .reverse();
   return (
-    <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-4 border-b border-border bg-background/95 px-4 backdrop-blur sm:px-6 lg:px-8" data-component-id="workspace-header">
+    <header
+      className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-4 border-b border-border bg-background/95 px-4 backdrop-blur sm:px-6 lg:px-8"
+      data-component-id="workspace-header"
+    >
       <div className="flex min-w-0 items-center gap-3">
         <Button
           className="lg:hidden"
@@ -349,12 +380,21 @@ function WorkspaceHeader({
           <div className="mt-0.5 hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">
             <Clock3 className="size-3.5" />
             <span>Visitadas:</span>
-            {previousPages.length ? previousPages.map((item, index) => (
-              <span className="flex items-center gap-1.5" key={item.to}>
-                {index > 0 ? <span aria-hidden="true">/</span> : null}
-                <Link className="max-w-36 truncate hover:text-foreground hover:underline" to={item.to}>{item.label}</Link>
-              </span>
-            )) : <span>Esta es la primera vista</span>}
+            {previousPages.length ? (
+              previousPages.map((item, index) => (
+                <span className="flex items-center gap-1.5" key={item.to}>
+                  {index > 0 ? <span aria-hidden="true">/</span> : null}
+                  <Link
+                    className="max-w-36 truncate hover:text-foreground hover:underline"
+                    to={item.to}
+                  >
+                    {item.label}
+                  </Link>
+                </span>
+              ))
+            ) : (
+              <span>Esta es la primera vista</span>
+            )}
           </div>
         </div>
       </div>
@@ -394,12 +434,23 @@ export function AppLayout() {
       <AppSidebar close={() => setMenuOpen(false)} />
       {menuOpen ? (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <button className="absolute inset-0 bg-slate-950/35" aria-label="Cerrar navegación" onClick={() => setMenuOpen(false)} type="button" />
-          <div className="relative h-full w-64 shadow-2xl"><AppSidebar close={() => setMenuOpen(false)} mobile /></div>
+          <button
+            className="absolute inset-0 bg-slate-950/35"
+            aria-label="Cerrar navegación"
+            onClick={() => setMenuOpen(false)}
+            type="button"
+          />
+          <div className="relative h-full w-64 shadow-2xl">
+            <AppSidebar close={() => setMenuOpen(false)} mobile />
+          </div>
         </div>
       ) : null}
       <div className="min-w-0">
-        <WorkspaceHeader filtersOpen={filtersOpen} openMenu={() => setMenuOpen(true)} setFiltersOpen={setFiltersOpen} />
+        <WorkspaceHeader
+          filtersOpen={filtersOpen}
+          openMenu={() => setMenuOpen(true)}
+          setFiltersOpen={setFiltersOpen}
+        />
         <main className="mx-auto min-w-0 max-w-[1680px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <Outlet />
         </main>

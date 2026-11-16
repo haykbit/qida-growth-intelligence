@@ -39,6 +39,6 @@ it("reports an inconclusive readout until both groups have mature post-exposure 
   ]);
   expect(result.difference).toBeNull();
   expect(result.warnings).toContain(
-    "La ventana de ocho semanas todavía no está completa y madura.",
+    "Todavía no hay ocho semanas completas después del cambio.",
   );
 });

@@ -10,14 +10,14 @@ describe("workspace navigation", () => {
       "Landings",
       "Oportunidades",
       "Medición",
-      "Plan de 90 días",
-      "Modelo de datos",
     ]);
     expect(secondary).toEqual([]);
   });
 
   it("exposes every route once", () => {
-    const routes = navigationGroups.flatMap((group) => group.items.map((item) => item.to));
+    const routes = navigationGroups.flatMap((group) =>
+      group.items.map((item) => item.to),
+    );
 
     expect(new Set(routes).size).toBe(routes.length);
   });

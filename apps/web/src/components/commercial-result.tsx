@@ -1,8 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import {
+  Alert,
+  AlertDescription,
   Badge,
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
   Table,
@@ -19,46 +22,104 @@ import { ErrorState, LoadingState } from "./feedback";
 
 const number = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 2 });
 
+function resultSummary(value: number | null): string {
+  if (value === null)
+    return "Todavía no hay suficientes semanas completas para comparar las versiones.";
+  if (value > 0)
+    return `La nueva landing obtuvo ${number.format(value)} SQL más por municipio y semana que la versión anterior, después de descontar la evolución general.`;
+  if (value < 0)
+    return `La nueva landing obtuvo ${number.format(Math.abs(value))} SQL menos por municipio y semana que la versión anterior, después de descontar la evolución general.`;
+  return "La nueva landing y la versión anterior evolucionaron igual durante el periodo analizado.";
+}
+
+function previousPeriodSummary(value: number | null): string {
+  if (value === null)
+    return "No hay suficientes semanas anteriores para comprobar si ambos grupos partían de una situación comparable.";
+  return `Antes del cambio, la evolución de ambos grupos difería en ${number.format(Math.abs(value))} SQL por municipio y semana. Una diferencia cercana a cero indica que partían de situaciones más comparables.`;
+}
+
 export function CommercialEvidence({ result }: { result: SqlResult }) {
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <strong className="text-2xl tabular-nums">
-          {result.difference === null
-            ? "Pendiente"
-            : number.format(result.difference)}
-        </strong>
-        <span className="text-sm">
-          SQL por municipio y semana · diferencia de cambios
-        </span>
-        <Badge tone={result.warnings.length ? "warning" : "neutral"}>
-          {result.warnings.length ? "Inconcluso" : "Estimación descriptiva"}
-        </Badge>
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardDescription>
+              Resultado frente a la versión anterior
+            </CardDescription>
+            <CardTitle className="text-2xl tabular-nums">
+              {result.difference === null
+                ? "Sin datos suficientes"
+                : `${result.difference >= 0 ? "+" : ""}${number.format(result.difference)}`}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm leading-6 text-muted-foreground">
+              {resultSummary(result.difference)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>Comparabilidad antes del cambio</CardDescription>
+            <CardTitle>
+              {result.preTrendGap === null
+                ? "Sin datos suficientes"
+                : `${number.format(Math.abs(result.preTrendGap))} SQL de diferencia`}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm leading-6 text-muted-foreground">
+              {previousPeriodSummary(result.preTrendGap)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>Comprobación de otros canales</CardDescription>
+            <CardTitle>Llamadas y campañas de pago</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm leading-6 text-muted-foreground">
+              Comprobamos si el cambio solo desplazó SQL desde teléfono o
+              publicidad en lugar de generar resultados adicionales.
+            </p>
+          </CardContent>
+        </Card>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Corte de la simulación {formatDate(result.asOf)}. La comparación usa las
-        semanas completas con 34 días de maduración desde su cierre. Las altas
-        se leen a 90 días de la fecha SQL.
-      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <Badge tone={result.warnings.length ? "warning" : "success"}>
+          {result.warnings.length
+            ? "Requiere revisión"
+            : "Datos suficientes para interpretar"}
+        </Badge>
+        <p className="text-sm text-muted-foreground">
+          Datos disponibles hasta {formatDate(result.asOf)}. Solo se comparan
+          semanas completas. Las altas se calculan con SQL que llevan 90 días en
+          seguimiento.
+        </p>
+      </div>
       {result.warnings.length > 0 && (
-        <ul className="list-disc space-y-1 pl-5 text-sm">
-          {result.warnings.map((w) => (
-            <li key={w}>{w}</li>
+        <div className="grid gap-2">
+          {result.warnings.map((warning) => (
+            <Alert key={warning}>
+              <AlertDescription>{warning}</AlertDescription>
+            </Alert>
           ))}
-        </ul>
+        </div>
       )}
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               {[
-                "Ventana madura",
-                "Grupo",
+                "Periodo",
+                "Versión",
                 "Municipios",
                 "Semanas",
                 "SQL",
                 "SQL / municipio-semana",
-                "Altas / SQL maduros",
+                "Altas / SQL con 90 días",
               ].map((t) => (
                 <TableHead key={t}>{t}</TableHead>
               ))}
@@ -82,7 +143,9 @@ export function CommercialEvidence({ result }: { result: SqlResult }) {
                   <TableRow key={period + group}>
                     <TableCell>{period}</TableCell>
                     <TableCell>
-                      {group === "control" ? "Control" : "Tratamiento"}
+                      {group === "control"
+                        ? "Versión anterior"
+                        : "Nueva landing"}
                     </TableCell>
                     <TableCell>{rows[0]?.municipalities ?? "—"}</TableCell>
                     <TableCell>{rows.length}</TableCell>
@@ -106,16 +169,11 @@ export function CommercialEvidence({ result }: { result: SqlResult }) {
       </div>
       <details>
         <summary className="cursor-pointer text-sm font-semibold">
-          Semanas, sesiones y canales
+          Ver desglose semanal y por canal
         </summary>
-        <p className="my-3 text-sm">
-          Cambio de la brecha tratamiento–control entre las dos mitades del
-          periodo previo:{" "}
-          {result.preTrendGap === null
-            ? "pendiente"
-            : number.format(result.preTrendGap)}{" "}
-          SQL por municipio-semana. Los canales se comparan sobre los SQL
-          elegibles de los municipios asignados.
+        <p className="my-3 text-sm leading-6 text-muted-foreground">
+          El desglose permite comprobar cuándo se registró cada resultado y si
+          procede de web, teléfono o publicidad.
         </p>
         <div className="max-h-80 overflow-auto">
           <Table>
@@ -123,13 +181,13 @@ export function CommercialEvidence({ result }: { result: SqlResult }) {
               <TableRow>
                 {[
                   "Inicio",
-                  "Ventana",
-                  "Grupo",
+                  "Momento",
+                  "Versión",
                   "Sesiones web",
                   "SQL CRM",
                   "SQL teléfono",
                   "SQL pago",
-                  "Madurez",
+                  "Estado de la semana",
                 ].map((h) => (
                   <TableHead key={h}>{h}</TableHead>
                 ))}
@@ -139,15 +197,21 @@ export function CommercialEvidence({ result }: { result: SqlResult }) {
               {result.weeks.map((w) => (
                 <TableRow key={w.start + w.group}>
                   <TableCell>{formatDate(w.start)}</TableCell>
-                  <TableCell>{w.week < 0 ? "Previa" : "Exposición"}</TableCell>
                   <TableCell>
-                    {w.group === "control" ? "Control" : "Tratamiento"}
+                    {w.week < 0 ? "Antes del cambio" : "Después del cambio"}
+                  </TableCell>
+                  <TableCell>
+                    {w.group === "control"
+                      ? "Versión anterior"
+                      : "Nueva landing"}
                   </TableCell>
                   <TableCell>{w.sessions}</TableCell>
                   <TableCell>{w.sql}</TableCell>
                   <TableCell>{w.phone}</TableCell>
                   <TableCell>{w.paid}</TableCell>
-                  <TableCell>{w.mature ? "Madura" : "Provisional"}</TableCell>
+                  <TableCell>
+                    {w.mature ? "Lista para analizar" : "Aún incompleta"}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -170,7 +234,9 @@ export function CommercialResult({ id }: { id: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>SQL familiares elegibles frente al control</CardTitle>
+        <CardTitle>
+          Resultados de la nueva landing frente a la versión anterior
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {experiment.data && (
@@ -181,7 +247,7 @@ export function CommercialResult({ id }: { id: string }) {
             {(["treatment", "control"] as const).map((group) => (
               <p key={group} className="mt-2 text-sm">
                 <strong>
-                  {group === "control" ? "Control" : "Tratamiento"}
+                  {group === "control" ? "Versión anterior" : "Nueva landing"}
                 </strong>{" "}
                 ·{" "}
                 {experiment.data?.assignments

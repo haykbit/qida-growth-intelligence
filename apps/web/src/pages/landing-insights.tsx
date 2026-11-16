@@ -1,21 +1,67 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LandingDecisionRequest } from "@qida/contracts";
-import { Badge, Button, Card, CardContent, CardHeader, Input, Select, cn } from "@qida/ui";
-import { ArrowLeft, ArrowRight, CheckCircle2, ExternalLink, Gauge, Search, ShieldAlert, Sparkles } from "lucide-react";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  Input,
+  Select,
+  cn,
+} from "@qida/ui";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  ExternalLink,
+  Gauge,
+  Search,
+  ShieldAlert,
+  Sparkles,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { TrendChart, chartPalette } from "../components/charts";
-import { Caveats, MetricStrip, PageTitle, Panel, StatusBadge } from "../components/data-display";
+import {
+  Caveats,
+  MetricStrip,
+  PageTitle,
+  Panel,
+  StatusBadge,
+} from "../components/data-display";
 import { TablePagination } from "../components/data-table";
 import { EmptyState, ErrorState, LoadingState } from "../components/feedback";
-import { api, type LandingInsightDetailData, type LandingInsightSummaryData } from "../lib/api";
-import { formatDate, formatDateTime, integer, percent, titleCase } from "../lib/format";
+import {
+  api,
+  type LandingInsightDetailData,
+  type LandingInsightSummaryData,
+} from "../lib/api";
+import {
+  formatDate,
+  formatDateTime,
+  integer,
+  percent,
+  titleCase,
+} from "../lib/format";
 import { useFilters } from "../state/filters";
 
-const decisionLabels = { keep: "Mantener", iterate: "Iterar", stop: "Detener" } as const;
-const metricLabels = { sql_per_municipality_week: "SQL por municipio-semana", session_to_lead: "Sesión → lead", lead_to_sql: "Lead → SQL", sql_to_alta: "SQL → alta", caregiver_capacity: "Capacidad de cuidadoras" } as const;
+const decisionLabels = {
+  keep: "Mantener",
+  iterate: "Iterar",
+  stop: "Detener",
+} as const;
+const metricLabels = {
+  sql_per_municipality_week: "SQL por municipio-semana",
+  session_to_lead: "Sesión → lead",
+  lead_to_sql: "Lead → SQL",
+  sql_to_alta: "SQL → alta",
+  caregiver_capacity: "Capacidad de cuidadoras",
+} as const;
 
-function decisionTone(decision: LandingInsightSummaryData["diagnosis"]["decision"]): "success" | "warning" | "danger" {
+function decisionTone(
+  decision: LandingInsightSummaryData["diagnosis"]["decision"],
+): "success" | "warning" | "danger" {
   if (decision === "keep") return "success";
   if (decision === "iterate") return "warning";
   return "danger";
@@ -24,15 +70,129 @@ function decisionTone(decision: LandingInsightSummaryData["diagnosis"]["decision
 function FunnelStrip({ landing }: { landing: LandingInsightSummaryData }) {
   const steps = [
     { label: "Sesiones", value: landing.sessions, rate: null },
-    { label: "Leads atribuidos", value: landing.leads, rate: landing.rates.sessionToLead },
+    {
+      label: "Leads atribuidos",
+      value: landing.leads,
+      rate: landing.rates.sessionToLead,
+    },
     { label: "SQL", value: landing.sql, rate: landing.rates.leadToSql },
     { label: "Altas", value: landing.altas, rate: landing.rates.sqlToAlta },
   ];
-  return <div className="grid overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:grid-cols-4">{steps.map((step, index) => <div className="relative bg-white px-4 py-3" key={step.label}><p className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-400">{step.label}</p><p className="mt-1 text-2xl font-semibold tabular-nums text-slate-950">{integer.format(step.value)}</p>{step.rate === null ? <p className="mt-1 text-[11px] text-slate-400">Entrada observada</p> : <p className="mt-1 text-[11px] font-medium text-slate-500">{percent.format(step.rate)} desde etapa anterior</p>}{index < steps.length - 1 ? <ArrowRight className="absolute -right-3 top-1/2 z-10 hidden size-5 -translate-y-1/2 rounded-full bg-slate-100 p-1 text-slate-400 sm:block" /> : null}</div>)}</div>;
+  return (
+    <div className="grid overflow-hidden rounded-xl border border-slate-200 bg-slate-200 sm:grid-cols-4">
+      {steps.map((step, index) => (
+        <div className="relative bg-white px-4 py-3" key={step.label}>
+          <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-400">
+            {step.label}
+          </p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-950">
+            {integer.format(step.value)}
+          </p>
+          {step.rate === null ? (
+            <p className="mt-1 text-[11px] text-slate-400">Entrada observada</p>
+          ) : (
+            <p className="mt-1 text-[11px] font-medium text-slate-500">
+              {percent.format(step.rate)} desde etapa anterior
+            </p>
+          )}
+          {index < steps.length - 1 ? (
+            <ArrowRight className="absolute -right-3 top-1/2 z-10 hidden size-5 -translate-y-1/2 rounded-full bg-slate-100 p-1 text-slate-400 sm:block" />
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function LandingCard({ landing }: { landing: LandingInsightSummaryData }) {
-  return <Card className="overflow-hidden" data-component-id="landing-performance-card"><CardContent className="p-0"><div className="grid gap-5 p-5 xl:grid-cols-[minmax(220px,0.75fr)_minmax(460px,1.5fr)_minmax(280px,0.85fr)] xl:items-center"><div className="min-w-0"><div className="flex flex-wrap gap-2"><StatusBadge status={landing.status} /><Badge>{landing.origin === "generada" ? "Generada" : "Manual"}</Badge>{landing.operations.eligible ? <Badge tone="success">Operable</Badge> : <Badge tone="danger">Restricción</Badge>}</div><div className="mt-3 flex items-center gap-3"><div><h2 className="truncate text-lg font-semibold text-slate-950">{landing.municipality ?? "Landing general"}</h2><p className="mt-1 text-sm text-slate-500">{landing.service ? titleCase(landing.service) : "Servicio sin clasificar"}</p></div><div className="ml-auto shrink-0 rounded-xl bg-slate-950 px-3 py-2 text-center text-white"><p className="text-[9px] uppercase tracking-[0.12em] text-slate-400">Evaluación</p><p className="text-2xl font-semibold leading-none">{integer.format(landing.evaluation.overall)}</p></div></div><p className="mt-3 truncate font-mono text-[11px] text-slate-400">{landing.url}</p></div><FunnelStrip landing={landing} /><div className="min-w-0 rounded-xl bg-slate-50 p-4"><div className="flex items-center justify-between gap-3"><Badge tone={decisionTone(landing.diagnosis.decision)}>{decisionLabels[landing.diagnosis.decision]}</Badge><span className="text-[10px] uppercase tracking-[0.1em] text-slate-400">{landing.diagnosis.evidenceLevel === "attributed" ? "Atribución" : "Descripción"}</span></div><p className="mt-3 text-sm font-semibold leading-5 text-slate-900">{landing.diagnosis.headline}</p><p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{landing.diagnosis.recommendedAction}</p><div className="mt-4 grid grid-cols-2 gap-2"><Button asChild size="sm" variant="secondary"><Link to={`/landings/insight?url=${encodeURIComponent(landing.url)}`}>Evaluar<ArrowRight className="size-3.5" /></Link></Button>{landing.municipalityId && landing.service ? <Button asChild size="sm" variant="ghost"><Link target="_blank" rel="noreferrer" to={`/demo/${landing.municipalityId}/${encodeURIComponent(landing.service)}`}>Ver demo<ExternalLink className="size-3.5" /></Link></Button> : null}</div></div></div></CardContent></Card>;
+  return (
+    <Card
+      className="overflow-hidden"
+      data-component-id="landing-performance-card"
+    >
+      <CardContent className="p-0">
+        <div className="grid gap-5 p-5 xl:grid-cols-[minmax(220px,0.75fr)_minmax(460px,1.5fr)_minmax(280px,0.85fr)] xl:items-center">
+          <div className="min-w-0">
+            <div className="flex flex-wrap gap-2">
+              <StatusBadge status={landing.status} />
+              <Badge>
+                {landing.origin === "generada" ? "Generada" : "Manual"}
+              </Badge>
+              {landing.operations.eligible ? (
+                <Badge tone="success">Operable</Badge>
+              ) : (
+                <Badge tone="danger">Restricción</Badge>
+              )}
+            </div>
+            <div className="mt-3 flex items-center gap-3">
+              <div>
+                <h2 className="truncate text-lg font-semibold text-slate-950">
+                  {landing.municipality ?? "Landing general"}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  {landing.service
+                    ? titleCase(landing.service)
+                    : "Servicio sin clasificar"}
+                </p>
+              </div>
+              <div className="ml-auto shrink-0 rounded-xl bg-slate-950 px-3 py-2 text-center text-white">
+                <p className="text-[9px] uppercase tracking-[0.12em] text-slate-400">
+                  Evaluación
+                </p>
+                <p className="text-2xl font-semibold leading-none">
+                  {integer.format(landing.evaluation.overall)}
+                </p>
+              </div>
+            </div>
+            <p className="mt-3 truncate font-mono text-[11px] text-slate-400">
+              {landing.url}
+            </p>
+          </div>
+          <FunnelStrip landing={landing} />
+          <div className="min-w-0 rounded-xl bg-slate-50 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <Badge tone={decisionTone(landing.diagnosis.decision)}>
+                {decisionLabels[landing.diagnosis.decision]}
+              </Badge>
+              <span className="text-[10px] uppercase tracking-[0.1em] text-slate-400">
+                {landing.diagnosis.evidenceLevel === "attributed"
+                  ? "Conectado por URL"
+                  : "Patrón observado"}
+              </span>
+            </div>
+            <p className="mt-3 text-sm font-semibold leading-5 text-slate-900">
+              {landing.diagnosis.headline}
+            </p>
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
+              {landing.diagnosis.recommendedAction}
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Button asChild size="sm" variant="secondary">
+                <Link
+                  to={`/landings/insight?url=${encodeURIComponent(landing.url)}`}
+                >
+                  Evaluar
+                  <ArrowRight className="size-3.5" />
+                </Link>
+              </Button>
+              {landing.municipalityId && landing.service ? (
+                <Button asChild size="sm" variant="ghost">
+                  <Link
+                    target="_blank"
+                    rel="noreferrer"
+                    to={`/demo/${landing.municipalityId}/${encodeURIComponent(landing.service)}`}
+                  >
+                    Ver demo
+                    <ExternalLink className="size-3.5" />
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export function LandingInsightsPage() {
@@ -43,49 +203,663 @@ export function LandingInsightsPage() {
   const [page, setPage] = useState(1);
   const municipalityId = params.get("municipalityId") ?? undefined;
   const service = params.get("service") ?? undefined;
-  const evaluatorFilters = { ...filters, ...(municipalityId ? { municipalityId } : {}), ...(service ? { service } : {}) };
-  const query = useQuery({ queryKey: ["landing-insights", evaluatorFilters, search, page], queryFn: () => api.landingInsights(evaluatorFilters, page, 12, search) });
+  const evaluatorFilters = {
+    ...filters,
+    ...(municipalityId ? { municipalityId } : {}),
+    ...(service ? { service } : {}),
+  };
+  const query = useQuery({
+    queryKey: ["landing-insights", evaluatorFilters, search, page],
+    queryFn: () => api.landingInsights(evaluatorFilters, page, 12, search),
+  });
   if (query.isLoading) return <LoadingState cards={5} />;
-  if (query.isError) return <ErrorState error={query.error} retry={() => void query.refetch()} />;
+  if (query.isError)
+    return (
+      <ErrorState error={query.error} retry={() => void query.refetch()} />
+    );
   const data = query.data;
-  return <div className="page-grid"><PageTitle eyebrow="Motor de datos + landings" title="Evaluador de landings" />{municipalityId || service ? <div className="flex flex-wrap items-center gap-2"><Badge tone="info">Vista relacionada</Badge><span className="text-sm text-slate-500">{service ? titleCase(service) : "Todos los servicios"}</span></div> : null}<MetricStrip columns={5} items={[
-    { id: "landing-total", label: "Landings", value: integer.format(data?.totals.landings ?? 0), detail: `${integer.format(data?.totals.published ?? 0)} publicadas` },
-    { id: "landing-sessions", label: "Sesiones", value: integer.format(data?.totals.sessions ?? 0), detail: "Tráfico observado" },
-    { id: "landing-leads", label: "Leads atribuidos", value: integer.format(data?.totals.leads ?? 0), detail: "Por URL de entrada" },
-    { id: "landing-sql", label: "SQL", value: integer.format(data?.totals.sql ?? 0), detail: "Reconciliados con CRM" },
-    { id: "landing-altas", label: "Altas", value: integer.format(data?.totals.altas ?? 0), detail: "Reconciliadas con CRM" },
-  ]} /><Card><CardContent className="p-3"><form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); setSearch(input.trim()); setPage(1); }}><Input aria-label="Buscar landings" onChange={(event) => setInput(event.target.value)} placeholder="Buscar municipio, servicio o URL" value={input} /><Button aria-label="Buscar" size="icon" type="submit"><Search className="size-4" /></Button></form></CardContent></Card><div className="grid gap-3">{data?.items.length ? data.items.map((landing) => <LandingCard key={landing.url} landing={landing} />) : <Card><EmptyState title="No hay landings para esta selección" /></Card>}</div><Card><TablePagination onPageChange={setPage} page={page} pageSize={data?.pageSize ?? 12} total={data?.total ?? 0} /></Card></div>;
+  return (
+    <div className="page-grid">
+      <PageTitle
+        eyebrow="Motor de datos + landings"
+        title="Evaluador de landings"
+      />
+      {municipalityId || service ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone="info">Vista relacionada</Badge>
+          <span className="text-sm text-slate-500">
+            {service ? titleCase(service) : "Todos los servicios"}
+          </span>
+        </div>
+      ) : null}
+      <MetricStrip
+        columns={5}
+        items={[
+          {
+            id: "landing-total",
+            label: "Landings",
+            value: integer.format(data?.totals.landings ?? 0),
+            detail: `${integer.format(data?.totals.published ?? 0)} publicadas`,
+          },
+          {
+            id: "landing-sessions",
+            label: "Sesiones",
+            value: integer.format(data?.totals.sessions ?? 0),
+            detail: "Tráfico observado",
+          },
+          {
+            id: "landing-leads",
+            label: "Leads atribuidos",
+            value: integer.format(data?.totals.leads ?? 0),
+            detail: "Por URL de entrada",
+          },
+          {
+            id: "landing-sql",
+            label: "SQL",
+            value: integer.format(data?.totals.sql ?? 0),
+            detail: "Reconciliados con CRM",
+          },
+          {
+            id: "landing-altas",
+            label: "Altas",
+            value: integer.format(data?.totals.altas ?? 0),
+            detail: "Reconciliadas con CRM",
+          },
+        ]}
+      />
+      <Card>
+        <CardContent className="p-3">
+          <form
+            className="flex gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setSearch(input.trim());
+              setPage(1);
+            }}
+          >
+            <Input
+              aria-label="Buscar landings"
+              onChange={(event) => setInput(event.target.value)}
+              placeholder="Buscar municipio, servicio o URL"
+              value={input}
+            />
+            <Button aria-label="Buscar" size="icon" type="submit">
+              <Search className="size-4" />
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+      <div className="grid gap-3">
+        {data?.items.length ? (
+          data.items.map((landing) => (
+            <LandingCard key={landing.url} landing={landing} />
+          ))
+        ) : (
+          <Card>
+            <EmptyState title="No hay landings para esta selección" />
+          </Card>
+        )}
+      </div>
+      <Card>
+        <TablePagination
+          onPageChange={setPage}
+          page={page}
+          pageSize={data?.pageSize ?? 12}
+          total={data?.total ?? 0}
+        />
+      </Card>
+    </div>
+  );
 }
 
-function ComparisonRow({ label, current, benchmark }: { label: string; current: number; benchmark: number }) {
+function ComparisonRow({
+  label,
+  current,
+  benchmark,
+}: {
+  label: string;
+  current: number;
+  benchmark: number;
+}) {
   const relative = benchmark > 0 ? (current - benchmark) / benchmark : 0;
-  return <div className="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-t border-slate-100 py-3 first:border-0"><p className="text-sm text-slate-700">{label}</p><div className="text-right"><p className="text-sm font-semibold tabular-nums">{percent.format(current)}</p><p className="text-[10px] text-slate-400">landing</p></div><Badge tone={relative >= 0 ? "success" : "danger"}>{relative >= 0 ? "+" : ""}{percent.format(relative)}</Badge></div>;
+  return (
+    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-t border-slate-100 py-3 first:border-0">
+      <p className="text-sm text-slate-700">{label}</p>
+      <div className="text-right">
+        <p className="text-sm font-semibold tabular-nums">
+          {percent.format(current)}
+        </p>
+        <p className="text-[10px] text-slate-400">landing</p>
+      </div>
+      <Badge tone={relative >= 0 ? "success" : "danger"}>
+        {relative >= 0 ? "+" : ""}
+        {percent.format(relative)}
+      </Badge>
+    </div>
+  );
 }
 
 function DecisionPanel({ data }: { data: LandingInsightDetailData }) {
   const client = useQueryClient();
-  const [form, setForm] = useState<LandingDecisionRequest>({ decision: data.diagnosis.decision, hypothesis: data.diagnosis.recommendedAction, primaryMetric: data.diagnosis.primaryMetric, guardrailMetric: data.diagnosis.guardrailMetric });
-  useEffect(() => { setForm({ decision: data.diagnosis.decision, hypothesis: data.diagnosis.recommendedAction, primaryMetric: data.diagnosis.primaryMetric, guardrailMetric: data.diagnosis.guardrailMetric }); }, [data.url, data.diagnosis]);
-  const mutation = useMutation({ mutationFn: () => api.recordLandingDecision(data.url, form), onSuccess: async () => { await client.invalidateQueries({ queryKey: ["landing-insight", data.url] }); } });
-  return <Panel title="Registrar la siguiente decisión" description="La decisión queda versionada en el historial de auditoría" componentId="landing-decision"><CardContent className="space-y-4"><div className="grid grid-cols-3 gap-2">{(["keep", "iterate", "stop"] as const).map((decision) => <Button className={cn("w-full", form.decision === decision && decision === "stop" && "border-rose-300 bg-rose-50 text-rose-700")} key={decision} onClick={() => setForm((current) => ({ ...current, decision }))} type="button" variant={form.decision === decision ? "secondary" : "ghost"}>{decisionLabels[decision]}</Button>)}</div><label className="block text-xs font-medium text-slate-600">Hipótesis o decisión<textarea className="mt-1 min-h-24 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-5 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15" maxLength={500} minLength={10} onChange={(event) => setForm((current) => ({ ...current, hypothesis: event.target.value }))} value={form.hypothesis} /></label><div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-medium text-slate-600">Métrica principal<Select className="mt-1" onChange={(event) => setForm((current) => ({ ...current, primaryMetric: event.target.value as LandingDecisionRequest["primaryMetric"] }))} value={form.primaryMetric}><option value="session_to_lead">Sesión → lead</option><option value="lead_to_sql">Lead → SQL</option><option value="sql_to_alta">SQL → alta</option></Select></label><label className="text-xs font-medium text-slate-600">Guardarraíl<Select className="mt-1" onChange={(event) => setForm((current) => ({ ...current, guardrailMetric: event.target.value as LandingDecisionRequest["guardrailMetric"] }))} value={form.guardrailMetric}><option value="lead_to_sql">Lead → SQL</option><option value="sql_to_alta">SQL → alta</option><option value="caregiver_capacity">Capacidad</option></Select></label></div>{mutation.isError ? <p className="text-xs text-rose-600">No se pudo registrar la decisión.</p> : null}{mutation.isSuccess ? <p className="flex items-center gap-2 text-xs text-emerald-700"><CheckCircle2 className="size-4" />Decisión registrada.</p> : null}<Button className="w-full" disabled={mutation.isPending || form.hypothesis.trim().length < 10} onClick={() => mutation.mutate()} type="button">{mutation.isPending ? "Registrando…" : "Registrar decisión"}</Button></CardContent></Panel>;
+  const [form, setForm] = useState<LandingDecisionRequest>({
+    decision: data.diagnosis.decision,
+    hypothesis: data.diagnosis.recommendedAction,
+    primaryMetric: data.diagnosis.primaryMetric,
+    guardrailMetric: data.diagnosis.guardrailMetric,
+  });
+  useEffect(() => {
+    setForm({
+      decision: data.diagnosis.decision,
+      hypothesis: data.diagnosis.recommendedAction,
+      primaryMetric: data.diagnosis.primaryMetric,
+      guardrailMetric: data.diagnosis.guardrailMetric,
+    });
+  }, [data.url, data.diagnosis]);
+  const mutation = useMutation({
+    mutationFn: () => api.recordLandingDecision(data.url, form),
+    onSuccess: async () => {
+      await client.invalidateQueries({
+        queryKey: ["landing-insight", data.url],
+      });
+    },
+  });
+  return (
+    <Panel
+      title="Registrar la siguiente decisión"
+      description="La decisión queda versionada en el historial de auditoría"
+      componentId="landing-decision"
+    >
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-3 gap-2">
+          {(["keep", "iterate", "stop"] as const).map((decision) => (
+            <Button
+              className={cn(
+                "w-full",
+                form.decision === decision &&
+                  decision === "stop" &&
+                  "border-rose-300 bg-rose-50 text-rose-700",
+              )}
+              key={decision}
+              onClick={() => setForm((current) => ({ ...current, decision }))}
+              type="button"
+              variant={form.decision === decision ? "secondary" : "ghost"}
+            >
+              {decisionLabels[decision]}
+            </Button>
+          ))}
+        </div>
+        <label className="block text-xs font-medium text-slate-600">
+          Hipótesis o decisión
+          <textarea
+            className="mt-1 min-h-24 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-5 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
+            maxLength={500}
+            minLength={10}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                hypothesis: event.target.value,
+              }))
+            }
+            value={form.hypothesis}
+          />
+        </label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="text-xs font-medium text-slate-600">
+            Métrica principal
+            <Select
+              className="mt-1"
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  primaryMetric: event.target
+                    .value as LandingDecisionRequest["primaryMetric"],
+                }))
+              }
+              value={form.primaryMetric}
+            >
+              <option value="session_to_lead">Sesión → lead</option>
+              <option value="lead_to_sql">Lead → SQL</option>
+              <option value="sql_to_alta">SQL → alta</option>
+            </Select>
+          </label>
+          <label className="text-xs font-medium text-slate-600">
+            Control que no debe empeorar
+            <Select
+              className="mt-1"
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  guardrailMetric: event.target
+                    .value as LandingDecisionRequest["guardrailMetric"],
+                }))
+              }
+              value={form.guardrailMetric}
+            >
+              <option value="lead_to_sql">Lead → SQL</option>
+              <option value="sql_to_alta">SQL → alta</option>
+              <option value="caregiver_capacity">Capacidad</option>
+            </Select>
+          </label>
+        </div>
+        {mutation.isError ? (
+          <p className="text-xs text-rose-600">
+            No se pudo registrar la decisión.
+          </p>
+        ) : null}
+        {mutation.isSuccess ? (
+          <p className="flex items-center gap-2 text-xs text-emerald-700">
+            <CheckCircle2 className="size-4" />
+            Decisión registrada.
+          </p>
+        ) : null}
+        <Button
+          className="w-full"
+          disabled={mutation.isPending || form.hypothesis.trim().length < 10}
+          onClick={() => mutation.mutate()}
+          type="button"
+        >
+          {mutation.isPending ? "Registrando…" : "Registrar decisión"}
+        </Button>
+      </CardContent>
+    </Panel>
+  );
 }
 
 export function LandingInsightDetailPage() {
   const [params] = useSearchParams();
   const url = params.get("url") ?? "";
   const { filters } = useFilters();
-  const query = useQuery({ queryKey: ["landing-insight", url, filters], queryFn: () => api.landingInsight(url, filters), enabled: Boolean(url) });
-  if (!url) return <EmptyState title="Falta seleccionar una landing" action={<Button asChild variant="secondary"><Link to="/landings">Ver landings</Link></Button>} />;
+  const query = useQuery({
+    queryKey: ["landing-insight", url, filters],
+    queryFn: () => api.landingInsight(url, filters),
+    enabled: Boolean(url),
+  });
+  if (!url)
+    return (
+      <EmptyState
+        title="Falta seleccionar una landing"
+        action={
+          <Button asChild variant="secondary">
+            <Link to="/landings">Ver landings</Link>
+          </Button>
+        }
+      />
+    );
   if (query.isLoading) return <LoadingState cards={5} />;
-  if (query.isError) return <ErrorState error={query.error} retry={() => void query.refetch()} />;
+  if (query.isError)
+    return (
+      <ErrorState error={query.error} retry={() => void query.refetch()} />
+    );
   if (!query.data) return <EmptyState />;
   const data = query.data;
-  const demoHref = data.municipalityId && data.service ? `/demo/${data.municipalityId}/${encodeURIComponent(data.service)}` : null;
-  return <div className="page-grid"><div><PageTitle eyebrow="Evaluación de landing" title={`${data.municipality ?? "Landing"} · ${data.service ? titleCase(data.service) : "Sin servicio"}`} actions={<div className="flex flex-wrap gap-2">{demoHref ? <Button asChild size="sm"><Link target="_blank" rel="noreferrer" to={demoHref}>Abrir landing demo<ExternalLink className="size-4" /></Link></Button> : null}<Button asChild size="sm" variant="secondary"><Link to="/landings"><ArrowLeft className="size-4" />Volver</Link></Button></div>} /><p className="mt-2 font-mono text-xs text-slate-400">{data.url}</p></div><MetricStrip columns={5} items={[
-    { id: "insight-sessions", label: "Sesiones", value: integer.format(data.sessions), detail: `${integer.format(data.forms)} formularios` },
-    { id: "insight-leads", label: "Leads atribuidos", value: integer.format(data.leads), detail: percent.format(data.rates.sessionToLead) },
-    { id: "insight-sql", label: "SQL", value: integer.format(data.sql), detail: percent.format(data.rates.leadToSql) },
-    { id: "insight-altas", label: "Altas", value: integer.format(data.altas), detail: percent.format(data.rates.sqlToAlta) },
-    { id: "insight-score", label: "Score oportunidad", value: data.opportunityScore === null ? "—" : integer.format(data.opportunityScore), detail: data.operations.eligible ? "Operable" : "Con restricción" },
-  ]} /><Panel title="Evaluación multidimensional" description={`Reglas versionadas · ${data.evaluation.version}`} componentId="landing-evaluation"><CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{data.evaluation.dimensions.map((dimension) => <div className="rounded-xl border border-slate-200 p-4" key={dimension.key}><div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold">{dimension.label}</p><span className="text-xl font-semibold tabular-nums">{integer.format(dimension.score)}</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><div className={cn("h-full rounded-full", dimension.score >= 70 ? "bg-emerald-500" : dimension.score >= 45 ? "bg-amber-400" : "bg-rose-500")} style={{ width: `${dimension.score}%` }} /></div><p className="mt-3 text-xs leading-5 text-slate-500">{dimension.explanation}</p></div>)}</CardContent></Panel><Card><CardHeader><div><h2 className="text-sm font-semibold">Resultado atribuido a esta landing</h2><p className="mt-1 text-xs text-slate-500">Cruce por URL de entrada con resultados reconciliados en CRM</p></div><Badge tone="info">Atribución descriptiva</Badge></CardHeader><CardContent className="pt-1"><FunnelStrip landing={data} /></CardContent></Card><div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]"><Panel title="Evolución de tráfico" description="Sesiones observadas por mes"><TrendChart data={data.monthly} xKey="period" series={[{ key: "sessions", label: "Sesiones", color: chartPalette.neutral }]} height="h-72" /></Panel><Panel title="Evolución del resultado" description="Leads atribuidos y resultados CRM"><TrendChart data={data.monthly} xKey="period" series={[{ key: "leads", label: "Leads", color: chartPalette.tertiary }, { key: "sql", label: "SQL", color: chartPalette.primary }, { key: "altas", label: "Altas", color: chartPalette.danger }]} height="h-72" /></Panel></div><div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]"><Panel title="Diagnóstico" description="Lectura basada en rendimiento, benchmark y capacidad"><CardContent><div className="flex flex-wrap items-center gap-2"><Badge tone={decisionTone(data.diagnosis.decision)}>{decisionLabels[data.diagnosis.decision]}</Badge><Badge>{data.diagnosis.evidenceLevel === "attributed" ? "Evidencia atribuida" : "Evidencia descriptiva"}</Badge></div><h3 className="mt-4 text-xl font-semibold tracking-tight">{data.diagnosis.headline}</h3><div className="mt-4 space-y-2">{data.diagnosis.rationale.map((reason) => <p className="flex gap-2 text-sm leading-6 text-slate-600" key={reason}><Sparkles className="mt-1 size-4 shrink-0 text-rose-500" />{reason}</p>)}</div><div className="mt-5 rounded-xl bg-slate-950 p-4 text-white"><p className="text-[10px] uppercase tracking-[0.14em] text-slate-400">Siguiente acción</p><p className="mt-2 text-sm leading-6 text-slate-100">{data.diagnosis.recommendedAction}</p><div className="mt-3 flex flex-wrap gap-2"><Badge className="border-white/15 bg-white/10 text-white">Métrica: {metricLabels[data.diagnosis.primaryMetric]}</Badge><Badge className="border-white/15 bg-white/10 text-white">Guardarraíl: {metricLabels[data.diagnosis.guardrailMetric]}</Badge></div></div></CardContent></Panel><Panel title="Comparación con el portfolio" description="Benchmark de las landings incluidas por los filtros"><CardContent><ComparisonRow benchmark={data.benchmark.sessionToLead} current={data.rates.sessionToLead} label="Sesión → lead" /><ComparisonRow benchmark={data.benchmark.leadToSql} current={data.rates.leadToSql} label="Lead → SQL" /><ComparisonRow benchmark={data.benchmark.sqlToAlta} current={data.rates.sqlToAlta} label="SQL → alta" /><div className="mt-4 rounded-xl border border-slate-200 p-4"><div className="flex items-center justify-between"><p className="text-sm font-medium">Capacidad operativa</p>{data.operations.eligible ? <Badge tone="success">Elegible</Badge> : <Badge tone="danger">Restringida</Badge>}</div><p className="mt-2 text-xs text-slate-500">{integer.format(data.operations.caregiversAvailable)} cuidadoras disponibles en 30 días · {data.operations.coverage ? "con cobertura" : "sin cobertura"}</p></div></CardContent></Panel></div><div className="grid gap-4 xl:grid-cols-[1fr_0.8fr]"><Panel title="Experimentos relacionados" description="Asignaciones del municipio de esta landing"><CardContent className="space-y-3">{data.experiments.length ? data.experiments.map((experiment) => <div className="rounded-xl border border-slate-200 p-4" key={experiment.id}><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold">{experiment.name}</p><p className="mt-1 text-xs leading-5 text-slate-500">{experiment.hypothesis}</p></div><Badge tone={experiment.evidenceLevel === "quasi_experimental" ? "violet" : "neutral"}>{experiment.evidenceLevel === "quasi_experimental" ? "Cuasi experimental" : "Descriptivo"}</Badge></div><div className="mt-3 flex flex-wrap gap-3 text-[11px] text-slate-500"><span>{formatDate(experiment.startDate)}{experiment.endDate ? ` – ${formatDate(experiment.endDate)}` : ""}</span><span>{experiment.treatmentMunicipalities} tratamiento</span><span>{experiment.controlMunicipalities} control</span></div></div>) : <EmptyState title="Sin experimento relacionado" description="La mejora siguiente debe declararse como hipótesis antes de publicar una nueva versión." />}</CardContent></Panel><DecisionPanel data={data} /></div><Panel title="Historial de decisiones" description="Cada registro conserva la hipótesis, métrica y guardarraíl"><CardContent>{data.decisions.length ? <div className="space-y-3">{data.decisions.map((decision) => <div className="grid gap-3 rounded-xl border border-slate-200 p-4 sm:grid-cols-[auto_1fr_auto] sm:items-start" key={decision.id}><div className="grid size-9 place-items-center rounded-lg bg-slate-100 text-xs font-semibold">v{decision.version}</div><div><div className="flex flex-wrap gap-2"><Badge tone={decisionTone(decision.decision)}>{decisionLabels[decision.decision]}</Badge><Badge>{metricLabels[decision.primaryMetric]}</Badge></div><p className="mt-2 text-sm leading-6 text-slate-700">{decision.hypothesis}</p><p className="mt-1 text-xs text-slate-400">Guardarraíl: {metricLabels[decision.guardrailMetric]}</p></div><p className="text-xs text-slate-400">{formatDateTime(decision.createdAt)}</p></div>)}</div> : <EmptyState title="Todavía no hay decisiones registradas" description="El diagnóstico es una recomendación; la decisión humana se registra por separado." />}</CardContent></Panel><Caveats items={data.caveats} /><div className="grid gap-3 sm:grid-cols-2"><div className="flex gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"><Gauge className="size-5 shrink-0" /><div><p className="font-semibold">Datos conciliados</p><p className="mt-1 text-xs leading-5 text-emerald-800">Sesiones y formularios proceden de web; SQL y altas, del CRM enlazado por URL.</p></div></div><div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><ShieldAlert className="size-5 shrink-0" /><div><p className="font-semibold">Límite causal</p><p className="mt-1 text-xs leading-5 text-amber-800">La atribución identifica el recorrido observado. Solo un experimento con diagnóstico adecuado estima incrementalidad.</p></div></div></div></div>;
+  const demoHref =
+    data.municipalityId && data.service
+      ? `/demo/${data.municipalityId}/${encodeURIComponent(data.service)}`
+      : null;
+  return (
+    <div className="page-grid">
+      <div>
+        <PageTitle
+          eyebrow="Evaluación de landing"
+          title={`${data.municipality ?? "Landing"} · ${data.service ? titleCase(data.service) : "Sin servicio"}`}
+          actions={
+            <div className="flex flex-wrap gap-2">
+              {demoHref ? (
+                <Button asChild size="sm">
+                  <Link target="_blank" rel="noreferrer" to={demoHref}>
+                    Abrir landing demo
+                    <ExternalLink className="size-4" />
+                  </Link>
+                </Button>
+              ) : null}
+              <Button asChild size="sm" variant="secondary">
+                <Link to="/landings">
+                  <ArrowLeft className="size-4" />
+                  Volver
+                </Link>
+              </Button>
+            </div>
+          }
+        />
+        <p className="mt-2 font-mono text-xs text-slate-400">{data.url}</p>
+      </div>
+      <MetricStrip
+        columns={5}
+        items={[
+          {
+            id: "insight-sessions",
+            label: "Sesiones",
+            value: integer.format(data.sessions),
+            detail: `${integer.format(data.forms)} formularios`,
+          },
+          {
+            id: "insight-leads",
+            label: "Leads atribuidos",
+            value: integer.format(data.leads),
+            detail: percent.format(data.rates.sessionToLead),
+          },
+          {
+            id: "insight-sql",
+            label: "SQL",
+            value: integer.format(data.sql),
+            detail: percent.format(data.rates.leadToSql),
+          },
+          {
+            id: "insight-altas",
+            label: "Altas",
+            value: integer.format(data.altas),
+            detail: percent.format(data.rates.sqlToAlta),
+          },
+          {
+            id: "insight-score",
+            label: "Puntuación de oportunidad",
+            value:
+              data.opportunityScore === null
+                ? "—"
+                : integer.format(data.opportunityScore),
+            detail: data.operations.eligible ? "Operable" : "Con restricción",
+          },
+        ]}
+      />
+      <Panel
+        title="Evaluación multidimensional"
+        description={`Reglas versionadas · ${data.evaluation.version}`}
+        componentId="landing-evaluation"
+      >
+        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {data.evaluation.dimensions.map((dimension) => (
+            <div
+              className="rounded-xl border border-slate-200 p-4"
+              key={dimension.key}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold">{dimension.label}</p>
+                <span className="text-xl font-semibold tabular-nums">
+                  {integer.format(dimension.score)}
+                </span>
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className={cn(
+                    "h-full rounded-full",
+                    dimension.score >= 70
+                      ? "bg-emerald-500"
+                      : dimension.score >= 45
+                        ? "bg-amber-400"
+                        : "bg-rose-500",
+                  )}
+                  style={{ width: `${dimension.score}%` }}
+                />
+              </div>
+              <p className="mt-3 text-xs leading-5 text-slate-500">
+                {dimension.explanation}
+              </p>
+            </div>
+          ))}
+        </CardContent>
+      </Panel>
+      <Card>
+        <CardHeader>
+          <div>
+            <h2 className="text-sm font-semibold">
+              Resultado conectado con esta landing
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Cruce por URL de entrada con resultados reconciliados en CRM
+            </p>
+          </div>
+          <Badge tone="info">Conexión por URL</Badge>
+        </CardHeader>
+        <CardContent className="pt-1">
+          <FunnelStrip landing={data} />
+        </CardContent>
+      </Card>
+      <div className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
+        <Panel
+          title="Evolución de tráfico"
+          description="Sesiones observadas por mes"
+        >
+          <TrendChart
+            data={data.monthly}
+            xKey="period"
+            series={[
+              {
+                key: "sessions",
+                label: "Sesiones",
+                color: chartPalette.neutral,
+              },
+            ]}
+            height="h-72"
+          />
+        </Panel>
+        <Panel
+          title="Evolución del resultado"
+          description="Leads atribuidos y resultados CRM"
+        >
+          <TrendChart
+            data={data.monthly}
+            xKey="period"
+            series={[
+              { key: "leads", label: "Leads", color: chartPalette.tertiary },
+              { key: "sql", label: "SQL", color: chartPalette.primary },
+              { key: "altas", label: "Altas", color: chartPalette.danger },
+            ]}
+            height="h-72"
+          />
+        </Panel>
+      </div>
+      <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <Panel
+          title="Diagnóstico"
+          description="Lectura basada en rendimiento, comparación y capacidad"
+        >
+          <CardContent>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone={decisionTone(data.diagnosis.decision)}>
+                {decisionLabels[data.diagnosis.decision]}
+              </Badge>
+              <Badge>
+                {data.diagnosis.evidenceLevel === "attributed"
+                  ? "Resultado conectado por URL"
+                  : "Patrón observado"}
+              </Badge>
+            </div>
+            <h3 className="mt-4 text-xl font-semibold tracking-tight">
+              {data.diagnosis.headline}
+            </h3>
+            <div className="mt-4 space-y-2">
+              {data.diagnosis.rationale.map((reason) => (
+                <p
+                  className="flex gap-2 text-sm leading-6 text-slate-600"
+                  key={reason}
+                >
+                  <Sparkles className="mt-1 size-4 shrink-0 text-rose-500" />
+                  {reason}
+                </p>
+              ))}
+            </div>
+            <div className="mt-5 rounded-xl bg-slate-950 p-4 text-white">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-slate-400">
+                Siguiente acción
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-100">
+                {data.diagnosis.recommendedAction}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Badge className="border-white/15 bg-white/10 text-white">
+                  Métrica: {metricLabels[data.diagnosis.primaryMetric]}
+                </Badge>
+                <Badge className="border-white/15 bg-white/10 text-white">
+                  Control que no debe empeorar:{" "}
+                  {metricLabels[data.diagnosis.guardrailMetric]}
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Panel>
+        <Panel
+          title="Comparación con el portfolio"
+          description="Media de las landings incluidas por los filtros"
+        >
+          <CardContent>
+            <ComparisonRow
+              benchmark={data.benchmark.sessionToLead}
+              current={data.rates.sessionToLead}
+              label="Sesión → lead"
+            />
+            <ComparisonRow
+              benchmark={data.benchmark.leadToSql}
+              current={data.rates.leadToSql}
+              label="Lead → SQL"
+            />
+            <ComparisonRow
+              benchmark={data.benchmark.sqlToAlta}
+              current={data.rates.sqlToAlta}
+              label="SQL → alta"
+            />
+            <div className="mt-4 rounded-xl border border-slate-200 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Capacidad operativa</p>
+                {data.operations.eligible ? (
+                  <Badge tone="success">Elegible</Badge>
+                ) : (
+                  <Badge tone="danger">Restringida</Badge>
+                )}
+              </div>
+              <p className="mt-2 text-xs text-slate-500">
+                {integer.format(data.operations.caregiversAvailable)} cuidadoras
+                disponibles en 30 días ·{" "}
+                {data.operations.coverage ? "con cobertura" : "sin cobertura"}
+              </p>
+            </div>
+          </CardContent>
+        </Panel>
+      </div>
+      <div className="grid gap-4 xl:grid-cols-[1fr_0.8fr]">
+        <Panel
+          title="Experimentos relacionados"
+          description="Asignaciones del municipio de esta landing"
+        >
+          <CardContent className="space-y-3">
+            {data.experiments.length ? (
+              data.experiments.map((experiment) => (
+                <div
+                  className="rounded-xl border border-slate-200 p-4"
+                  key={experiment.id}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">{experiment.name}</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        {experiment.hypothesis}
+                      </p>
+                    </div>
+                    <Badge
+                      tone={
+                        experiment.evidenceLevel === "quasi_experimental"
+                          ? "violet"
+                          : "neutral"
+                      }
+                    >
+                      {experiment.evidenceLevel === "quasi_experimental"
+                        ? "Comparación con versión anterior"
+                        : "Solo seguimiento"}
+                    </Badge>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-slate-500">
+                    <span>
+                      {formatDate(experiment.startDate)}
+                      {experiment.endDate
+                        ? ` – ${formatDate(experiment.endDate)}`
+                        : ""}
+                    </span>
+                    <span>
+                      {experiment.treatmentMunicipalities} con nueva landing
+                    </span>
+                    <span>
+                      {experiment.controlMunicipalities} con versión anterior
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <EmptyState
+                title="Sin experimento relacionado"
+                description="La mejora siguiente debe declararse como hipótesis antes de publicar una nueva versión."
+              />
+            )}
+          </CardContent>
+        </Panel>
+        <DecisionPanel data={data} />
+      </div>
+      <Panel
+        title="Historial de decisiones"
+        description="Cada registro conserva la hipótesis, la métrica y el control que no debe empeorar"
+      >
+        <CardContent>
+          {data.decisions.length ? (
+            <div className="space-y-3">
+              {data.decisions.map((decision) => (
+                <div
+                  className="grid gap-3 rounded-xl border border-slate-200 p-4 sm:grid-cols-[auto_1fr_auto] sm:items-start"
+                  key={decision.id}
+                >
+                  <div className="grid size-9 place-items-center rounded-lg bg-slate-100 text-xs font-semibold">
+                    v{decision.version}
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge tone={decisionTone(decision.decision)}>
+                        {decisionLabels[decision.decision]}
+                      </Badge>
+                      <Badge>{metricLabels[decision.primaryMetric]}</Badge>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-slate-700">
+                      {decision.hypothesis}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Control que no debe empeorar:{" "}
+                      {metricLabels[decision.guardrailMetric]}
+                    </p>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    {formatDateTime(decision.createdAt)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              title="Todavía no hay decisiones registradas"
+              description="El diagnóstico es una recomendación; la decisión humana se registra por separado."
+            />
+          )}
+        </CardContent>
+      </Panel>
+      <Caveats items={data.caveats} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="flex gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+          <Gauge className="size-5 shrink-0" />
+          <div>
+            <p className="font-semibold">Datos conciliados</p>
+            <p className="mt-1 text-xs leading-5 text-emerald-800">
+              Sesiones y formularios proceden de web; SQL y altas, del CRM
+              enlazado por URL.
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <ShieldAlert className="size-5 shrink-0" />
+          <div>
+            <p className="font-semibold">Qué podemos afirmar</p>
+            <p className="mt-1 text-xs leading-5 text-amber-800">
+              La URL permite relacionar la landing con resultados del CRM. Para
+              estimar si la landing produjo la mejora hay que compararla con la
+              versión anterior en municipios equivalentes.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
