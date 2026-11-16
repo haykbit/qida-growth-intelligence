@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import type { GlobalFilters } from "@qida/contracts";
-import { Badge, Button, Card, CardContent, Input, Skeleton, cn } from "@qida/ui";
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Skeleton, Tooltip, TooltipContent, TooltipTrigger, cn } from "@qida/ui";
 import {
   ArrowLeft,
   ArrowRight,
   BarChart3,
   CheckCircle2,
   ChevronDown,
+  CircleHelp,
   ExternalLink,
   MapPin,
   Search,
@@ -77,6 +78,27 @@ function OpportunityExplanation({ detail }: { detail: OpportunityDetailData }) {
   );
 }
 
+function ScoreMethodHelp() {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          aria-label="Cómo se calcula la puntuación"
+          className="grid size-8 place-items-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          type="button"
+        >
+          <CircleHelp className="size-4" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top">
+        Cada señal se normaliza entre 0 y 1, se multiplica por su peso y por
+        100. La puntuación suma esas aportaciones. Sin cobertura queda en 0; si
+        hay menos de cuatro cuidadoras, el total se multiplica por 0,35.
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 function OpportunityCard({ opportunity, filters }: { opportunity: OpportunityRowData; filters: GlobalFilters }) {
   const [expanded, setExpanded] = useState(false);
   const explanationId = useId();
@@ -134,10 +156,10 @@ export function OpportunitiesPage() {
     <div className="page-grid">
       <PageTitle title="Oportunidades" />
       <MetricStrip columns={4} items={[
-        { id: "opportunities-total", label: "Combinaciones", value: integer.format(data?.total ?? 0), detail: "Municipio y servicio" },
-        { id: "opportunities-eligible", label: "Elegibles", value: integer.format(eligible), detail: "En esta página" },
-        { id: "opportunities-score", label: "Puntuación media", value: integer.format(averageScore), detail: "En esta página" },
-        { id: "opportunities-sql", label: "SQL observados", value: integer.format(pageSql), detail: "En esta página" },
+        { id: "opportunities-total", label: "Combinaciones", value: integer.format(data?.total ?? 0), detail: "Municipio y servicio", definition: "Número de combinaciones de municipio y servicio disponibles para analizar con los filtros actuales." },
+        { id: "opportunities-eligible", label: "Elegibles", value: integer.format(eligible), detail: "En esta página", definition: "Combinaciones visibles que tienen datos propios suficientes, cobertura del servicio y al menos cuatro cuidadoras disponibles." },
+        { id: "opportunities-score", label: "Puntuación media", value: integer.format(averageScore), detail: "En esta página", definition: "Media de las puntuaciones visibles. Cada puntuación suma demanda, brecha comercial, conversión, señales de necesidad y capacidad con pesos versionados." },
+        { id: "opportunities-sql", label: "SQL observados", value: integer.format(pageSql), detail: "En esta página", definition: "Suma de oportunidades comerciales cualificadas observadas para las combinaciones visibles." },
       ]} />
       <Card>
         <CardContent className="p-3">
@@ -167,15 +189,26 @@ export function OpportunityDetailPage() {
         <p className="mt-2 text-sm text-slate-500">{data.province} · {data.municipalityId} · reglas {data.rulesVersion}</p>
       </div>
       <MetricStrip columns={5} items={[
-        { id: "opportunity-score", label: "Puntuación", value: integer.format(data.score), detail: "Reglas versionadas" },
-        { id: "opportunity-searches", label: "Búsquedas mensuales", value: integer.format(data.monthlySearches) },
-        { id: "opportunity-sql", label: "SQL observados", value: integer.format(data.sql) },
-        { id: "opportunity-conversion", label: "SQL → alta", value: percent.format(data.sqlToAlta), detail: `${data.altas} altas` },
-        { id: "opportunity-capacity", label: "Cuidadoras", value: integer.format(data.caregiversAvailable), detail: "Disponibles en 30 días" },
+        { id: "opportunity-score", label: "Puntuación", value: integer.format(data.score), detail: "Reglas versionadas", definition: "Suma ponderada de demanda, brecha entre demanda y SQL, margen de conversión, señales de necesidad y capacidad. No predice altas; ordena qué casos revisar primero." },
+        { id: "opportunity-searches", label: "Búsquedas mensuales", value: integer.format(data.monthlySearches), definition: "Promedio mensual de búsquedas de Google para este municipio y servicio en el periodo disponible." },
+        { id: "opportunity-sql", label: "SQL observados", value: integer.format(data.sql), definition: "Leads de familias de este municipio y servicio que el CRM ha marcado como oportunidades comerciales cualificadas." },
+        { id: "opportunity-conversion", label: "SQL → alta", value: percent.format(data.sqlToAlta), detail: `${data.altas} altas`, definition: "Porcentaje de SQL que terminan en alta dentro de las cohortes con tiempo suficiente de seguimiento." },
+        { id: "opportunity-capacity", label: "Cuidadoras", value: integer.format(data.caregiversAvailable), detail: "Disponibles en 30 días", definition: "Cuidadoras disponibles para prestar este servicio en el municipio durante los próximos 30 días." },
       ]} />
-      <Card><CardContent><div className="mb-4 flex items-center justify-between gap-3"><p className="text-sm font-semibold text-slate-950">Señales de oportunidad</p><div className="flex items-center gap-2"><Badge tone="neutral">{data.dataSource === "municipal_own" ? "Datos municipales" : "Agregado provincial"}</Badge><StatusBadge status={data.selectionEligibility} /></div></div><OpportunitySignals detailed opportunity={data} /></CardContent></Card>
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <CardTitle>Señales de oportunidad</CardTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone="neutral">{data.dataSource === "municipal_own" ? "Datos municipales" : "Agregado provincial"}</Badge>
+              <StatusBadge status={data.selectionEligibility} />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent><OpportunitySignals detailed opportunity={data} /></CardContent>
+      </Card>
       <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
-        <Panel title="Evidencia de las reglas" componentId="opportunity-rule-evidence"><CardContent className="divide-y divide-slate-100 p-0">{data.factors.map((factor) => <div key={factor.key} className="px-5 py-4"><div className="flex items-start justify-between gap-5"><div><p className="text-sm font-medium">{factor.label}</p><p className="mt-1 text-xs leading-5 text-slate-500">{factor.evidence}</p></div><Badge tone={factor.contribution < 0 ? "warning" : "neutral"}>{contributionLabel(factor.contribution)}</Badge></div><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className={cn("h-full rounded-full", factor.contribution < 0 ? "bg-amber-400" : "bg-rose-500")} style={{ width: `${Math.max(4, Math.min(100, factor.normalizedValue * 100))}%` }} /></div></div>)}</CardContent></Panel>
+        <Panel title="Evidencia de las reglas" actions={<ScoreMethodHelp />} componentId="opportunity-rule-evidence"><CardContent className="divide-y divide-slate-100 p-0">{data.factors.map((factor) => <div key={factor.key} className="px-5 py-4"><div className="flex items-start justify-between gap-5"><div><p className="text-sm font-medium">{factor.label}</p><p className="mt-1 text-xs leading-5 text-slate-500">{factor.evidence}</p></div><Tooltip><TooltipTrigger asChild><Badge className="cursor-help" tone={factor.contribution < 0 ? "warning" : "neutral"}>{contributionLabel(factor.contribution)}</Badge></TooltipTrigger><TooltipContent>Valor normalizado {decimal.format(factor.normalizedValue)} × peso {percent.format(factor.weight)} × 100 = {decimal.format(factor.contribution)} puntos.</TooltipContent></Tooltip></div><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className={cn("h-full rounded-full", factor.contribution < 0 ? "bg-amber-400" : "bg-rose-500")} style={{ width: `${Math.max(4, Math.min(100, factor.normalizedValue * 100))}%` }} /></div></div>)}</CardContent></Panel>
         <Panel title="Elegibilidad para la prueba"><CardContent><StatusBadge status={data.selectionEligibility} /><div className="mt-4 space-y-2">{data.constraints.length ? data.constraints.map((constraint) => <div key={constraint} className="flex gap-2 text-sm text-slate-600"><ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-500" />{constraint}</div>) : <div className="flex gap-2 text-sm text-slate-600"><CheckCircle2 className="size-4 text-emerald-500" />Cumple datos propios, cobertura, capacidad y demanda mínima.</div>}</div><p className="mt-4 border-t border-slate-100 pt-3 text-[11px] text-slate-400">{data.selectionRulesVersion} · demanda hasta {data.latestDemandMonth ?? "sin fecha"}</p></CardContent></Panel>
       </div>
       <Panel title="Versiones de la landing" componentId="opportunity-related-landings">

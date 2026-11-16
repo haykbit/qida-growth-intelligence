@@ -219,6 +219,8 @@ export function MeasurementCenterPage() {
             label: "Experimentos",
             value: integer.format(data.totals.experiments),
             detail: `${integer.format(data.totals.positive)} con mejora`,
+            definition:
+              "Pruebas registradas que comparan una nueva landing con su versión anterior o realizan seguimiento descriptivo.",
           },
           {
             id: "measurement-traceability",
@@ -248,13 +250,6 @@ export function MeasurementCenterPage() {
         ]}
       />
 
-      {primaryExperiment && (
-        <>
-          <ExperimentResult experiment={primaryExperiment} />
-          <CommercialResult id={primaryExperiment.id} />
-        </>
-      )}
-
       <Card>
         <CardHeader>
           <CardTitle>Comparaciones de landings</CardTitle>
@@ -276,11 +271,23 @@ export function MeasurementCenterPage() {
             </TableHeader>
             <TableBody>
               {data.experiments.map((experiment) => (
-                <TableRow key={experiment.id}>
+                <TableRow
+                  className={
+                    experiment.id === primaryExperiment?.id
+                      ? "bg-muted/50"
+                      : undefined
+                  }
+                  key={experiment.id}
+                >
                   <TableCell className="max-w-md">
                     <Link
-                      className="font-semibold underline"
-                      to={`/measurement?experiment=${encodeURIComponent(experiment.id)}`}
+                      aria-current={
+                        experiment.id === primaryExperiment?.id
+                          ? "true"
+                          : undefined
+                      }
+                      className="font-semibold underline underline-offset-4"
+                      to={`/measurement?experiment=${encodeURIComponent(experiment.id)}#experiment-result`}
                     >
                       {experiment.name}
                     </Link>
@@ -310,6 +317,17 @@ export function MeasurementCenterPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {primaryExperiment && (
+        <section
+          aria-live="polite"
+          className="flex scroll-mt-24 flex-col gap-5"
+          id="experiment-result"
+        >
+          <ExperimentResult experiment={primaryExperiment} />
+          <CommercialResult id={primaryExperiment.id} />
+        </section>
+      )}
 
       <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
         <Card>

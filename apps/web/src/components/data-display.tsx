@@ -48,8 +48,7 @@ function MetricHelp({
         </button>
       </TooltipTrigger>
       <TooltipContent side="top">
-        <p className="font-medium">{label}</p>
-        <p className="mt-0.5 text-background/80">{definition}</p>
+        <p>{definition}</p>
       </TooltipContent>
     </Tooltip>
   );
@@ -105,8 +104,9 @@ export function MetricCard({
 }) {
   const help =
     definition ??
-    detail ??
-    `${label} para los filtros y el periodo seleccionados.`;
+    (detail
+      ? `${detail}. Valor calculado con los datos y filtros seleccionados.`
+      : "Valor calculado con los datos y filtros seleccionados.");
   return (
     <div
       className={cn(
