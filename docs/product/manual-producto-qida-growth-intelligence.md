@@ -23,7 +23,7 @@ Qida parte de dos activos valiosos. El motor de datos reúne, para cada municipi
 
 La pieza que falta aparece después de publicar. Hoy se puede generar una página, pero todavía es difícil responder de forma conjunta a preguntas como estas: por qué se creó, qué parte del embudo está funcionando peor, si Qida puede atender la demanda, qué cambio se realizó, qué resultado se observó y qué aprendimos para la siguiente página.
 
-Qida Growth Intelligence cierra ese ciclo. La unidad de trabajo deja de ser una gráfica aislada o un municipio abstracto y pasa a ser una landing concreta. Para cada URL, el producto reúne contexto local, tráfico, visibilidad orgánica, leads, SQL, altas, capacidad, experimentos y decisiones. El resultado no es un sistema que decide por el equipo, sino un lugar común para investigar, medir y dejar trazabilidad.
+Qida Growth Intelligence cierra ese ciclo. La unidad de trabajo deja de ser una gráfica aislada o un municipio abstracto y pasa a ser una landing concreta. Para cada URL, el producto reúne contexto local, tráfico orgánico y de pago, leads, SQL, altas, capacidad, experimentos y decisiones. El resultado no es un sistema que decide por el equipo, sino un lugar común para investigar, medir y dejar trazabilidad.
 
 ### 2.1 La primera apuesta
 
@@ -97,7 +97,7 @@ Motor municipal + fábrica de landings
                 ↓
 Landing publicada en Strapi
                 ↓
-Search Console + analítica web + eventos
+Search Console + ads_diario + analítica web + eventos
                 ↓
 Identidad seudónima y oportunidad familiar
                 ↓
@@ -106,7 +106,7 @@ SQL y altas reconciliados con CRM
 Métricas, experimento, decisión y aprendizaje
 ```
 
-Las nueve tablas fuente de la propuesta mantienen los conceptos del anexo: municipio, demanda de búsqueda, voz del cliente, competencia, landing, Search Console, sesiones web, publicidad y lead. Las tablas adicionales no cambian esas fuentes; guardan identidad seudónima, oportunidades familiares, eventos, experimentos, asignaciones, recomendaciones versionadas, flujo de aprobación y auditoría.
+Las nueve tablas fuente de la propuesta mantienen los conceptos del anexo: municipio, demanda de búsqueda, voz del cliente, competencia, landing, Search Console, sesiones web, publicidad diaria (`ads_diario`) y lead. Las tablas adicionales no cambian esas fuentes; guardan identidad seudónima, oportunidades familiares, eventos, experimentos, asignaciones, recomendaciones versionadas, flujo de aprobación y auditoría.
 
 ### 4.1 Lógica de las tres lecturas principales
 
@@ -124,7 +124,13 @@ Para cada landing se reúnen tres recorridos usando la URL como referencia comú
 
 La secuencia permite localizar dónde aparece la diferencia. Muchas impresiones y pocos clics apuntan a visibilidad o mensaje en Google. Sesiones sin leads llevan a revisar propuesta de valor, formulario o llamada. Leads sin suficientes SQL llevan a revisar intención y cualificación. Una caída posterior, entre SQL y alta, puede estar fuera de la landing y requiere una lectura conjunta con Comercial y Operaciones.
 
-Cuando un evento conserva tanto la URL de la landing como el identificador de campaña, la ficha también puede enlazar esa campaña con la tabla diaria de publicidad. Así se muestran inversión, impresiones, clics y conversiones declaradas por la plataforma junto a leads, SQL y altas reconciliados con CRM. Ambos resultados se mantienen separados porque utilizan sistemas de medición distintos. Como la fuente disponible está agregada por campaña y día, esta versión no afirma qué anuncio o creatividad individual produjo el resultado; para hacerlo en producción habría que conservar también el identificador de anuncio, grupo y creatividad.
+#### Relacionar campañas de pago con una landing
+
+Cuando una sesión conserva la URL de la landing y el identificador de campaña, la aplicación enlaza esa campaña con `ads_diario` por campaña y fecha. De esta unión salen la inversión, impresiones, clics, coste por clic y conversiones declaradas por la plataforma publicitaria. El mismo identificador permite contar las sesiones que llegaron a la landing y, cuando el recorrido queda conectado con CRM, los leads, SQL y altas asociados después.
+
+La ficha mantiene separados el resultado de la plataforma publicitaria y el resultado comercial. Una conversión declarada por Google Ads no equivale necesariamente a un SQL confirmado en HubSpot u Odoo. Por eso se muestran ambas cifras y se calculan el coste por SQL y el coste por alta únicamente con resultados reconciliados con CRM.
+
+La tabla disponible tiene grano de campaña y día. La demo puede responder qué campañas llevaron tráfico a una landing y qué resultados comerciales quedaron enlazados, pero no puede atribuirlos a un anuncio o creatividad concretos. Para llegar a ese nivel en producción habría que conservar también los identificadores de grupo de anuncios, anuncio y creatividad en la sesión y en la tabla publicitaria.
 
 #### Medir el efecto de un cambio
 
@@ -193,7 +199,7 @@ Los primeros 90 días buscan responder una pregunta, no construir toda la plataf
 | Días 29 a 56 | Vigilar exposición, indexación, integridad y capacidad | Confirmación de que la prueba se está ejecutando como fue diseñada |
 | Días 57 a 90 | Completar el seguimiento, calcular el resultado y revisar los controles | Decisión documentada: continuar, modificar o parar |
 
-La primera versión incluye el portfolio de landings, la ficha por URL, la selección de oportunidades, la lectura de experimentos, el linaje de métricas y el registro de decisiones. Quedan fuera la publicación automática, las recomendaciones autónomas, el análisis estadístico avanzado y la expansión masiva a nuevos municipios.
+La primera versión incluye el portfolio de landings, la ficha por URL, la lectura de campañas de pago por landing, la selección de oportunidades, la lectura de experimentos, el linaje de métricas y el registro de decisiones. Quedan fuera la atribución por creatividad, la publicación automática, las recomendaciones autónomas, el análisis estadístico avanzado y la expansión masiva a nuevos municipios.
 
 Al final de los 90 días continuaríamos si existe una mejora consistente en SQL elegibles, la conexión entre web y CRM es suficiente y la capacidad o la calidad no empeoran. Modificaríamos el enfoque si aparece una señal positiva con problemas de exposición, muestra o mensaje. Pararíamos si no hay mejora relevante, se degrada la calidad comercial o la demanda adicional no puede atenderse.
 
