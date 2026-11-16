@@ -120,8 +120,30 @@ export type LandingDecisionRecord = LandingDecisionRequest & {
   actorRole: string;
   createdAt: string;
 };
+export type LandingCampaignPerformance = {
+  platform: string;
+  campaign: string;
+  firstSeen: string;
+  lastSeen: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  cpc: number;
+  platformConversions: number;
+  trackedEvents: number;
+  trackedSessions: number;
+  leads: number;
+  crmSql: number;
+  crmAltas: number;
+  costPerSql: number | null;
+  costPerAlta: number | null;
+};
 export type LandingInsightDetail = LandingInsightSummary & {
   monthly: Array<{ period: string; sessions: number; forms: number; phoneClicks: number; leads: number; sql: number; altas: number; sessionToLead: number; leadToSql: number }>;
+  advertising: {
+    rows: LandingCampaignPerformance[];
+    caveats: string[];
+  };
   experiments: ExperimentSummary[];
   decisions: LandingDecisionRecord[];
   caveats: string[];

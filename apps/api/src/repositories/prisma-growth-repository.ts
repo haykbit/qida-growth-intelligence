@@ -1563,7 +1563,14 @@ export class PrismaGrowthRepository implements GrowthRepository {
       webClauses.push(`canal = ${builder.add(filters.channel)}`);
       leadClauses.push(`canal = ${builder.add(filters.channel)}`);
     }
-    const [monthlyRows, experimentPage, decisionRows] = await Promise.all([
+    const advertisingValues: SqlValue[] = [
+      url,
+      summary.municipalityId,
+      filters.from ?? null,
+      filters.to ?? null,
+    ];
+    const [monthlyRows, experimentPage, decisionRows, advertisingRows] =
+      await Promise.all([
       this.query(
         `WITH web AS (
            SELECT TO_CHAR(fecha, 'YYYY-MM') AS period, SUM(sesiones)::int AS sessions,
@@ -1601,6 +1608,56 @@ export class PrismaGrowthRepository implements GrowthRepository {
            AND action = 'landing.decision_recorded' ORDER BY version DESC`,
         [url],
       ),
+      summary.municipalityId === null
+        ? Promise.resolve([])
+        : this.query(
+            `WITH event_base AS (
+               SELECT campaign, session_id, opportunity_id
+               FROM journey_event
+               WHERE landing_url = $1 AND campaign IS NOT NULL
+                 AND ($3::date IS NULL OR occurred_at >= $3::date)
+                 AND ($4::date IS NULL OR occurred_at < ($4::date + interval '1 day'))
+             ), tracked AS (
+               SELECT campaign, COUNT(*)::int AS tracked_events,
+                      COUNT(DISTINCT session_id)::int AS tracked_sessions
+               FROM event_base GROUP BY campaign
+             ), campaign_leads AS (
+               SELECT DISTINCT eb.campaign, co.lead_id
+               FROM event_base eb
+               JOIN care_opportunity co ON co.opportunity_id = eb.opportunity_id
+               WHERE co.lead_id IS NOT NULL
+             ), crm AS (
+               SELECT cl.campaign, COUNT(*)::int AS leads,
+                      COUNT(*) FILTER (WHERE l.es_sql)::int AS crm_sql,
+                      COUNT(*) FILTER (WHERE l.es_alta)::int AS crm_altas
+               FROM campaign_leads cl
+               JOIN lead l ON l.lead_id = cl.lead_id
+               WHERE l.tipo_contacto <> 'cuidadora_empleo'
+               GROUP BY cl.campaign
+             ), paid AS (
+               SELECT a.plataforma, a.campania, MIN(a.fecha) AS first_seen,
+                      MAX(a.fecha) AS last_seen,
+                      SUM(a.coste_eur)::double precision AS spend,
+                      SUM(a.impresiones)::int AS impressions,
+                      SUM(a.clics)::int AS clicks,
+                      SUM(a.conversiones_plataforma)::int AS platform_conversions
+               FROM ads_diario a
+               JOIN tracked t ON t.campaign = a.campania
+               WHERE a.municipio_id = $2
+                 AND ($3::date IS NULL OR a.fecha >= $3::date)
+                 AND ($4::date IS NULL OR a.fecha <= $4::date)
+               GROUP BY a.plataforma, a.campania
+             )
+             SELECT p.*, t.tracked_events, t.tracked_sessions,
+                    COALESCE(crm.leads, 0)::int AS leads,
+                    COALESCE(crm.crm_sql, 0)::int AS crm_sql,
+                    COALESCE(crm.crm_altas, 0)::int AS crm_altas
+             FROM paid p
+             JOIN tracked t ON t.campaign = p.campania
+             LEFT JOIN crm ON crm.campaign = p.campania
+             ORDER BY p.spend DESC, p.plataforma, p.campania`,
+            advertisingValues,
+          ),
     ]);
     const decisions: LandingDecisionRecord[] = decisionRows.map((row) => {
       const metadata = jsonRecord(row.metadata);
@@ -1652,6 +1709,37 @@ export class PrismaGrowthRepository implements GrowthRepository {
           leadToSql: round(rate(sql, leads), 4),
         };
       }),
+      advertising: {
+        rows: advertisingRows.map((row) => {
+          const spend = numberValue(row.spend);
+          const clicks = numberValue(row.clicks);
+          const sql = numberValue(row.crm_sql);
+          const altas = numberValue(row.crm_altas);
+          return {
+            platform: stringValue(row.plataforma),
+            campaign: stringValue(row.campania),
+            firstSeen: isoValue(row.first_seen),
+            lastSeen: isoValue(row.last_seen),
+            spend: round(spend, 2),
+            impressions: numberValue(row.impressions),
+            clicks,
+            cpc: round(rate(spend, clicks), 2),
+            platformConversions: numberValue(row.platform_conversions),
+            trackedEvents: numberValue(row.tracked_events),
+            trackedSessions: numberValue(row.tracked_sessions),
+            leads: numberValue(row.leads),
+            crmSql: sql,
+            crmAltas: altas,
+            costPerSql: sql === 0 ? null : round(spend / sql, 2),
+            costPerAlta: altas === 0 ? null : round(spend / altas, 2),
+          };
+        }),
+        caveats: [
+          "El enlace existe porque el evento conserva la URL de esta landing y el mismo identificador de campaña registrado en la tabla ads_diario.",
+          "La tabla ads_diario está agregada por campaña y día; no permite comparar anuncios o creatividades individuales.",
+          "Las conversiones de la plataforma publicitaria y los SQL o altas del CRM usan mediciones distintas y se muestran por separado.",
+        ],
+      },
       experiments: experimentPage.items,
       decisions,
       caveats: [

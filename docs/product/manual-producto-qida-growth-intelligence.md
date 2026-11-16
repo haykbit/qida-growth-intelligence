@@ -58,7 +58,7 @@ Una persona empieza viendo el conjunto de landings, abre una URL para comprender
 
 La pantalla inicial muestra una fila por URL. No intenta decidir qué hacer; permite comparar páginas equivalentes mediante sesiones, tasa de lead, tasa de SQL y tasa de alta. La comparación indica si la página está por encima, cerca o por debajo del conjunto filtrado y avisa cuando el volumen es insuficiente o existe una restricción de capacidad.
 
-Al abrir una landing se accede a una ficha con cinco perspectivas. Resumen explica en qué parte del recorrido aparece la diferencia. Tráfico y CRM conecta las visitas con leads, SQL y altas. Datos del municipio aporta demanda, cobertura y capacidad. Experimentos enseña qué cambio se está midiendo. Cambios y decisiones conserva quién decidió, qué hipótesis utilizó y qué ocurrió después.
+Al abrir una landing se accede a una ficha con seis perspectivas. Resumen explica en qué parte del recorrido aparece la diferencia. Tráfico y CRM conecta las visitas con leads, SQL y altas. Campañas de pago muestra qué campañas llevaron tráfico a esa URL, cuánto se invirtió y qué resultados pudieron enlazarse después con el CRM. Datos del municipio aporta demanda, cobertura y capacidad. Experimentos enseña qué cambio se está midiendo. Cambios y decisiones conserva quién decidió, qué hipótesis utilizó y qué ocurrió después.
 
 ### 3.2 Oportunidades
 
@@ -124,6 +124,8 @@ Para cada landing se reúnen tres recorridos usando la URL como referencia comú
 
 La secuencia permite localizar dónde aparece la diferencia. Muchas impresiones y pocos clics apuntan a visibilidad o mensaje en Google. Sesiones sin leads llevan a revisar propuesta de valor, formulario o llamada. Leads sin suficientes SQL llevan a revisar intención y cualificación. Una caída posterior, entre SQL y alta, puede estar fuera de la landing y requiere una lectura conjunta con Comercial y Operaciones.
 
+Cuando un evento conserva tanto la URL de la landing como el identificador de campaña, la ficha también puede enlazar esa campaña con la tabla diaria de publicidad. Así se muestran inversión, impresiones, clics y conversiones declaradas por la plataforma junto a leads, SQL y altas reconciliados con CRM. Ambos resultados se mantienen separados porque utilizan sistemas de medición distintos. Como la fuente disponible está agregada por campaña y día, esta versión no afirma qué anuncio o creatividad individual produjo el resultado; para hacerlo en producción habría que conservar también el identificador de anuncio, grupo y creatividad.
+
 #### Medir el efecto de un cambio
 
 Antes de publicar un cambio se asignan municipios comparables a un grupo que recibe la nueva landing y a otro que mantiene la versión anterior. La aplicación cuenta los SQL de familias por municipio y semana y conserva también las semanas con cero resultados. Una semana entra en la comparación cuando ha terminado; no necesita esperar 90 días porque la métrica semanal es el número de SQL, no el número de altas.
@@ -164,6 +166,7 @@ La conversión SQL → alta utiliza una condición distinta: cada SQL necesita 9
 | Resultado | SQL elegibles por municipio y semana completa; altas de SQL con 90 días de seguimiento | Determinan si merece la pena continuar |
 | Embudo | Sesión a lead; lead a SQL; SQL a alta | Localizan dónde aparece la diferencia |
 | Visibilidad | Impresiones, clics, CTR y posición | Explican si la página está consiguiendo exposición orgánica |
+| Captación de pago | Inversión, clics, coste por clic, coste por SQL y coste por alta | Explican qué campañas llevaron tráfico a cada landing y con qué eficiencia se enlazaron resultados en CRM |
 | Controles que no deben empeorar | Capacidad, NPS cuando sea publicable, descartes y desplazamiento desde otros canales | Evitan mejorar captación a costa del servicio o de otro canal |
 | Calidad | Eventos conectados con CRM, actualización de fuentes, coherencia de fechas, identidades sin confirmar y SQL aún en seguimiento | Indican si la lectura es suficientemente fiable |
 

@@ -1,6 +1,9 @@
 import { LandingChanges } from "../components/landing-changes";
 import { useQuery } from "@tanstack/react-query";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Badge,
   Button,
   Card,
@@ -24,6 +27,7 @@ import { ArrowLeft, ChevronRight, ExternalLink, Search, X } from "lucide-react";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { chartPalette, TrendChart } from "../components/charts";
+import { LandingAdvertising } from "../components/landing-advertising";
 import {
   FunnelEvidence,
   landingReading,
@@ -323,12 +327,10 @@ export function LandingRecordPage() {
         ) : null}
       </header>
 
-      <div className="rounded-lg border-l-4 border-l-primary bg-card px-5 py-4 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          Resumen de los datos
-        </p>
-        <p className="mt-2 text-sm leading-6">{landingReading(data)}</p>
-      </div>
+      <Alert className="rounded-none border-x-0 bg-transparent px-0 py-4">
+        <AlertTitle>Lectura principal</AlertTitle>
+        <AlertDescription>{landingReading(data)}</AlertDescription>
+      </Alert>
 
       <Tabs
         key={params.get("decision") ?? url}
@@ -340,6 +342,7 @@ export function LandingRecordPage() {
               [
                 ["summary", "Resumen"],
                 ["traffic", "Tráfico y CRM"],
+                ["advertising", "Campañas de pago"],
                 ["motor", "Datos del municipio"],
                 ["experiments", "Experimentos"],
                 ["changes", "Cambios y decisiones"],
@@ -483,6 +486,10 @@ export function LandingRecordPage() {
               xKey="period"
             />
           </Card>
+        </TabsContent>
+
+        <TabsContent value="advertising">
+          <LandingAdvertising advertising={data.advertising} />
         </TabsContent>
 
         <TabsContent value="motor">

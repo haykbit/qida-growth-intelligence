@@ -152,6 +152,16 @@ export const landingPortfolioSchema = z.object({
 const landingDecisionRecordSchema = landingDecisionRequestSchema.extend({ resultSnapshot: sqlResultSchema.optional(), id: z.string(), version: z.number(), actorRole: z.string(), createdAt: z.string() });
 export const landingInsightDetailSchema = landingInsightSummarySchema.extend({
   monthly: z.array(z.object({ period: z.string(), sessions: z.number(), forms: z.number(), phoneClicks: z.number(), leads: z.number(), sql: z.number(), altas: z.number(), sessionToLead: z.number(), leadToSql: z.number() })),
+  advertising: z.object({
+    rows: z.array(z.object({
+      platform: z.string(), campaign: z.string(), firstSeen: z.string(), lastSeen: z.string(),
+      spend: z.number(), impressions: z.number(), clicks: z.number(), cpc: z.number(),
+      platformConversions: z.number(), trackedEvents: z.number(), trackedSessions: z.number(),
+      leads: z.number(), crmSql: z.number(), crmAltas: z.number(),
+      costPerSql: z.number().nullable(), costPerAlta: z.number().nullable(),
+    })),
+    caveats: z.array(z.string()),
+  }),
   experiments: z.array(experimentSummarySchema), decisions: z.array(landingDecisionRecordSchema), caveats: z.array(z.string()),
 });
 export type LandingInsightSummaryData = z.infer<typeof landingInsightSummarySchema>;

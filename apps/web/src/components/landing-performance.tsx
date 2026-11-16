@@ -99,21 +99,21 @@ export function landingReading(landing: LandingInsightSummaryData): string {
     const alternatives = [
       `La tasa sesión → lead está ${pointDifference(landing.rates.sessionToLead, landing.benchmark.sessionToLead)} frente a la media seleccionada.`,
       `Convierte ${percent.format(landing.rates.sessionToLead)} de las sesiones en leads; la media es ${percent.format(landing.benchmark.sessionToLead)}.`,
-      `${integer.format(landing.sessions)} sesiones generan ${integer.format(landing.leads)} leads. Es la etapa con mayor diferencia frente a la media.`,
+      `${integer.format(landing.sessions)} sesiones generan ${integer.format(landing.leads)} leads: una conversión del ${percent.format(landing.rates.sessionToLead)}, frente al ${percent.format(landing.benchmark.sessionToLead)} de media.`,
     ];
     return alternatives[variant] ?? alternatives[0] ?? "";
   }
   if (weakest?.key === "lead") {
     const alternatives = [
       `La tasa lead → SQL está ${pointDifference(landing.rates.leadToSql, landing.benchmark.leadToSql)} frente a la media seleccionada.`,
-      `${integer.format(landing.leads)} leads generan ${integer.format(landing.sql)} SQL. Es la etapa con mayor diferencia frente a la media.`,
+      `${integer.format(landing.leads)} leads generan ${integer.format(landing.sql)} SQL: una conversión del ${percent.format(landing.rates.leadToSql)}, frente al ${percent.format(landing.benchmark.leadToSql)} de media.`,
       `Convierte ${percent.format(landing.rates.leadToSql)} de los leads en SQL; la media es ${percent.format(landing.benchmark.leadToSql)}.`,
     ];
     return alternatives[variant] ?? alternatives[0] ?? "";
   }
   const alternatives = [
     `La tasa SQL → alta está ${pointDifference(landing.rates.sqlToAlta, landing.benchmark.sqlToAlta)} frente a la media seleccionada.`,
-    `${integer.format(landing.sql)} SQL generan ${integer.format(landing.altas)} altas. Es la etapa con mayor diferencia frente a la media.`,
+    `${integer.format(landing.sql)} SQL generan ${integer.format(landing.altas)} altas: una conversión del ${percent.format(landing.rates.sqlToAlta)}, frente al ${percent.format(landing.benchmark.sqlToAlta)} de media.`,
     `Convierte ${percent.format(landing.rates.sqlToAlta)} de los SQL en altas; la media es ${percent.format(landing.benchmark.sqlToAlta)}.`,
   ];
   return alternatives[variant] ?? alternatives[0] ?? "";
