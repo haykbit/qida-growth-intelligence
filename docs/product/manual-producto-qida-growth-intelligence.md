@@ -76,7 +76,7 @@ Esta vista convierte la estrategia en operación. Presenta fases, reuniones, res
 
 ### 3.5 Modelo de datos
 
-Modelo de datos es la capa de confianza del producto. En Flujo se ve cómo llegan los sistemas. En Tablas puede abrirse cada entidad y entender qué representa una fila. En Consultas aparecen únicamente los cálculos que combinan fuentes o producen una métrica de producto. Calidad muestra frescura, integridad, trazabilidad, identidades ambiguas y oportunidades todavía inmaduras.
+Modelo de datos es la capa de confianza del producto. En Flujo se ve cómo llegan los sistemas. En Tablas puede abrirse cada entidad y entender qué representa una fila. En Lógica se explica qué datos se combinan y qué reglas producen cada métrica, sin exponer código. Calidad muestra frescura, integridad, trazabilidad, identidades ambiguas y oportunidades todavía inmaduras.
 
 | Pantalla | Pregunta principal | Decisión que facilita |
 | --- | --- | --- |
@@ -108,112 +108,27 @@ Métricas, experimento, decisión y aprendizaje
 
 Las nueve tablas fuente de la propuesta mantienen los conceptos del anexo: municipio, demanda de búsqueda, voz del cliente, competencia, landing, Search Console, sesiones web, publicidad y lead. Las tablas adicionales no cambian esas fuentes; guardan identidad seudónima, oportunidades familiares, eventos, experimentos, asignaciones, recomendaciones versionadas, flujo de aprobación y auditoría.
 
-### 4.1 Tres consultas que justifican el producto
+### 4.1 Lógica de las tres lecturas principales
 
-La pantalla Consultas contiene seis familias, pero para la prueba técnica hay tres especialmente importantes. La primera decide dónde empezar. La segunda explica el rendimiento de una landing. La tercera permite leer el efecto de una prueba.
+La aplicación no necesita enseñar el código con el que se consultan los datos. Lo importante es que una persona pueda entender qué información se combina, qué reglas se aplican y por qué el resultado aparece en una pantalla. Hay tres lecturas especialmente importantes: seleccionar dónde investigar, explicar el rendimiento de una landing y medir un cambio.
 
-#### Consulta 1. Seleccionar municipios y servicios elegibles
+#### Seleccionar municipios y servicios que merece la pena investigar
 
-Esta consulta combina demanda reciente, actividad comercial y capacidad. Incluye municipios con cero SQL mediante un `LEFT JOIN`, porque precisamente esos casos pueden contener una brecha de captación.
+Primero se toman las búsquedas recientes de cada municipio y servicio. Después se añaden los leads y SQL de familias generados en el mismo periodo. Finalmente se comprueba que Qida presta ese servicio en la zona, que existen datos propios suficientes y que hay cuidadoras disponibles para atender nueva demanda. Los municipios sin resultados comerciales se mantienen en la lectura; un cero puede señalar una oportunidad real y no debe desaparecer.
 
-```sql
-WITH demanda AS (
-  SELECT municipio_id, tema AS servicio,
-         AVG(busquedas)::numeric AS busquedas_mes
-  FROM motor_demanda_busqueda
-  WHERE mes >= CURRENT_DATE - INTERVAL '6 months'
-  GROUP BY municipio_id, tema
-), comercial AS (
-  SELECT municipio_id, servicio,
-         COUNT(*) FILTER (WHERE tipo_contacto = 'familia_cuidado') AS leads,
-         COUNT(*) FILTER (WHERE es_sql AND tipo_contacto = 'familia_cuidado') AS sql
-  FROM lead
-  WHERE fecha_creacion >= CURRENT_DATE - INTERVAL '180 days'
-  GROUP BY municipio_id, servicio
-)
-SELECT m.municipio_id, m.nombre, d.servicio, d.busquedas_mes,
-       COALESCE(c.leads, 0) AS leads, COALESCE(c.sql, 0) AS sql,
-       m.cuidadoras_disponibles_30d,
-       m.datos_propios
-         AND m.tiene_cobertura
-         AND d.servicio = ANY(m.servicios_cubiertos)
-         AND m.cuidadoras_disponibles_30d >= 8 AS elegible
-FROM motor_municipio m
-JOIN demanda d USING (municipio_id)
-LEFT JOIN comercial c USING (municipio_id, servicio)
-ORDER BY elegible DESC, d.busquedas_mes - COALESCE(c.sql, 0) DESC;
-```
+El resultado separa los casos elegibles de los que están bloqueados por cobertura, capacidad o falta de datos. Dentro de los elegibles, la aplicación sitúa primero las combinaciones con demanda relevante y pocos resultados comerciales. Esto no ordena automáticamente el trabajo: permite a Growth revisar la landing, comprobar la medición y formular una hipótesis con contexto suficiente.
 
-Si la consulta devuelve demanda alta sin capacidad, el caso no entra en el piloto. Si devuelve demanda, cobertura y pocos SQL, se revisa la landing y la calidad de la medición antes de formular una hipótesis.
+#### Explicar el rendimiento de una landing
 
-#### Consulta 2. Reconciliar una landing con el resultado comercial
+Para cada landing se reúnen tres recorridos usando la URL como referencia común. Search Console aporta impresiones y clics; la analítica web aporta sesiones, formularios y clics en teléfono; el CRM aporta leads de familias, SQL y altas. Todos los datos se leen en el mismo intervalo temporal y las ausencias se muestran como cero, no como filas eliminadas.
 
-La segunda consulta une sesiones, Search Console y CRM mediante URL. Su objetivo no es atribuir causalidad, sino asegurar que una cifra visible puede seguirse desde la página hasta el resultado comercial.
+La secuencia permite localizar dónde aparece la diferencia. Muchas impresiones y pocos clics apuntan a visibilidad o mensaje en Google. Sesiones sin leads llevan a revisar propuesta de valor, formulario o llamada. Leads sin suficientes SQL llevan a revisar intención y cualificación. Una caída posterior, entre SQL y alta, puede estar fuera de la landing y requiere una lectura conjunta con Comercial y Operaciones.
 
-```sql
-WITH web AS (
-  SELECT url_entrada AS url, SUM(sesiones) AS sesiones,
-         SUM(formularios) AS formularios
-  FROM web_sesiones_diarias
-  WHERE fecha BETWEEN $1 AND $2
-  GROUP BY url_entrada
-), crm AS (
-  SELECT url_entrada AS url,
-         COUNT(*) FILTER (WHERE tipo_contacto = 'familia_cuidado') AS leads,
-         COUNT(*) FILTER (WHERE es_sql AND tipo_contacto = 'familia_cuidado') AS sql,
-         COUNT(*) FILTER (WHERE es_alta AND tipo_contacto = 'familia_cuidado') AS altas
-  FROM lead
-  WHERE fecha_creacion BETWEEN $1 AND $2
-  GROUP BY url_entrada
-), search AS (
-  SELECT url, SUM(impresiones) AS impresiones, SUM(clics) AS clics
-  FROM gsc_diario
-  WHERE fecha BETWEEN $1 AND $2
-  GROUP BY url
-)
-SELECT l.url, l.municipio_id,
-       COALESCE(w.sesiones, 0) AS sesiones,
-       COALESCE(c.leads, 0) AS leads,
-       COALESCE(c.sql, 0) AS sql,
-       COALESCE(c.altas, 0) AS altas,
-       COALESCE(s.impresiones, 0) AS impresiones,
-       COALESCE(s.clics, 0) AS clics
-FROM landing l
-LEFT JOIN web w USING (url)
-LEFT JOIN crm c USING (url)
-LEFT JOIN search s USING (url);
-```
+#### Medir el efecto de un cambio
 
-Si existe tráfico pero no hay leads, la investigación se centra en propuesta de valor, formulario y llamada. Si hay leads pero pocos SQL, se revisan mensaje, intención y cualificación. Si la caída aparece de SQL a alta, el problema puede estar fuera de la landing y debe analizarse con Operaciones y Comercial.
+Antes de publicar un cambio se asignan municipios comparables a un grupo que recibe la nueva versión y a otro que mantiene la versión anterior. La aplicación cuenta los SQL de familias por municipio y semana, conserva también las semanas con cero resultados y espera el tiempo necesario antes de considerar madura una cohorte.
 
-#### Consulta 3. Comparar tratamiento y control
-
-La lectura principal cuenta SQL por semana y municipio, conserva semanas con cero resultados y separa cohortes maduras. Después compara el cambio del tratamiento con el cambio del control.
-
-```sql
-WITH semanas AS (
-  SELECT generate_series(-12, 7) AS semana
-), base AS (
-  SELECT s.semana, a.variant,
-         COUNT(DISTINCT a.municipio_id) AS municipios,
-         COUNT(l.lead_id) FILTER (WHERE l.es_sql) AS sql
-  FROM semanas s
-  CROSS JOIN experiment_assignment a
-  LEFT JOIN lead l
-    ON l.municipio_id = a.municipio_id
-   AND l.fecha_sql >= $2 + (s.semana * INTERVAL '7 days')
-   AND l.fecha_sql <  $2 + ((s.semana + 1) * INTERVAL '7 days')
-   AND l.tipo_contacto = 'familia_cuidado'
-  WHERE a.experiment_id = $1
-  GROUP BY s.semana, a.variant
-)
-SELECT semana, variant,
-       sql::numeric / NULLIF(municipios, 0) AS sql_por_municipio
-FROM base
-ORDER BY semana, variant;
-```
-
-La aplicación calcula después una diferencia de diferencias: cambio del tratamiento menos cambio del control. El resultado se marca como inconcluso cuando faltan semanas maduras, la muestra es pequeña o las tendencias previas ya eran diferentes.
+La lectura compara cuánto cambia el grupo modificado y descuenta el cambio observado en el grupo de control durante las mismas fechas. Así se reduce el efecto de la estacionalidad y de movimientos generales del canal. El resultado se presenta como inconcluso cuando faltan semanas maduras, hay pocos municipios o ambos grupos ya evolucionaban de forma diferente antes del cambio.
 
 ### 4.2 Arquitectura y control de la IA
 

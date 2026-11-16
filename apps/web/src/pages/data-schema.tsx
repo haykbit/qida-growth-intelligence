@@ -31,7 +31,6 @@ import {
   CheckCircle2,
   ChevronDown,
   CircleHelp,
-  Code2,
   Database,
   FileInput,
   GitMerge,
@@ -187,6 +186,48 @@ function QueryExplorer({ data }: { data: WorkbenchData }) {
   const selected =
     data.queries.find((query) => query.id === selectedId) ?? data.queries[0];
   if (!selected) return null;
+  const logicByQuery: Record<
+    WorkbenchData["queries"][number]["id"],
+    Array<{ title: string; description: string }>
+  > = {
+    opportunity_score: [
+      { title: "Partimos de la demanda", description: "Reunimos las búsquedas recientes por municipio y servicio para saber dónde existe interés." },
+      { title: "Añadimos la actividad comercial", description: "Incorporamos leads y SQL de familias del mismo municipio, servicio y periodo, incluidos los casos con cero resultados." },
+      { title: "Aplicamos los límites operativos", description: "Descartamos zonas sin cobertura, sin datos propios suficientes o sin cuidadoras disponibles." },
+      { title: "Mostramos la brecha", description: "Ordenamos los casos elegibles donde existe demanda, pero la captación comercial todavía es baja." },
+    ],
+    landing_performance: [
+      { title: "Identificamos la landing", description: "Usamos la URL publicada como referencia común para todas las fuentes." },
+      { title: "Añadimos visibilidad y uso", description: "Unimos impresiones y clics de Google con sesiones, formularios y llamadas de la analítica web." },
+      { title: "Añadimos el resultado comercial", description: "Relacionamos los leads, SQL y altas atribuidos a esa URL durante el mismo periodo." },
+      { title: "Localizamos la caída", description: "Comparamos cada paso para distinguir un problema de visibilidad, captación, cualificación o cierre." },
+    ],
+    landing_monthly_funnel: [
+      { title: "Fijamos una landing y un periodo", description: "Agrupamos la actividad de la URL por mes para poder comparar meses equivalentes." },
+      { title: "Reconstruimos el embudo", description: "Contamos sesiones, leads, SQL y altas sin eliminar los meses que no produjeron resultados." },
+      { title: "Calculamos las tasas", description: "Dividimos cada paso por el anterior y evitamos porcentajes cuando el denominador no es suficiente." },
+      { title: "Mostramos la evolución", description: "La serie permite ver en qué punto y desde qué mes cambia el rendimiento." },
+    ],
+    experiment_effect: [
+      { title: "Asignamos grupos antes del cambio", description: "Separamos municipios comparables entre la nueva versión y la versión anterior." },
+      { title: "Observamos las mismas semanas", description: "Contamos SQL de familias por municipio y semana en ambos grupos, incluidos los ceros." },
+      { title: "Esperamos a que el dato madure", description: "No interpretamos cohortes que todavía no han tenido tiempo suficiente para convertirse." },
+      { title: "Comparamos los cambios", description: "Restamos al cambio del grupo modificado el cambio observado en el grupo de control." },
+    ],
+    traceability_coverage: [
+      { title: "Contamos los eventos observados", description: "Partimos de formularios, llamadas y cambios comerciales registrados." },
+      { title: "Buscamos una identidad confirmada", description: "Solo enlazamos eventos mediante identificadores seudónimos o referencias explícitas de origen." },
+      { title: "Separamos los casos ambiguos", description: "Los enlaces dudosos permanecen sin unir y no se convierten en atribución confirmada." },
+      { title: "Calculamos la cobertura", description: "Mostramos qué proporción de eventos puede seguirse hasta una persona u oportunidad sin usar datos personales." },
+    ],
+    quality_controls: [
+      { title: "Comprobamos el orden temporal", description: "Un SQL no puede aparecer antes que su lead y un alta no puede preceder al SQL." },
+      { title: "Revisamos relaciones obligatorias", description: "Detectamos URLs, municipios, experimentos o identidades que no encuentran su registro de referencia." },
+      { title: "Comprobamos la actualidad", description: "Marcamos cada fuente que no se ha actualizado dentro de la frecuencia acordada." },
+      { title: "Bloqueamos lecturas inseguras", description: "Los fallos críticos impiden presentar una métrica como válida hasta que se corrijan." },
+    ],
+  };
+  const selectedLogic = logicByQuery[selected.id];
   const columns = Object.keys(selected.resultRows[0] ?? {});
   const evidenceCopy = {
     descriptive: { label: "Descriptiva", tone: "neutral" as const, help: "Resume patrones observados. No atribuye ni demuestra un efecto." },
@@ -218,8 +259,8 @@ function QueryExplorer({ data }: { data: WorkbenchData }) {
       <div className="grid min-w-0 gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
         <Card className="h-fit xl:sticky xl:top-24">
           <CardHeader>
-            <CardTitle>Consultas del producto</CardTitle>
-            <CardDescription>Solo aparecen cálculos que producen una métrica o control visible.</CardDescription>
+            <CardTitle>Lógica de las métricas</CardTitle>
+            <CardDescription>Qué datos se combinan y qué reglas producen cada resultado visible.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2 sm:grid-cols-2 xl:flex xl:flex-col">
             {data.queries.map((query) => (
@@ -265,30 +306,51 @@ function QueryExplorer({ data }: { data: WorkbenchData }) {
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <Tabs defaultValue="calculation">
+            <Tabs defaultValue="logic">
               <TabsList className="h-auto w-full justify-start overflow-x-auto rounded-none border-b bg-transparent p-0">
-                <TabsTrigger className="gap-2 rounded-none border-b-2 border-transparent px-5 py-3 data-[state=active]:border-primary data-[state=active]:shadow-none" value="calculation"><Calculator className="size-4" />Cálculo</TabsTrigger>
-                <TabsTrigger className="gap-2 rounded-none border-b-2 border-transparent px-5 py-3 data-[state=active]:border-primary data-[state=active]:shadow-none" value="sql"><Code2 className="size-4" />SQL</TabsTrigger>
+                <TabsTrigger className="gap-2 rounded-none border-b-2 border-transparent px-5 py-3 data-[state=active]:border-primary data-[state=active]:shadow-none" value="logic"><GitMerge className="size-4" />Lógica</TabsTrigger>
+                <TabsTrigger className="gap-2 rounded-none border-b-2 border-transparent px-5 py-3 data-[state=active]:border-primary data-[state=active]:shadow-none" value="calculation"><Calculator className="size-4" />Métricas</TabsTrigger>
                 <TabsTrigger className="gap-2 rounded-none border-b-2 border-transparent px-5 py-3 data-[state=active]:border-primary data-[state=active]:shadow-none" value="result"><TableProperties className="size-4" />Resultado</TabsTrigger>
               </TabsList>
+
+              <TabsContent className="m-0 flex flex-col gap-5 p-5" value="logic">
+                <section className="grid gap-3 md:grid-cols-2">
+                  {selectedLogic.map((step, index) => (
+                    <Card key={step.title}>
+                      <CardHeader>
+                        <Badge>{`Paso ${index + 1}`}</Badge>
+                        <CardTitle>{step.title}</CardTitle>
+                        <CardDescription>{step.description}</CardDescription>
+                      </CardHeader>
+                    </Card>
+                  ))}
+                </section>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Datos que se combinan</CardTitle>
+                    <CardDescription>Fuentes necesarias para construir esta lectura.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-5">
+                    <div className="flex flex-wrap gap-2">{selected.dataUsed.map((table) => <Badge key={table}>{table}</Badge>)}</div>
+                    <div className="grid gap-3 lg:grid-cols-2">{selected.joins.map((join) => <Card key={`${join.left}-${join.right}`}><CardHeader><CardTitle className="text-sm">{join.purpose}</CardTitle><CardDescription>{join.left} se relaciona con {join.right} mediante {join.on}.</CardDescription></CardHeader></Card>)}</div>
+                  </CardContent>
+                </Card>
+                {selected.caveats.map((caveat) => <Alert key={caveat}><AlertDescription>{caveat}</AlertDescription></Alert>)}
+              </TabsContent>
 
               <TabsContent className="m-0 flex flex-col gap-6 p-5" value="calculation">
                 <section className="flex flex-col gap-3">
                   <div>
                     <h3 className="text-sm font-semibold">Métricas que produce</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">La ubicación del cálculo distingue SQL de lógica posterior en la API.</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Cada definición explica el valor y la pantalla donde se utiliza.</p>
                   </div>
                   <Table>
-                    <TableHeader><TableRow><TableHead>Métrica</TableHead><TableHead>Definición</TableHead><TableHead>Fórmula</TableHead><TableHead>Se calcula en</TableHead><TableHead>Se muestra en</TableHead></TableRow></TableHeader>
-                    <TableBody>{selected.metrics.map((metric) => <TableRow key={metric.name}><TableCell className="font-medium">{metric.name}</TableCell><TableCell className="max-w-xs text-muted-foreground">{metric.definition}</TableCell><TableCell><code className="text-xs leading-5">{metric.calculation}</code></TableCell><TableCell><Badge tone={metric.calculatedIn === "sql" ? "info" : "violet"}>{metric.calculatedIn === "sql" ? "SQL" : "API"}</Badge></TableCell><TableCell className="text-muted-foreground">{metric.displayedAs}</TableCell></TableRow>)}</TableBody>
+                    <TableHeader><TableRow><TableHead>Métrica</TableHead><TableHead>Qué representa</TableHead><TableHead>Cómo se obtiene</TableHead><TableHead>Se muestra en</TableHead></TableRow></TableHeader>
+                    <TableBody>{selected.metrics.map((metric) => <TableRow key={metric.name}><TableCell className="font-medium">{metric.name}</TableCell><TableCell className="max-w-xs text-muted-foreground">{metric.definition}</TableCell><TableCell className="text-muted-foreground">{metric.calculation}</TableCell><TableCell className="text-muted-foreground">{metric.displayedAs}</TableCell></TableRow>)}</TableBody>
                   </Table>
                 </section>
 
-                <section className="grid gap-5 lg:grid-cols-2">
-                  <Card>
-                    <CardHeader><CardTitle className="flex items-center gap-2"><GitMerge className="size-4" />Uniones</CardTitle><CardDescription>Claves que conectan las fuentes.</CardDescription></CardHeader>
-                    <CardContent className="flex flex-col gap-4">{selected.joins.map((join) => <div className="flex flex-col gap-2 border-b pb-4 last:border-b-0 last:pb-0" key={`${join.left}-${join.right}`}><div className="flex flex-wrap items-center gap-2 text-xs"><code className="rounded bg-secondary px-2 py-1">{join.left}</code><span className="text-muted-foreground">con</span><code className="rounded bg-secondary px-2 py-1">{join.right}</code></div><p className="text-xs font-medium">Clave: {join.on}</p><p className="text-xs leading-5 text-muted-foreground">{join.purpose}</p></div>)}</CardContent>
-                  </Card>
+                <section>
                   <Card>
                     <CardHeader><CardTitle>Uso y límites</CardTitle><CardDescription>Qué consume el resultado y qué queda fuera.</CardDescription></CardHeader>
                     <CardContent className="flex flex-col gap-5">
@@ -298,22 +360,6 @@ function QueryExplorer({ data }: { data: WorkbenchData }) {
                     </CardContent>
                   </Card>
                 </section>
-                {selected.caveats.map((caveat) => <Alert key={caveat}><AlertDescription>{caveat}</AlertDescription></Alert>)}
-              </TabsContent>
-
-              <TabsContent className="m-0 p-5" value="sql">
-                <Tabs defaultValue="statement-0">
-                  <TabsList>{selected.statements.map((statement, index) => <TabsTrigger key={statement.title} value={`statement-${index}`}>{statement.title}</TabsTrigger>)}</TabsList>
-                  {selected.statements.map((statement, index) => <TabsContent className="mt-4" key={statement.title} value={`statement-${index}`}>
-                    <Card>
-                      <CardHeader><CardTitle>{statement.title}</CardTitle><CardDescription>{statement.purpose}</CardDescription></CardHeader>
-                      <CardContent className="p-0">
-                        {statement.parameters.length ? <div className="flex flex-wrap gap-2 border-t bg-muted/30 px-5 py-3">{statement.parameters.map((parameter) => <Badge key={parameter.name}>{parameter.name}: {parameter.value}</Badge>)}</div> : null}
-                        <pre className="max-h-[560px] overflow-auto border-t bg-slate-950 p-5 text-xs leading-6 text-slate-100"><code>{statement.sql}</code></pre>
-                      </CardContent>
-                    </Card>
-                  </TabsContent>)}
-                </Tabs>
               </TabsContent>
 
               <TabsContent className="m-0 flex flex-col gap-4 p-5" value="result">
@@ -379,7 +425,7 @@ export function DataSchemaPage() {
             Modelo de datos
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Tablas, consultas, resultados y controles de calidad.
+            Tablas, lógica de las métricas, resultados y controles de calidad.
           </p>
         </div>
         <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
@@ -405,7 +451,7 @@ export function DataSchemaPage() {
               [
                 ["flow", "Flujo"],
                 ["tables", "Tablas"],
-                ["queries", "Consultas"],
+                ["queries", "Lógica"],
                 ["quality", "Calidad"],
               ] as const
             ).map(([value, label]) => (

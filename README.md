@@ -18,13 +18,13 @@ La demostración de GitHub Pages funciona con una captura reproducible de datos 
 - Las combinaciones de municipio y servicio que merece la pena analizar.
 - Los experimentos, su trazabilidad y su grado de madurez.
 - El plan de trabajo, las reuniones y los controles de los primeros 90 días.
-- Las tablas, uniones y consultas que producen las métricas relevantes.
+- Las tablas y la lógica que producen las métricas relevantes.
 
 La aplicación diferencia siempre entre descripción, atribución y evidencia causal. Las puntuaciones sirven para ordenar revisiones; no son predicciones estadísticas.
 
 ## Documento de producto
 
-El [documento de producto](docs/product/manual-producto-qida-growth-intelligence.md) explica la propuesta de forma ejecutiva: idea, partes del producto, datos, métricas, consultas, planificación y límites.
+El [documento de producto](docs/product/manual-producto-qida-growth-intelligence.md) explica la propuesta de forma ejecutiva: idea, partes del producto, datos, lógica de las métricas, planificación y límites.
 
 ## Cómo está construido
 
