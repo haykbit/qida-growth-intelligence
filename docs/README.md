@@ -7,8 +7,6 @@ La documentación está separada por finalidad para que el evaluador pueda elegi
 | Documento | Para qué sirve |
 | --- | --- |
 | [Manual de producto](product/manual-producto-qida-growth-intelligence.md) | Comprender la propuesta completa desde cero |
-| [Auditoría de la prueba](product/case-audit-and-delivery-backlog.md) | Comprobar requisitos, evidencias y pendientes |
-| [Guía de presentación](product/guia-presentacion-prueba-tecnica.md) | Preparar la exposición oral |
 | [Presentación](product/qida-growth-intelligence.pptx) | Soporte visual editable |
 
 ## Arquitectura

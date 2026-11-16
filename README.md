@@ -26,8 +26,6 @@ La aplicación diferencia siempre entre descripción, atribución y evidencia ca
 
 El [manual de producto](docs/product/manual-producto-qida-growth-intelligence.md) explica la propuesta desde cero: problema, usuarios, pantallas, métricas, consultas, arquitectura, privacidad, gobierno y plan de 90 días.
 
-La [auditoría del caso](docs/product/case-audit-and-delivery-backlog.md) relaciona la implementación con los requisitos de la prueba técnica y separa lo demostrado de lo que necesita validación real.
-
 ## Cómo está construido
 
 ```text
