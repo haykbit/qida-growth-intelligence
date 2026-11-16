@@ -327,7 +327,7 @@ export function LandingRecordPage() {
         ) : null}
       </header>
 
-      <Alert className="rounded-none border-x-0 bg-transparent px-0 py-4">
+      <Alert className="rounded-none border-x-0 border-t-0 bg-transparent px-0 py-4">
         <AlertTitle>Lectura principal</AlertTitle>
         <AlertDescription>{landingReading(data)}</AlertDescription>
       </Alert>
