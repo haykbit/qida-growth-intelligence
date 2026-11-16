@@ -159,7 +159,7 @@ def draw_body_chrome(canvas, doc):
     canvas.drawString(MARGIN_X, PAGE_HEIGHT - 9.5 * mm, "Qida Growth Intelligence")
     canvas.drawRightString(PAGE_WIDTH - MARGIN_X, PAGE_HEIGHT - 9.5 * mm, "Documento de producto")
     canvas.line(MARGIN_X, 13 * mm, PAGE_WIDTH - MARGIN_X, 13 * mm)
-    canvas.drawString(MARGIN_X, 8.5 * mm, "Datos sintéticos - Propuesta de prueba técnica")
+    canvas.drawString(MARGIN_X, 8.5 * mm, "Propuesta de prueba técnica")
     canvas.drawRightString(PAGE_WIDTH - MARGIN_X, 8.5 * mm, str(canvas.getPageNumber() - 1))
     canvas.restoreState()
 
