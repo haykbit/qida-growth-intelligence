@@ -1,1199 +1,300 @@
-# Manual de producto de Qida Growth Intelligence
-
-Estado: documento canónico para aprender el producto
-Fecha: 16 de noviembre de 2026
-Audiencia: personas junior de Producto, Growth, Data, Marketing y Tecnología
-Datos de la demostración: sintéticos, deterministas y persistidos
+# Qida Growth Intelligence
 
-## 1. Para qué sirve este manual
+Documento de producto para la prueba técnica
 
-Este documento explica el producto desde cero. No es un guion de presentación ni un listado de tickets. Su objetivo es que una persona que no conoce el proyecto pueda responder estas preguntas:
+## 1. Índice y propósito
 
-1. ¿Qué problema resuelve Qida Growth Intelligence?
-2. ¿Qué existía antes y qué añade la propuesta?
-3. ¿Qué significa cada pantalla?
-4. ¿De dónde sale cada dato?
-5. ¿Cómo se calculan las métricas?
-6. ¿Qué decisiones permite tomar el producto?
-7. ¿Qué puede afirmar la aplicación y qué no puede afirmar?
-8. ¿Cómo se ejecutaría la primera prueba durante 90 días?
-9. ¿Qué partes son reales en la demostración y qué falta para producción?
+Este documento presenta Qida Growth Intelligence como respuesta a una pregunta concreta: una vez que Qida dispone de un motor de datos municipal y de una fábrica de landings, ¿cómo puede convertir esos activos en más aprendizaje y mejores decisiones de crecimiento?
 
-La lectura recomendada para una persona junior es:
+La respuesta no consiste en reconstruir lo que ya existe. Consiste en añadir una capa de producto que conecte cada landing con los datos que justificaron su creación, con el resultado que produjo y con la decisión tomada después. El documento está pensado para leerse en unos diez minutos y sigue seis bloques de contenido: la idea, las partes del producto, la data, la medición, la planificación y los límites de la propuesta.
 
-- capítulos 2 a 6 para comprender el producto;
-- capítulos 7 a 10 para comprender las métricas y los datos;
-- capítulos 11 a 15 para comprender la ejecución, el gobierno y los límites;
-- capítulos 16 y 17 para practicar y resolver dudas.
+| Sección | Pregunta que responde |
+| --- | --- |
+| Presentación de la idea | ¿Qué problema falta por resolver y dónde está el valor? |
+| Partes del producto | ¿Cómo trabaja una persona con la herramienta? |
+| La data | ¿De dónde sale cada dato y cómo se combinan las fuentes? |
+| Métricas previstas | ¿Cómo sabremos si una apuesta funciona? |
+| Planificación | ¿Qué construiríamos y validaríamos durante 90 días y seis meses? |
+| Límites y controles | ¿Qué no puede afirmar ni hacer el sistema? |
 
-## 2. El problema que queremos resolver
+## 2. Presentación de la idea
 
-Qida ya dispone de dos activos importantes.
+Qida parte de dos activos valiosos. El motor de datos reúne, para cada municipio, oferta, capacidad, actividad comercial, demanda de búsqueda, voz del cliente y competencia. La fábrica utiliza ese contexto para generar landings locales con una estructura preparada para SEO y contenido propio de Qida.
 
-### 2.1 Motor de datos
+La pieza que falta aparece después de publicar. Hoy se puede generar una página, pero todavía es difícil responder de forma conjunta a preguntas como estas: por qué se creó, qué parte del embudo está funcionando peor, si Qida puede atender la demanda, qué cambio se realizó, qué resultado se observó y qué aprendimos para la siguiente página.
 
-El motor reúne información por municipio y servicio:
+Qida Growth Intelligence cierra ese ciclo. La unidad de trabajo deja de ser una gráfica aislada o un municipio abstracto y pasa a ser una landing concreta. Para cada URL, el producto reúne contexto local, tráfico, visibilidad orgánica, leads, SQL, altas, capacidad, experimentos y decisiones. El resultado no es un sistema que decide por el equipo, sino un lugar común para investigar, medir y dejar trazabilidad.
 
-- cobertura y disponibilidad de cuidadoras;
-- leads, oportunidades comerciales cualificadas y altas;
-- búsquedas en Google;
-- necesidades expresadas por las familias en llamadas;
-- servicios comunicados por competidores;
-- datos públicos y contexto territorial.
+### 2.1 La primera apuesta
 
-El motor responde preguntas como:
+La primera apuesta sería mejorar landings que ya existen antes de producir nuevas páginas en masa. Esta decisión reduce el riesgo porque parte de URLs con tráfico, histórico y conexión con CRM. Además, respeta la restricción más importante del caso: atraer demanda no aporta valor si Qida no tiene cobertura o cuidadoras suficientes para atenderla.
 
-- ¿Existe demanda de ayuda a domicilio en este municipio?
-- ¿Qida presta este servicio en la zona?
-- ¿Hay cuidadoras disponibles?
-- ¿Qué necesidades mencionan las familias?
-- ¿Cuántas oportunidades y altas se han observado?
+El flujo comienza seleccionando municipios con datos propios, servicio cubierto, demanda suficiente y capacidad operativa. Dentro de ese conjunto se buscan páginas con una diferencia clara entre demanda y resultado comercial. El equipo formula una hipótesis, publica una versión controlada y mide el resultado frente a municipios comparables.
 
-### 2.2 Fábrica de landings
+### 2.2 Prioridad y orden de magnitud
 
-La fábrica utiliza los datos autorizados para preparar páginas locales. Marketing elige municipio, servicio, idioma y bloques. Un modelo de lenguaje puede redactar texto, pero no puede inventar cifras, precios, URLs ni afirmaciones sanitarias.
+Las cifras siguientes son hipótesis de planificación, no resultados observados. Sirven para ordenar el trabajo y hacer explícitos los supuestos que después deberán validarse con el histórico real.
 
-La fábrica responde:
+| Prioridad | Apuesta | Impacto orientativo en seis meses | Por qué ocupa esa posición |
+| --- | --- | --- | --- |
+| 1 | Mejorar landings elegibles | Entre 80 y 540 SQL adicionales en diez mercados | Utiliza activos ya creados, puede medirse por URL y combina demanda con capacidad |
+| 2 | Adaptar mensaje y cualificación con voz del cliente | Entre 20 y 100 SQL adicionales | Puede mejorar la calidad del lead, pero necesita validar temas, tono y consentimiento |
+| 3 | Reasignar captación hacia mercados atendibles | Entre 15 y 75 SQL adicionales sin aumentar presupuesto | Evita invertir donde no hay capacidad, aunque depende de atribución fiable entre canales |
+| 4 | Mejorar trazabilidad e identidad | Cero SQL directos | No genera demanda por sí sola, pero permite medir las tres apuestas anteriores con confianza |
 
-- ¿Podemos crear una página local con información propia de Qida?
-- ¿Qué bloques debe incluir?
-- ¿Qué versión debe revisar Marketing?
+La horquilla de la primera apuesta sale de aplicar escenarios conservador, base y optimista a diez combinaciones de municipio y servicio durante seis meses. Antes de presentarla como forecast sería necesario recalcularla con volúmenes reales, distribución de tráfico y límites de capacidad acordados con Operaciones.
 
-### 2.3 Lo que faltaba
+### 2.3 Qué no haríamos
 
-Crear una página no explica si funciona. Después de publicarla necesitamos saber:
+No generaría cientos de landings nuevas como primera acción. Publicar contenido local sin datos propios aumenta el riesgo de páginas repetitivas y no resuelve la medición. Tampoco llevaría tráfico a municipios sin cobertura, automatizaría decisiones de publicación ni utilizaría transcripciones o testimonios sin las reglas de privacidad y consentimiento correspondientes.
 
-- si Google la indexó y la mostró;
-- si recibió visitas;
-- si las visitas dejaron un formulario o llamaron;
-- si esos contactos se convirtieron en oportunidades reales;
-- si las oportunidades terminaron en altas;
-- si Qida tenía capacidad para prestar el servicio;
-- si la mejora coincide con la landing o con otro cambio;
-- qué decisión tomó el equipo y sobre qué versión.
+La inteligencia artificial puede ayudar a resumir señales, redactar borradores y detectar incoherencias. No debe inventar cifras, precios, URLs, afirmaciones sanitarias ni sustituir la aprobación de Marketing. Las cifras y testimonios deben llegar desde fuentes estructuradas y permanecer fuera de la generación libre del modelo.
 
-Qida Growth Intelligence cubre este espacio. Conecta el motor de datos y las landings con medición, calidad y decisiones.
+## 3. Las diferentes partes del producto
 
-## 3. La idea central del producto
+El producto está organizado alrededor de un recorrido sencillo. Una persona empieza viendo el portfolio de landings, abre una URL para comprender su rendimiento, consulta oportunidades cuando necesita priorizar, revisa medición cuando existe un cambio y utiliza el plan de 90 días para coordinar el trabajo. En cualquier momento puede abrir Modelo de datos para comprobar de dónde sale una métrica.
 
-El producto convierte un proceso lineal en un ciclo de aprendizaje.
+### 3.1 Landings
 
-```text
-Motor de datos
-    aporta demanda, capacidad, actividad y necesidades
-            ↓
-Fábrica de landings
-    crea una versión local revisada
-            ↓
-Publicación e instrumentación
-    conserva URL, versión, fechas y eventos
-            ↓
-Growth Intelligence
-    relaciona web, Google, CRM y capacidad
-            ↓
-Medición
-    compara resultado, calidad y grupo de control
-            ↓
-Decisión humana
-    mantener, modificar, parar o ampliar la prueba
-            ↓
-El aprendizaje se utiliza en la siguiente versión
-```
+La pantalla inicial muestra una fila por URL. No intenta decidir qué hacer; permite comparar páginas equivalentes mediante sesiones, tasa de lead, tasa de SQL y tasa de alta. La comparación indica si la página está por encima, cerca o por debajo del conjunto filtrado y avisa cuando el volumen es insuficiente o existe una restricción de capacidad.
 
-### 3.1 Qué significa cerrar el ciclo
+Al abrir una landing se accede a una ficha con cinco perspectivas. Resumen explica en qué parte del recorrido aparece la diferencia. Tráfico y CRM conecta las visitas con leads, SQL y altas. Datos del municipio aporta demanda, cobertura y capacidad. Experimentos enseña qué cambio se está midiendo. Cambios y decisiones conserva quién decidió, qué hipótesis utilizó y qué ocurrió después.
 
-Cerrar el ciclo significa que cada decisión puede rastrearse hacia atrás.
+### 3.2 Oportunidades
 
-Ejemplo:
+Oportunidades combina municipio y servicio para localizar casos que merecen investigación. La puntuación no predice el éxito; ordena señales conocidas como demanda, brecha entre búsquedas y SQL, capacidad, voz del cliente y conversión histórica. Cada tarjeta enseña el cálculo y separa tres estados: elegible, condicionado o no elegible.
 
-1. Marketing modifica el titular de una landing.
-2. La aplicación guarda el titular anterior y el nuevo.
-3. La versión se relaciona con un experimento.
-4. El experimento tiene una métrica declarada antes de empezar.
-5. La aplicación muestra el resultado y sus controles de calidad.
-6. Una persona registra si mantiene, modifica o para el cambio.
-7. La decisión conserva el motivo, la fecha, el responsable y una copia del resultado disponible.
+Desde la oportunidad puede abrirse una landing real de demostración. Esto permite pasar de una señal numérica a la experiencia que vería una familia y comparar distintas propuestas de contenido sin convertir la herramienta en un generador de landings.
 
-Sin estos pasos solo tendríamos páginas y números. Con ellos tenemos aprendizaje reutilizable.
+### 3.3 Medición
 
-### 3.2 Qué no es el producto
+Medición reúne experimentos, calidad del enlace entre web y CRM, madurez de las oportunidades y decisiones registradas. La pantalla evita presentar un cambio como ganador únicamente porque subió una cifra. Primero comprueba si tratamiento y control tienen datos, si las tendencias previas son comparables, si las cohortes han tenido tiempo de convertirse y si otros canales se han desplazado.
 
-Qida Growth Intelligence no es:
+### 3.4 Plan de 90 días
 
-- otro generador de landings;
-- un panel que mezcla todos los números posibles;
-- un sistema que publica sin aprobación;
-- un modelo que predice automáticamente dónde crecer;
-- una prueba causal completa;
-- una integración productiva ya conectada con todos los sistemas reales.
+Esta vista convierte la estrategia en operación. Presenta fases, reuniones, restricciones y actas semanales. Cada sesión tiene entradas, agenda, decisiones esperadas, responsable y próxima revisión. El calendario incluye trabajo de desarrollo, calidad de datos, capacidad operativa, aprobación de Marketing y decisiones de los días 30, 60 y 90.
 
-## 4. Quién utiliza el producto
+### 3.5 Modelo de datos
 
-### Growth
+Modelo de datos es la capa de confianza del producto. En Flujo se ve cómo llegan los sistemas. En Tablas puede abrirse cada entidad y entender qué representa una fila. En Consultas aparecen únicamente los cálculos que combinan fuentes o producen una métrica de producto. Calidad muestra frescura, integridad, trazabilidad, identidades ambiguas y oportunidades todavía inmaduras.
 
-Growth formula hipótesis, prioriza oportunidades y coordina las decisiones. Utiliza el producto para elegir dónde investigar, qué cambio probar y qué resultado justificaría continuar.
-
-### Marketing
-
-Marketing revisa contenido, tono de marca, SEO y publicación. Decide si una versión aporta valor local y cumple las restricciones.
-
-### Operaciones
-
-Operaciones confirma cobertura y capacidad. Puede bloquear o pausar una iniciativa aunque exista demanda.
-
-### Data
-
-Data define métricas, consultas, reglas de identidad, calidad y lectura experimental. Garantiza que el mismo concepto tenga la misma definición en toda la aplicación.
-
-### MarTech
-
-MarTech conecta la web, la analítica, el CMS y el CRM. Comprueba que los eventos y la URL de entrada viajen correctamente entre sistemas.
-
-### Equipo comercial
-
-El equipo comercial explica la calidad de los leads y el recorrido desde oportunidad hasta alta. Ayuda a separar problemas de captación, cualificación y operación.
-
-## 5. Conceptos básicos del dominio
-
-### 5.1 Landing
-
-Una landing es una página web creada para una necesidad concreta. En este producto suele estar asociada a:
-
-- un municipio;
-- un servicio;
-- un idioma;
-- una URL;
-- una versión de contenido;
-- un estado de publicación.
-
-Ejemplo: una landing de ayuda a domicilio en Valladolid, en castellano.
-
-### 5.2 Sesión
-
-Una sesión es una visita a la web. Una misma persona puede generar varias sesiones. Por eso 1.000 sesiones no significan 1.000 personas diferentes.
-
-### 5.3 Lead
-
-Un lead es un contacto de una familia que ha mostrado interés. Puede proceder de un formulario, una llamada u otro canal. El embudo familiar excluye a las cuidadoras que buscan empleo.
-
-### 5.4 SQL
-
-SQL significa *Sales Qualified Lead*. En este producto se traduce como oportunidad comercial cualificada. Es un lead que el equipo comercial considera una oportunidad real.
-
-No debe confundirse con SQL, el lenguaje utilizado para consultar bases de datos. El contexto permite saber a cuál nos referimos.
-
-### 5.5 Alta
-
-Una alta es una oportunidad familiar que termina contratando un servicio. No significa registrarse en la web.
-
-### 5.6 Embudo
-
-El embudo representa el recorrido:
-
-```text
-sesiones → leads → SQL → altas
-```
-
-El volumen suele disminuir en cada paso. El producto muestra los totales y las tasas entre pasos para localizar dónde cambia el comportamiento.
-
-### 5.7 Capacidad
-
-La capacidad indica si Qida puede atender la demanda. En la demostración se comprueban:
-
-- cobertura del municipio;
-- servicio cubierto;
-- cuidadoras disponibles durante los próximos 30 días.
-
-La demanda sin capacidad no se considera una oportunidad accionable.
-
-### 5.8 Atribución y causalidad
-
-La atribución relaciona un resultado con un origen observado. Si un lead conserva la URL de entrada, podemos atribuirlo a esa landing.
-
-La causalidad responde una pregunta más exigente: ¿el cambio en la landing produjo un resultado adicional que no habría ocurrido sin el cambio?
-
-La ficha de landing muestra atribución. La pantalla de Medición añade tratamiento y control para acercarse a una estimación de impacto.
-
-## 6. Recorrido completo con un ejemplo
-
-Imaginemos una combinación sintética de municipio y servicio.
-
-### Paso 1. El motor detecta señales
-
-El motor observa búsquedas mensuales, SQL históricos, altas, cobertura, cuidadoras y temas de llamadas.
-
-La aplicación puede detectar esta situación:
-
-- existe demanda de búsqueda;
-- Qida capta pocos SQL comparado con esa demanda;
-- existe cobertura;
-- hay capacidad suficiente;
-- las familias mencionan la necesidad en llamadas.
-
-Esto crea una oportunidad para investigar. Todavía no autoriza a publicar.
-
-### Paso 2. Se comprueba la elegibilidad
-
-La combinación debe cumplir condiciones mínimas:
-
-- datos municipales propios;
-- cobertura del servicio;
-- al menos seis meses de demanda;
-- mínimo operativo de cuidadoras disponibles;
-- identidad y actividad comercial utilizables.
-
-Si falla una condición, la oportunidad puede seguir visible, pero aparece como restringida o no elegible.
-
-### Paso 3. Se abre una landing real de demostración
-
-Desde Oportunidades se puede abrir una de las tres versiones visuales de landing. La página utiliza municipio, servicio y capacidad sintética. El formulario simula una conversión, pero no envía datos personales.
-
-### Paso 4. Se publica una versión controlada
-
-En producción, Marketing revisaría el contenido y aprobaría la publicación en Strapi. En la demostración la transición es local y queda registrada.
-
-### Paso 5. Se observa el recorrido
-
-La ficha de landing reúne:
-
-- sesiones;
-- formularios y clics para llamar;
-- leads;
-- SQL;
-- altas;
-- impresiones y clics de Google;
-- capacidad del municipio;
-- experimentos relacionados.
-
-### Paso 6. Se compara
-
-La landing se compara con el conjunto filtrado de páginas durante el mismo periodo. La comparación permite localizar si la diferencia aparece en visibilidad, captación, calidad o capacidad.
-
-### Paso 7. Se mide una prueba
-
-Los municipios con el cambio forman el tratamiento. Municipios comparables sin el cambio forman el control. La pantalla calcula la diferencia entre la evolución de ambos grupos.
-
-### Paso 8. Una persona decide
-
-La decisión queda registrada por versión:
-
-- mantener;
-- modificar;
-- parar.
-
-Ampliar la prueba es una decisión posterior de cartera. No aparece como decisión automática dentro de una landing.
-
-## 7. Pantallas del producto
-
-La navegación principal tiene cinco opciones:
-
-1. Landings;
-2. Oportunidades;
-3. Medición;
-4. Plan de 90 días;
-5. Modelo de datos.
-
-Los filtros globales permiten seleccionar fechas, provincia, municipio, servicio, canal e idioma. La vista se actualiza al cambiar cada filtro. Los filtros se guardan en el navegador para mantener el contexto entre pantallas.
-
-## 7.1 Landings
-
-### Qué pregunta responde
-
-¿Cómo está funcionando cada landing y en qué paso del recorrido aparece la diferencia?
-
-### Qué muestra la cabecera
-
-- número de landings;
-- sesiones;
-- leads familiares;
-- SQL;
-- altas reconciliadas con CRM.
-
-Los totales respetan los filtros activos.
-
-### Qué representa cada fila
-
-Una fila representa una URL de landing. Muestra:
-
-- municipio, servicio e idioma;
-- estado de publicación;
-- comparación con páginas equivalentes;
-- sesiones;
-- tasa sesión a lead;
-- tasa lead a SQL;
-- tasa SQL a alta.
-
-### Cómo debe interpretarse
-
-Primero se mira el volumen. Después las tasas. Finalmente la comparación.
-
-Una tasa alta con muy pocas sesiones puede ser inestable. Una tasa menor con mucho volumen puede aportar más SQL. Ninguna columna debe interpretarse aislada.
-
-### Búsqueda y paginación
-
-La tabla permite buscar por municipio, servicio o URL. Los resultados están paginados para no cargar todas las landings a la vez.
-
-## 7.2 Ficha de landing
-
-La ficha se abre al seleccionar una fila. Tiene cinco pestañas.
-
-### Resumen
-
-Muestra el embudo y tres tasas comparadas con el conjunto filtrado:
-
-- sesión a lead;
-- lead a SQL;
-- SQL a alta.
-
-También presenta cuatro puntuaciones comparables entre 0 y 100:
-
-- visibilidad;
-- captación;
-- calidad;
-- operabilidad.
-
-La puntuación resume reglas conocidas. No es una predicción.
-
-### Tráfico y CRM
-
-Separa dos tipos de series:
-
-- sesiones por mes;
-- leads, SQL y altas por mes.
-
-También enseña impresiones, clics, porcentaje de clics orgánicos y posición media en Google.
-
-Las series están separadas porque miles de sesiones harían invisibles los valores pequeños de SQL y altas en una misma escala.
-
-### Datos del municipio
-
-Relaciona la landing con el motor de datos mediante municipio y servicio. Muestra:
-
-- cobertura;
-- cuidadoras disponibles;
-- cumplimiento de capacidad mínima;
-- puntuación de oportunidad;
-- búsquedas mensuales;
-- menciones agregadas en llamadas;
-- competidores registrados.
-
-Cada valor muestra su tabla de origen.
-
-### Experimentos
-
-Lista los experimentos en los que participa el municipio. Enseña hipótesis, periodo, método y resultado disponible.
-
-La ficha recuerda que enlazar por URL permite atribuir resultados, pero no demuestra causalidad.
-
-### Cambios y decisiones
-
-Permite comparar el titular y el botón anterior con la versión nueva. La persona registra:
-
-- decisión;
-- hipótesis o motivo;
-- responsable;
-- siguiente revisión;
-- versión del registro;
-- copia del resultado comercial disponible.
-
-El historial evita evaluar una versión utilizando contenido que todavía no estaba publicado.
-
-### Abrir la landing
-
-La ficha ofrece un enlace a la landing de demostración. En producción sería la URL publicada en qida.es.
-
-## 7.3 Oportunidades
-
-### Qué pregunta responde
-
-¿Qué combinaciones de municipio y servicio merece la pena revisar primero?
-
-### Qué representa una tarjeta
-
-Una tarjeta representa un municipio y un servicio. Incluye:
-
-- elegibilidad;
-- procedencia municipal o provincial;
-- puntuación;
-- búsquedas mensuales;
-- SQL;
-- altas;
-- cuidadoras disponibles;
-- meses de demanda;
-- señales agregadas de voz del cliente.
-
-### Prioridad y elegibilidad
-
-La prioridad ordena la revisión. La elegibilidad decide si el caso cumple condiciones mínimas para entrar en la prueba.
-
-Una puntuación alta no concede permiso para publicar.
-
-### Ver cálculo
-
-La tarjeta puede desplegarse para mostrar cada factor, su evidencia y su contribución. Esto permite explicar por qué una oportunidad sube o baja.
-
-### Detalle de oportunidad
-
-La página de detalle muestra:
-
-- evidencia de cada regla;
-- restricciones;
-- versión de reglas;
-- estado de elegibilidad;
-- versiones disponibles de la landing.
-
-Desde esta página se puede abrir la landing real de demostración.
-
-## 7.4 Medición
-
-### Qué pregunta responde
-
-¿Qué cambio se observó, con qué método y con qué calidad de datos?
-
-### Resumen superior
-
-La pantalla muestra:
-
-- número de experimentos;
-- porcentaje de eventos enlazados;
-- SQL pendientes de madurar;
-- fallos de integridad.
-
-Estos controles aparecen antes del resultado porque determinan si el resultado puede interpretarse.
-
-### Resultado del experimento
-
-Para el experimento seleccionado se muestra:
-
-- cambio estimado;
-- municipios tratados;
-- municipios de control;
-- métrica principal;
-- método;
-- periodo;
-- estado.
-
-### Resultado comercial
-
-La lectura comercial utiliza SQL familiares por municipio y semana. Conserva semanas con cero SQL y revisa:
-
-- diferencia estimada;
-- divergencia previa;
-- madurez de la ventana;
-- tamaño de muestra;
-- posible desplazamiento de teléfono o pago.
-
-### Calidad del dato
-
-La tabla distingue:
-
-- eventos enlazados;
-- identidades ambiguas;
-- SQL pendientes de madurar;
-- fallos de integridad.
-
-### Decisiones registradas
-
-Muestra la decisión humana, la landing, el motivo y la versión. Desde la fila se puede volver a la ficha y revisar el cambio exacto.
-
-## 7.5 Plan de 90 días
-
-### Qué pregunta responde
-
-¿Cómo se convierte la primera apuesta en trabajo coordinado?
-
-### Fases
-
-El plan tiene cuatro fases:
-
-1. preparar;
-2. publicar;
-3. medir exposición;
-4. madurar y decidir.
-
-### Calendario
-
-El calendario utiliza un icono de reunión. Al seleccionar una reunión muestra:
-
-- propósito;
-- fechas;
-- asistentes;
-- forma de presentarla;
-- decisiones que deben salir;
-- información necesaria antes;
-- evidencia que debe quedar después;
-- restricciones revisadas.
-
-### Acta semanal
-
-La reunión semanal permite guardar:
-
-- estado;
-- resumen;
-- decisiones;
-- acciones;
-- responsable;
-- fecha de próxima revisión;
-- versión del acta.
-
-La API rechaza una edición que intenta sobrescribir una versión más reciente.
-
-### Restricciones y evidencia
-
-La segunda pestaña muestra las seis restricciones del caso, el responsable y la evidencia necesaria para darlas por revisadas.
-
-## 7.6 Modelo de datos
-
-### Flujo
-
-Explica las etapas de la arquitectura y qué llega a cada pantalla. Distingue lo existente, lo simulado y lo propuesto.
-
-### Tablas
-
-Muestra el catálogo de tablas. Cada fila puede desplegarse para ver campos, tipos y definiciones.
-
-### Consultas
-
-Muestra seis consultas de producto. Cada consulta contiene:
-
-- pregunta;
-- grano;
-- nivel de evidencia;
-- endpoint;
-- tablas utilizadas;
-- uniones;
-- métricas y fórmulas;
-- SQL;
-- resultado ejecutado;
-- exclusiones;
-- límites;
-- componentes donde se muestra.
-
-### Calidad
-
-Muestra actualización por fuente y reglas de integridad. La frescura indica cuánto tiempo ha pasado desde el último dato disponible.
-
-## 7.7 Landing de demostración
-
-La landing se abre fuera del marco del dashboard para que se comporte como una página pública. Existen tres variantes visuales.
-
-La página incluye:
-
-- cabecera y propuesta principal;
-- datos locales;
-- explicación del servicio;
-- pasos de contratación;
-- preguntas frecuentes;
-- formulario simulado;
-- enlace de regreso a la evaluación.
-
-El formulario no almacena ni envía nombre o teléfono. Después de enviarlo aparece una confirmación simulada.
-
-## 8. Métricas del producto
-
-## 8.1 Métricas de volumen
-
-### Sesiones
-
-Visitas cuya URL de entrada es una landing del inventario.
-
-### Leads
-
-Contactos de familias atribuidos a esas landings. Se excluye empleo de cuidadoras.
-
-### SQL
-
-Leads familiares que alcanzan la condición de oportunidad cualificada en CRM.
-
-### Altas
-
-SQL que terminan en un alta reconciliada con CRM.
-
-## 8.2 Tasas del embudo
-
-### Sesión a lead
-
-```text
-leads atribuidos / sesiones
-```
-
-Ejemplo: 50 leads sobre 1.000 sesiones equivalen a un 5 %.
-
-Ayuda a estudiar la capacidad de captación de la página. No identifica por sí sola si el problema está en contenido, formulario o tráfico.
-
-### Lead a SQL
-
-```text
-SQL / leads atribuidos
-```
-
-Ejemplo: 20 SQL sobre 50 leads equivalen a un 40 %.
-
-Ayuda a estudiar la calidad comercial de la captación.
-
-### SQL a alta
-
-```text
-altas / SQL maduros
-```
-
-Ejemplo: 4 altas sobre 20 SQL maduros equivalen a un 20 %.
-
-Solo deben incluirse SQL que hayan tenido tiempo suficiente para convertirse.
-
-## 8.3 Visibilidad orgánica
-
-### Impresiones
-
-Veces que Google muestra una página en resultados. Una impresión no implica un clic.
-
-### Clics orgánicos
-
-Clics recibidos desde resultados no pagados de Google.
-
-### Porcentaje de clics orgánicos
-
-```text
-clics / impresiones
-```
-
-Ayuda a evaluar si el resultado mostrado por Google atrae clics.
-
-### Posición media
-
-Promedio ponderado de la posición de una página para las búsquedas observadas. Un valor menor suele indicar una posición más alta.
-
-## 8.4 Puntuación de landing
-
-La evaluación utiliza cuatro dimensiones entre 0 y 100.
-
-### Visibilidad
-
-Combina indexación, clics orgánicos y posición media.
-
-### Captación
-
-Compara sesión a lead con el conjunto filtrado.
-
-### Calidad
-
-Compara lead a SQL y SQL a alta con el conjunto filtrado.
-
-### Operabilidad
-
-Comprueba cobertura y cuidadoras disponibles.
-
-La puntuación global resume las cuatro dimensiones con reglas deterministas. Sirve para localizar dónde investigar.
-
-## 8.5 Puntuación de oportunidad
-
-La puntuación combina:
-
-- demanda;
-- brecha entre demanda y SQL;
-- capacidad;
-- voz del cliente;
-- margen de conversión.
-
-Una penalización reduce la puntuación cuando hay pocas cuidadoras. Sin cobertura, la puntuación no convierte el caso en elegible.
-
-La versión de reglas queda visible para poder reproducir el resultado.
-
-## 9. Medición de experimentos
-
-## 9.1 Tratamiento y control
-
-El tratamiento contiene municipios que reciben la landing o cambio evaluado. El control contiene municipios comparables que mantienen la experiencia anterior.
-
-Ambos grupos se observan durante las mismas fechas para reducir la confusión con estacionalidad y cambios generales.
-
-## 9.2 Diferencia de diferencias
-
-La aplicación utiliza esta estructura:
-
-```text
-(tratamiento después - tratamiento antes)
-- (control después - control antes)
-```
-
-Ejemplo:
-
-| Grupo | Antes | Después | Cambio |
-| --- | ---: | ---: | ---: |
-| Tratamiento | 4 | 6 | +2 |
-| Control | 5 | 6 | +1 |
-
-El cambio estimado es `+2 - +1 = +1`.
-
-La lectura correcta es: el tratamiento mejoró una unidad más que el control. Para afirmar causalidad todavía necesitamos comparabilidad, muestra suficiente y diagnósticos.
-
-## 9.3 Métrica principal
-
-La primera apuesta utiliza SQL familiares elegibles por municipio y semana.
-
-Un SQL entra si:
-
-- pertenece a una familia;
-- su municipio está asignado;
-- existe cobertura;
-- el servicio está cubierto;
-- hay al menos ocho cuidadoras disponibles en la regla actual;
-- la identidad no es ambigua;
-- no se duplica el mismo lead.
-
-Cada municipio asignado entra en el denominador, incluso durante semanas con cero SQL.
-
-## 9.4 Periodo previo y madurez
-
-La consulta conserva hasta doce semanas previas. Esto permite revisar si tratamiento y control evolucionaban de forma parecida.
-
-Los SQL necesitan 90 días para entrar en SQL a alta. La ventana es una regla explícita de la demostración y debe validarse con el ciclo real de Qida.
-
-## 9.5 Avisos que pueden volver inconcluso un resultado
-
-- faltan semanas previas comunes;
-- la ventana posterior todavía no está madura;
-- hay pocos municipios;
-- la divergencia previa es tan grande como el cambio observado;
-- un grupo no tiene SQL maduros;
-- disminuyen SQL de teléfono o pago y puede existir desplazamiento entre canales.
-
-Inconcluso no significa fracaso. Significa que la evidencia no permite tomar una decisión fiable.
-
-## 10. Calidad, identidad y privacidad
-
-## 10.1 Evento
-
-Un evento es una acción registrada. Ejemplos:
-
-- sesión;
-- formulario;
-- clic para llamar;
-- creación de lead;
-- cualificación como SQL;
-- alta.
-
-## 10.2 Evento enlazado
-
-Un evento está enlazado cuando se conecta de forma segura con una persona seudónima o una oportunidad familiar.
-
-```text
-eventos enlazados / eventos que deberían poder enlazarse
-```
-
-Una cobertura alta indica que el recorrido observado está bien conectado. No demuestra causalidad.
-
-## 10.3 Persona seudónima
-
-Es un identificador técnico sin nombre, teléfono o correo visible. Permite relacionar eventos sin mostrar datos personales directos.
-
-La seudonimización no equivale a anonimización completa. La relación protegida podría volver a identificar a la persona y requiere controles de acceso.
-
-## 10.4 Oportunidad familiar
-
-Representa la necesidad comercial de una familia. Permite reunir varias interacciones y excluir contactos de cuidadoras que buscan empleo.
-
-## 10.5 Identidad ambigua
-
-Dos registros pueden parecer de la misma persona sin existir una coincidencia segura. La regla del producto es conservarlos separados.
-
-Es preferible perder parte de la atribución antes que mezclar recorridos de personas diferentes.
-
-## 10.6 Integridad
-
-La integridad comprueba que los datos respeten las reglas del proceso.
-
-Ejemplos de fallo:
-
-- fecha SQL anterior a creación;
-- fecha de alta anterior a SQL;
-- alta sin oportunidad familiar válida;
-- clic orgánico para una landing no indexada;
-- contacto de cuidadora dentro del embudo familiar.
-
-## 10.7 Frescura
-
-La frescura indica cuánto tiempo ha pasado desde la última actualización de cada fuente. Una fuente puede ser correcta pero demasiado antigua para decidir.
-
-## 11. Modelo de datos
-
-## 11.1 Las nueve tablas fuente
-
-| Tabla | Una fila representa | Uso |
+| Pantalla | Pregunta principal | Decisión que facilita |
 | --- | --- | --- |
-| `motor_municipio` | Un municipio | Cobertura, capacidad y actividad propia |
-| `motor_demanda_busqueda` | Municipio, tema y mes | Demanda estimada en Google |
-| `motor_voz_cliente` | Municipio, mes, tema y tipo | Necesidades agregadas de llamadas |
-| `motor_competencia` | Municipio y competidor | Servicios y presencia local |
-| `landing` | Una URL | Publicación, idioma e indexación |
-| `gsc_diario` | Fecha, URL y consulta | Impresiones, clics y posición |
-| `web_sesiones_diarias` | Fecha, URL, canal y dispositivo | Sesiones, formularios y llamadas |
-| `ads_diario` | Fecha, plataforma y campaña | Inversión y conversiones de plataforma |
-| `lead` | Un lead | Recorrido comercial y URL de entrada |
+| Landings | ¿Dónde se rompe el recorrido de esta URL? | Investigar, mantener o proponer un cambio |
+| Oportunidades | ¿Dónde coinciden demanda y capacidad? | Elegir el siguiente caso de análisis |
+| Medición | ¿Qué ocurrió después del cambio? | Continuar, modificar o parar una prueba |
+| Plan de 90 días | ¿Quién debe revisar qué y cuándo? | Coordinar equipos y dejar acuerdos |
+| Modelo de datos | ¿De dónde sale este valor? | Validar la lectura antes de actuar |
 
-El significado de una fila se llama grano. Comprender el grano evita duplicar datos al unir tablas.
+## 4. La data
 
-## 11.2 Tablas de extensión
+El producto no crea una nueva fuente de verdad. Organiza datos que ya viven o vivirían en Databricks, analítica web, Search Console, Strapi y CRM. La clave común es mantener el grano correcto: municipio y servicio para priorizar; URL y día para tráfico; lead u oportunidad para CRM; municipio y semana para experimentos.
 
-| Tabla | Función |
-| --- | --- |
-| `identity_map` | Relacionar identificadores de forma determinista |
-| `care_opportunity` | Representar la oportunidad familiar común |
-| `journey_event` | Conservar eventos web y CRM enlazados |
-| `growth_experiment` | Guardar hipótesis, métrica, fechas y método |
-| `experiment_assignment` | Persistir tratamiento y control |
-| `growth_recommendation` | Guardar puntuación, explicación y versión de reglas |
-| `landing_workflow` | Versionar revisión, aprobación y publicación |
-| `audit_log` | Registrar acciones y decisiones humanas |
-| `synthetic_scenario` | Identificar escenarios de la demostración |
-| `seed_run` | Guardar semilla, fecha y huella del conjunto sintético |
-
-Las extensiones no cambian el significado de las nueve tablas originales.
-
-## 11.3 Claves importantes
-
-- La URL relaciona landing, sesiones web, Google y lead de entrada.
-- `municipio_id` relaciona motor, oportunidades, leads y experimentos.
-- El servicio evita mezclar necesidades diferentes dentro del mismo municipio.
-- `experiment_id` relaciona hipótesis, asignaciones y resultados.
-- `person_id` y `opportunity_id` relacionan eventos sin mostrar datos personales.
-
-## 12. Las seis consultas de producto
-
-La pantalla Consultas no enseña cada lectura sencilla. Documenta cálculos que combinan fuentes o controlan decisiones.
-
-## 12.1 Puntuación de oportunidad
-
-Pregunta: ¿dónde coinciden demanda, brecha de captación y capacidad?
-
-Produce una fila por municipio y servicio. Se muestra en Oportunidades.
-
-## 12.2 Rendimiento por landing
-
-Pregunta: ¿qué recorrido se atribuye a cada URL y cómo se compara?
-
-Combina landing, web, Google, CRM y capacidad. Se muestra en Landings y su ficha.
-
-## 12.3 Evolución mensual
-
-Pregunta: ¿cómo cambian tráfico y resultados con el tiempo?
-
-Agrupa sesiones, leads, SQL y altas por mes. Se muestra en las gráficas de la ficha.
-
-## 12.4 Cambio de experimento
-
-Pregunta: ¿el tratamiento evolucionó de forma diferente al control?
-
-Combina asignaciones, periodos y métrica. Se muestra en Medición.
-
-## 12.5 Cobertura de trazabilidad
-
-Pregunta: ¿qué parte del recorrido se puede enlazar de forma segura?
-
-Combina identidades, eventos y oportunidades. Se muestra en Medición y Calidad.
-
-## 12.6 Integridad y maduración
-
-Pregunta: ¿los datos son coherentes y han tenido tiempo suficiente?
-
-Combina fechas, relaciones e indexación. Se muestra en Medición y Calidad.
-
-## 13. Arquitectura de la demostración
+El flujo objetivo es el siguiente:
 
 ```text
-PostgreSQL
-    datos sintéticos persistidos
-            ↓
-API Express
-    consultas y comandos de producto
-            ↓
-Contratos Zod
-    validación de entradas y respuestas
-            ↓
-React y TanStack Query
-    interfaz, estados de carga y caché
+Motor municipal + fábrica de landings
+                ↓
+Landing publicada en Strapi
+                ↓
+Search Console + analítica web + eventos
+                ↓
+Identidad seudónima y oportunidad familiar
+                ↓
+SQL y altas reconciliados con CRM
+                ↓
+Métricas, experimento, decisión y aprendizaje
 ```
 
-### PostgreSQL y Prisma
+Las nueve tablas fuente de la propuesta mantienen los conceptos del anexo: municipio, demanda de búsqueda, voz del cliente, competencia, landing, Search Console, sesiones web, publicidad y lead. Las tablas adicionales no cambian esas fuentes; guardan identidad seudónima, oportunidades familiares, eventos, experimentos, asignaciones, recomendaciones versionadas, flujo de aprobación y auditoría.
 
-PostgreSQL conserva los datos. Prisma define el esquema y ejecuta migraciones. Las consultas analíticas relevantes se ejecutan como SQL real.
+### 4.1 Tres consultas que justifican el producto
 
-### Express
+La pantalla Consultas contiene seis familias, pero para la prueba técnica hay tres especialmente importantes. La primera decide dónde empezar. La segunda explica el rendimiento de una landing. La tercera permite leer el efecto de una prueba.
 
-La API separa módulos de landings, oportunidades, experimentos, recorridos, analítica y sistema.
+#### Consulta 1. Seleccionar municipios y servicios elegibles
 
-### Zod
+Esta consulta combina demanda reciente, actividad comercial y capacidad. Incluye municipios con cero SQL mediante un `LEFT JOIN`, porque precisamente esos casos pueden contener una brecha de captación.
 
-Zod valida los filtros, comandos y respuestas. Si la API devuelve una forma inesperada, la web muestra un error de contrato en vez de utilizar datos incorrectos silenciosamente.
+```sql
+WITH demanda AS (
+  SELECT municipio_id, tema AS servicio,
+         AVG(busquedas)::numeric AS busquedas_mes
+  FROM motor_demanda_busqueda
+  WHERE mes >= CURRENT_DATE - INTERVAL '6 months'
+  GROUP BY municipio_id, tema
+), comercial AS (
+  SELECT municipio_id, servicio,
+         COUNT(*) FILTER (WHERE tipo_contacto = 'familia_cuidado') AS leads,
+         COUNT(*) FILTER (WHERE es_sql AND tipo_contacto = 'familia_cuidado') AS sql
+  FROM lead
+  WHERE fecha_creacion >= CURRENT_DATE - INTERVAL '180 days'
+  GROUP BY municipio_id, servicio
+)
+SELECT m.municipio_id, m.nombre, d.servicio, d.busquedas_mes,
+       COALESCE(c.leads, 0) AS leads, COALESCE(c.sql, 0) AS sql,
+       m.cuidadoras_disponibles_30d,
+       m.datos_propios
+         AND m.tiene_cobertura
+         AND d.servicio = ANY(m.servicios_cubiertos)
+         AND m.cuidadoras_disponibles_30d >= 8 AS elegible
+FROM motor_municipio m
+JOIN demanda d USING (municipio_id)
+LEFT JOIN comercial c USING (municipio_id, servicio)
+ORDER BY elegible DESC, d.busquedas_mes - COALESCE(c.sql, 0) DESC;
+```
 
-### React
+Si la consulta devuelve demanda alta sin capacidad, el caso no entra en el piloto. Si devuelve demanda, cobertura y pocos SQL, se revisa la landing y la calidad de la medición antes de formular una hipótesis.
 
-React compone las pantallas. TanStack Query gestiona peticiones, caché, recarga y estados de error.
+#### Consulta 2. Reconciliar una landing con el resultado comercial
 
-### Componentes
+La segunda consulta une sesiones, Search Console y CRM mediante URL. Su objetivo no es atribuir causalidad, sino asegurar que una cifra visible puede seguirse desde la página hasta el resultado comercial.
 
-La interfaz utiliza componentes compartidos para tablas, tarjetas, pestañas, botones, avisos y tooltips. Las métricas importantes incluyen una definición accesible.
+```sql
+WITH web AS (
+  SELECT url_entrada AS url, SUM(sesiones) AS sesiones,
+         SUM(formularios) AS formularios
+  FROM web_sesiones_diarias
+  WHERE fecha BETWEEN $1 AND $2
+  GROUP BY url_entrada
+), crm AS (
+  SELECT url_entrada AS url,
+         COUNT(*) FILTER (WHERE tipo_contacto = 'familia_cuidado') AS leads,
+         COUNT(*) FILTER (WHERE es_sql AND tipo_contacto = 'familia_cuidado') AS sql,
+         COUNT(*) FILTER (WHERE es_alta AND tipo_contacto = 'familia_cuidado') AS altas
+  FROM lead
+  WHERE fecha_creacion BETWEEN $1 AND $2
+  GROUP BY url_entrada
+), search AS (
+  SELECT url, SUM(impresiones) AS impresiones, SUM(clics) AS clics
+  FROM gsc_diario
+  WHERE fecha BETWEEN $1 AND $2
+  GROUP BY url
+)
+SELECT l.url, l.municipio_id,
+       COALESCE(w.sesiones, 0) AS sesiones,
+       COALESCE(c.leads, 0) AS leads,
+       COALESCE(c.sql, 0) AS sql,
+       COALESCE(c.altas, 0) AS altas,
+       COALESCE(s.impresiones, 0) AS impresiones,
+       COALESCE(s.clics, 0) AS clics
+FROM landing l
+LEFT JOIN web w USING (url)
+LEFT JOIN crm c USING (url)
+LEFT JOIN search s USING (url);
+```
 
-## 13.1 Arquitectura objetivo de producción
+Si existe tráfico pero no hay leads, la investigación se centra en propuesta de valor, formulario y llamada. Si hay leads pero pocos SQL, se revisan mensaje, intención y cualificación. Si la caída aparece de SQL a alta, el problema puede estar fuera de la landing y debe analizarse con Operaciones y Comercial.
 
-En producción, Databricks alimentaría las tablas gobernadas. Strapi publicaría landings. HubSpot y Odoo aportarían estados comerciales. Google Search Console, Ads y la analítica web aportarían tráfico y campañas.
+#### Consulta 3. Comparar tratamiento y control
 
-La demostración representa esos límites, pero no contiene las conexiones reales.
+La lectura principal cuenta SQL por semana y municipio, conserva semanas con cero resultados y separa cohortes maduras. Después compara el cambio del tratamiento con el cambio del control.
 
-## 14. Flujo de decisión y gobierno
+```sql
+WITH semanas AS (
+  SELECT generate_series(-12, 7) AS semana
+), base AS (
+  SELECT s.semana, a.variant,
+         COUNT(DISTINCT a.municipio_id) AS municipios,
+         COUNT(l.lead_id) FILTER (WHERE l.es_sql) AS sql
+  FROM semanas s
+  CROSS JOIN experiment_assignment a
+  LEFT JOIN lead l
+    ON l.municipio_id = a.municipio_id
+   AND l.fecha_sql >= $2 + (s.semana * INTERVAL '7 days')
+   AND l.fecha_sql <  $2 + ((s.semana + 1) * INTERVAL '7 days')
+   AND l.tipo_contacto = 'familia_cuidado'
+  WHERE a.experiment_id = $1
+  GROUP BY s.semana, a.variant
+)
+SELECT semana, variant,
+       sql::numeric / NULLIF(municipios, 0) AS sql_por_municipio
+FROM base
+ORDER BY semana, variant;
+```
 
-## 14.1 Decisiones por landing
+La aplicación calcula después una diferencia de diferencias: cambio del tratamiento menos cambio del control. El resultado se marca como inconcluso cuando faltan semanas maduras, la muestra es pequeña o las tendencias previas ya eran diferentes.
 
-### Mantener
+### 4.2 Arquitectura y control de la IA
 
-Conservar la versión y continuar observando.
+En producción, Databricks prepararía tablas certificadas y métricas versionadas. La API expondría contratos validados; la aplicación mostraría el mismo dato en portfolio, ficha y medición. Strapi conservaría las versiones publicables y CRM seguiría siendo la fuente de SQL y altas.
 
-### Modificar
+Antes de publicar, una validación automática debe comprobar cobertura, capacidad, datos propios, consentimiento, originalidad local, SEO técnico y expresiones prohibidas. Marketing revisa tono y posicionamiento; Operaciones confirma que la demanda se puede atender. Después de publicar se vigilan indexación, trazabilidad, integridad y guardarraíles.
 
-Preparar una nueva versión basada en una hipótesis concreta.
-
-### Parar
-
-Detener el cambio por resultado, capacidad, calidad o incumplimiento.
-
-La decisión guarda una copia del resultado disponible para evitar que cambie cuando se actualicen datos posteriores.
-
-## 14.2 Ampliar una prueba
-
-Ampliar significa aplicar un patrón a una nueva ola de municipios elegibles. Requiere otra decisión de cartera. No debe ocurrir automáticamente desde una puntuación.
-
-## 14.3 Aprobación de publicación
-
-Una landing pasa por estados:
+El fragmento delicado puede resumirse así:
 
 ```text
-borrador → pendiente de revisión → aprobada → publicada
+si no hay datos propios, cobertura o capacidad:
+    bloquear publicación y explicar la causa
+
+generar solo el texto permitido a partir de fuentes aprobadas
+insertar cifras y testimonios desde datos estructurados
+
+si aparecen precios, afirmaciones sanitarias, datos personales
+o contenido sin evidencia local:
+    rechazar la versión
+
+solicitar aprobación de Marketing y Operaciones
+publicar una versión identificable y registrar la auditoría
 ```
 
-También puede rechazarse. Publicar exige aprobación humana y deja un registro de auditoría.
+## 5. Métricas previstas
 
-## 14.4 Restricciones
+La métrica que decide la primera apuesta es SQL familiares maduros por municipio y semana. Se elige porque está más cerca del valor comercial que una sesión o un formulario, pero madura antes que el alta. Las altas se mantienen como resultado final y se leen cuando la cohorte ha tenido tiempo suficiente para contratar.
 
-El producto debe respetar:
+El árbol de métricas evita optimizar una sola cifra. La visibilidad explica si Google muestra la página. La captación mide si la visita se convierte en contacto. La calidad indica si ese contacto llega a SQL. El resultado comercial observa altas. La operabilidad comprueba si Qida puede atender el incremento.
 
-- no publicar precios;
-- aportar valor local propio;
-- proteger datos personales y consentimiento;
-- exigir aprobación de Marketing;
-- bloquear afirmaciones sanitarias;
-- no captar demanda sin capacidad.
+| Nivel | Métricas | Función en la decisión |
+| --- | --- | --- |
+| Resultado | SQL maduros por municipio-semana; altas maduras | Determinan si merece la pena continuar |
+| Embudo | Sesión a lead; lead a SQL; SQL a alta | Localizan dónde aparece la diferencia |
+| Visibilidad | Impresiones, clics, CTR y posición | Explican si la página está consiguiendo exposición orgánica |
+| Guardarraíles | Capacidad, NPS cuando sea publicable, descartes y canibalización | Evitan mejorar captación a costa de servicio o de otro canal |
+| Calidad | Trazabilidad, frescura, integridad, identidades ambiguas y madurez | Indican si la lectura es suficientemente fiable |
 
-## 15. Plan de 90 días
+### 5.1 Cómo separar señal y causalidad
 
-## Días 1 a 14: preparar
+Relacionar un SQL con una URL es atribución observada, no demuestra que el contenido haya causado el resultado. Para aproximarnos al efecto se seleccionan municipios comparables, se asignan tratamiento y control antes de publicar y se observan las mismas fechas. La diferencia de diferencias reduce el efecto de estacionalidad y cambios generales, pero no elimina todos los sesgos.
 
-- escribir hipótesis;
-- acordar métrica;
-- seleccionar municipios;
-- asignar tratamiento y control;
-- validar seguimiento de eventos;
-- registrar el protocolo.
+Antes de decidir se revisan tendencias previas, tamaño de muestra, exposición real a la versión, cambios simultáneos, desplazamiento desde pago o teléfono y tiempo de maduración. En producción añadiríamos intervalos de confianza, análisis de potencia y sensibilidad. Si el grupo tratado mejora pero también lo hace el control, no se atribuye toda la subida a la landing.
 
-## Días 15 a 28: publicar
+### 5.2 Problemas de datos que debemos controlar
 
-- aprobar la primera ola;
-- publicar de forma escalonada;
-- comprobar indexación;
-- comprobar llegada de eventos al CRM;
-- vigilar capacidad.
+Las fechas de creación, SQL y alta deben respetar el orden temporal. Los contactos de empleo de cuidadoras no pueden entrar en el embudo familiar. Una landing no indexada no debe producir clics orgánicos. Las URLs modificadas necesitan una relación de versiones para evitar partir el histórico. Los municipios sin datos propios deben identificarse como agregados provinciales y no mezclarse silenciosamente con datos municipales.
 
-## Días 29 a 56: medir exposición
+También es importante conservar los ceros. Si un municipio asignado no produce SQL durante una semana, esa semana no puede desaparecer del denominador. Las identidades ambiguas permanecen separadas y las cohortes recientes no se utilizan para calcular altas maduras.
 
-- revisar tratamiento y control;
-- investigar anomalías;
-- controlar contaminación;
-- presentar avances sin declarar ganador.
+## 6. Planificación del proyecto
 
-## Días 57 a 90: madurar y decidir
+Los primeros 90 días buscan responder una pregunta, no construir toda la plataforma: ¿podemos mejorar landings locales elegibles y medir el cambio con suficiente confianza para escalar?
 
-- cerrar cohortes;
-- ejecutar lectura principal;
-- revisar sensibilidad y guardarraíles;
-- registrar la decisión.
+| Periodo | Trabajo principal | Resultado esperado |
+| --- | --- | --- |
+| Días 1 a 14 | Validar tracking, capacidad, URLs, métricas y selección de municipios | Protocolo aprobado y línea base reproducible |
+| Días 15 a 28 | Preparar versiones, controles editoriales y publicación limitada | Tratamiento y control activos sin incumplir restricciones |
+| Días 29 a 56 | Vigilar exposición, indexación, integridad y capacidad | Confirmación de que la prueba se está ejecutando como fue diseñada |
+| Días 57 a 90 | Cerrar cohortes, calcular resultado y revisar guardarraíles | Decisión documentada: continuar, modificar o parar |
 
-## 15.1 Reuniones
+La primera versión incluye el portfolio de landings, la ficha por URL, la selección de oportunidades, la lectura de experimentos, el linaje de métricas y el registro de decisiones. Quedan fuera la publicación automática, las recomendaciones autónomas, el análisis estadístico avanzado y la expansión masiva a nuevos municipios.
 
-### Desarrollo semanal
+Al final de los 90 días continuaríamos si existe una mejora consistente en SQL maduros, la trazabilidad es suficiente y capacidad o calidad no empeoran. Modificaríamos el enfoque si aparece una señal positiva con problemas de exposición, muestra o mensaje. Pararíamos si no hay mejora relevante, se degrada la calidad comercial o la demanda adicional no puede atenderse.
 
-Revisa avance, bloqueos y dudas de implementación.
+### 6.1 Equipos y reuniones
 
-### Datos y capacidad semanal
+Growth mantiene hipótesis y prioridades. Marketing aprueba tono, marca y SEO. Data certifica fuentes, consultas y calidad. MarTech instrumenta, versiona y publica. Operaciones valida cobertura y capacidad. Comercial ayuda a interpretar SQL, descartes y altas.
 
-Revisa calidad, cobertura y disponibilidad operativa.
+El ritmo de trabajo combina una sesión semanal de desarrollo para avances y bloqueos, una revisión semanal de datos y capacidad, una demostración quincenal y una aprobación por versión. Los días 30, 60 y 90 se reservan para decisiones de cartera. Cada reunión deja responsable, fecha, evidencia utilizada y próxima revisión.
 
-### Demostración quincenal
+### 6.2 Horizonte de seis meses
 
-Presenta el incremento de producto y recoge comentarios.
+Tras validar el primer piloto, el segundo trimestre ampliaría la muestra y convertiría las reglas aceptadas en capacidades reutilizables. El tercer trimestre incorporaría alertas, permisos, integración real con Strapi y una biblioteca de aprendizajes por servicio y municipio. Solo después tendría sentido automatizar partes de la recomendación o generar nuevas páginas a mayor escala.
 
-### Aprobación por versión
+## 7. Límites, restricciones y conclusión
 
-Marketing decide si una versión puede publicarse.
+La demostración prueba que se puede representar un ciclo coherente desde el dato hasta la decisión. Utiliza datos sintéticos reproducibles y landings de ejemplo. No demuestra que una página real de Qida haya generado más SQL ni que los umbrales elegidos sean correctos para producción.
 
-### Decisiones de los días 30, 60 y 90
+La versión real no publicaría precios ni afirmaciones sanitarias. Ninguna familia o cuidadora puede identificarse. Las transcripciones y testimonios necesitan privacidad y consentimiento. Marketing aprueba todo lo que afecte a marca o posicionamiento. Los municipios sin capacidad quedan fuera aunque tengan demanda. La IA redacta o resume dentro de límites, pero no decide qué publicar ni puede inventar evidencias.
 
-Revisan evidencia, restricciones y siguiente paso.
+Para pasar a producción faltaría conectar Databricks, Strapi y CRM, añadir autenticación y permisos, calibrar reglas con históricos reales, completar inferencia estadística y convertir los controles de publicación en verificaciones auditables.
 
-Todas las reuniones deben dejar responsable, acuerdos y próxima revisión.
-
-## 16. Qué demuestra la aplicación y qué no
-
-### La aplicación demuestra
-
-- una interfaz funcional;
-- datos sintéticos persistidos;
-- métricas procedentes de API;
-- consultas SQL ejecutables;
-- landings reales de demostración;
-- puntuaciones explicables;
-- tratamiento y control;
-- decisiones versionadas;
-- actas semanales persistidas;
-- validación de contratos;
-- controles de calidad visibles.
-
-### La aplicación no demuestra todavía
-
-- impacto real en SQL o altas de Qida;
-- publicación en qida.es;
-- integración real con Databricks, Strapi, HubSpot u Odoo;
-- significación estadística completa;
-- autenticación y permisos productivos;
-- control semántico completo de todo texto generado;
-- funcionamiento de las landings bajo tráfico real.
-
-## 17. Cómo estudiar el producto como junior
-
-### Ejercicio 1. Leer una landing
-
-1. Abre Landings.
-2. Elige una página con sesiones.
-3. Identifica el paso con mayor diferencia frente al conjunto comparable.
-4. Revisa si existe capacidad.
-5. Escribe una hipótesis sin afirmar causalidad.
-
-### Ejercicio 2. Revisar una oportunidad
-
-1. Abre Oportunidades.
-2. Despliega el cálculo.
-3. Diferencia los factores que aportan y los que penalizan.
-4. Comprueba elegibilidad.
-5. Abre la landing demo.
-
-### Ejercicio 3. Interpretar un experimento
-
-1. Abre Medición.
-2. Identifica métrica y método.
-3. Comprueba tratamiento y control.
-4. Revisa trazabilidad, madurez e integridad.
-5. Lee los avisos antes de decidir.
-
-### Ejercicio 4. Seguir un dato hasta su origen
-
-1. Elige una métrica visible.
-2. Abre Modelo de datos y Consultas.
-3. Localiza la familia correspondiente.
-4. Lee grano, tablas, uniones y fórmula.
-5. Comprueba el componente donde se muestra.
-
-### Ejercicio 5. Preparar una reunión
-
-1. Abre Plan de 90 días.
-2. Selecciona una reunión.
-3. Revisa entradas, agenda y decisiones.
-4. Identifica qué restricción valida.
-5. Completa un acta semanal sin datos personales.
-
-## 18. Glosario
-
-| Término | Definición |
-| --- | --- |
-| Alta | Oportunidad que termina contratando un servicio |
-| API | Interfaz mediante la que la web solicita datos al servidor |
-| Atribución | Relación de un resultado con un origen observado |
-| Causalidad | Evidencia de que un cambio produjo un efecto |
-| Cohorte | Grupo que comparte fecha o condición |
-| Cohorte madura | Grupo que ha tenido tiempo suficiente para producir el resultado |
-| Control | Grupo comparable que no recibe el cambio |
-| Conversión | Paso de un estado a otro |
-| CRM | Sistema que gestiona leads, oportunidades y clientes |
-| CTR orgánico | Clics orgánicos divididos por impresiones |
-| Dato sintético | Dato inventado de forma controlada para la demostración |
-| Determinista | Mismos datos y reglas producen el mismo resultado |
-| Elegibilidad | Condiciones mínimas para entrar en una prueba |
-| Evento | Acción registrada por un sistema |
-| Frescura | Tiempo desde la última actualización |
-| Grano | Significado de una fila |
-| Guardarraíl | Regla o métrica que no debe empeorar |
-| Identidad ambigua | Registros que no pueden unirse con seguridad |
-| Indexación | Inclusión de una página en el índice de Google |
-| Integridad | Coherencia del dato con las reglas del proceso |
-| Landing | Página para una necesidad, servicio o municipio concreto |
-| Lead | Contacto de una familia interesada |
-| Linaje | Recorrido desde el dato visible hasta su origen |
-| Madurez | Tiempo suficiente para observar el resultado |
-| Métrica principal | Medida que determina la decisión de la prueba |
-| Oportunidad familiar | Caso comercial de una familia que busca cuidados |
-| Persona seudónima | Identificador técnico sin datos personales visibles |
-| Prioridad | Orden de revisión |
-| Sesión | Visita a la web |
-| SQL comercial | Lead cualificado como oportunidad real |
-| Tratamiento | Grupo que recibe el cambio |
-| Trazabilidad | Capacidad de conectar y seguir el recorrido |
-| Versión | Estado concreto de contenido o reglas en un momento |
-
-## 19. Documentos relacionados
-
-- [Guía de presentación](./guia-presentacion-prueba-tecnica.md)
-- [Auditoría del caso](./case-audit-and-delivery-backlog.md)
-- [Presentación](./qida-growth-intelligence.pptx)
-
-La guía de presentación explica cómo contar el producto. La auditoría registra cobertura y trabajo pendiente. Este manual es la fuente principal para comprender cómo funciona.
-
-## 20. Cobertura de los requisitos de la prueba
-
-Esta sección permite comprobar que la propuesta no es solamente una interfaz. Relaciona lo solicitado en el enunciado con la respuesta de producto, la pantalla donde se representa y el límite que todavía debe validarse con datos reales.
-
-### 20.1 Dónde está el valor
-
-| Requisito de la prueba | Respuesta de la propuesta | Dónde se ve | Qué falta validar |
-| --- | --- | --- | --- |
-| Ordenar las apuestas | Primero se propone mejorar landings ya creadas en municipios donde existe demanda, servicio y capacidad. Después se amplían contenidos o municipios. | Oportunidades y ficha de landing | Validar con Marketing y Operaciones los pesos y umbrales de elegibilidad |
-| Estimar impacto en SQL o altas | Cada iniciativa tiene escenarios explícitos. La aplicación separa la estimación del resultado observado para no presentarla como un hecho. | Oportunidades, Medición y auditoría del caso | Sustituir supuestos sintéticos por históricos reales y calcular incertidumbre |
-| Explicar dependencias | Marketing aprueba contenido y marca; MarTech instrumenta y publica; Data prepara y valida métricas; Operaciones confirma capacidad. | Plan de 90 días | Nombrar responsables concretos y acordar tiempos de respuesta |
-| Explicar qué no se haría | No se escala donde no hay capacidad, no se publican precios ni afirmaciones sanitarias, no se usa información personal y no se automatiza la publicación sin aprobación. | Oportunidades, Plan de 90 días y controles de landing | Validar las reglas con Legal, Marketing y Operaciones |
-| Bajar la primera apuesta a 90 días | El plan separa preparación, publicación controlada, lectura temprana y decisión con cohortes maduras. | Plan de 90 días | Ajustar calendario a los ciclos reales de indexación, CRM y equipo |
-
-### 20.2 Cómo se mediría
-
-| Requisito de la prueba | Respuesta de la propuesta | Dónde se ve | Qué falta validar |
-| --- | --- | --- | --- |
-| Árbol de métricas | Métrica principal: SQL atribuibles y maduros. Métricas intermedias: impresiones, clics, sesiones y leads. Guardarraíles: capacidad, integridad, trazabilidad, consentimiento y canibalización. | Medición y este manual, capítulos 8 a 10 | Acordar una única métrica decisoria por experimento |
-| Separar efecto de estacionalidad y otros canales | Se compara el cambio del grupo tratado con el cambio del control mediante diferencia de diferencias y se revisa la evolución previa. | Medición y consulta Cambio de experimento | Añadir intervalos de confianza, potencia y diagnósticos con datos reales |
-| Consultas reales | Se documentan seis familias de consultas que combinan demanda, CRM, capacidad, tráfico, experimentos e identidad. | Modelo de datos → Consultas y capítulo 12 | Adaptar nombres y tipos al catálogo real de Databricks |
-| Problemas de datos | Se controlan frescura, integridad, madurez, trazabilidad, identidad ambigua, falta de ceros, cambios de URL y poco volumen. | Modelo de datos → Calidad y capítulo 10 | Definir acuerdos de nivel de servicio y alertas operativas |
-
-### 20.3 Cómo se construiría
-
-| Requisito de la prueba | Respuesta de la propuesta | Dónde se ve | Qué falta validar |
-| --- | --- | --- | --- |
-| Arquitectura de la primera apuesta | El flujo objetivo conecta Databricks, fábrica de landings/Strapi, analítica web, Search Console y CRM con una capa de métricas y decisión. | Modelo de datos → Flujo y capítulo 13 | Implementar conectores, autenticación, permisos y observabilidad |
-| Revisión humana | Marketing revisa contenido y marca; Operaciones confirma capacidad; Data valida datos y medición antes de escalar. | Plan de 90 días y ficha de landing | Convertir la matriz de responsabilidad en permisos del sistema |
-| Control antes de publicar | Se comprueban capacidad, datos propios, privacidad, consentimiento, expresiones prohibidas, SEO técnico, originalidad local y aprobación. | Ficha de landing, landing demo y capítulo 14 | Conectar los controles al CMS real y conservar evidencias de cada aprobación |
-| Vigilancia después de publicar | Se revisan indexación, tráfico, trazabilidad, integridad, embudo, cohortes maduras y guardarraíles. | Medición y reuniones del Plan de 90 días | Crear alertas y umbrales calibrados con el histórico real |
-| Parte delicada del sistema | La parte más sensible es decidir si una landing es elegible, publicar una versión controlada y atribuir resultados sin exponer datos personales ni afirmar causalidad antes de tiempo. | Consultas, Calidad y auditoría del caso | Completar las comprobaciones semánticas y estadísticas de producción |
-
-### 20.4 Respuesta resumida al reto
-
-La propuesta explota los activos existentes sin volver a construirlos. El motor de datos sigue siendo la fuente de contexto local y la fábrica sigue generando las páginas. Qida Growth Intelligence añade cuatro capacidades que faltaban:
-
-1. relacionar cada landing con su demanda, cobertura, capacidad y resultado comercial;
-2. priorizar únicamente oportunidades que Qida puede atender;
-3. medir cambios con trazabilidad, grupo de comparación y tiempo de maduración;
-4. registrar la decisión, sus responsables y el aprendizaje reutilizable.
-
-La demostración prueba que ese flujo puede representarse en un producto coherente. No prueba todavía que una landing concreta genere impacto real: esa conclusión exige conectar los sistemas de producción y ejecutar el plan de medición.
+La idea final es sencilla: el motor explica el contexto, la fábrica produce la landing y Qida Growth Intelligence conecta esa landing con su resultado y con el aprendizaje siguiente. El valor no está en mostrar más datos, sino en hacer que cada cambio pueda entenderse, medirse y convertirse en una decisión responsable.
