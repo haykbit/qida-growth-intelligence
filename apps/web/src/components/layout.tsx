@@ -276,7 +276,6 @@ function AppSidebar({
   mobile?: boolean;
 }) {
   const items = navigationGroups.flatMap((group) => group.items);
-  const staticDemo = import.meta.env.VITE_STATIC_DEMO === "true";
   return (
     <aside
       className={cn(
@@ -317,11 +316,6 @@ function AppSidebar({
       </nav>
       <div className="border-t p-4">
         <p className="text-xs font-medium">Entorno de demostración</p>
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          {staticDemo
-            ? "Datos sintéticos desde JSON · cambios solo en este navegador"
-            : "Datos sintéticos persistidos · v2"}
-        </p>
       </div>
     </aside>
   );
