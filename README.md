@@ -5,11 +5,15 @@
 
 Qida Growth Intelligence es una propuesta para explotar conjuntamente dos activos que Qida ya ha construido: el motor de datos municipal y la fábrica de landings. El producto relaciona cada landing con su contexto local, su rendimiento web y comercial, los cambios realizados y las decisiones tomadas después.
 
-## Ver la demostración
+## Cómo entender el proyecto
 
-**[Abrir Qida Growth Intelligence](https://haykbit.github.io/qida-growth-intelligence/)**
+La forma más rápida de revisar la propuesta es seguir este orden:
 
-La demostración de GitHub Pages funciona con una captura reproducible de datos sintéticos guardada en JSON. No contiene información real de familias ni cuidadoras. Las decisiones y actas creadas durante la visita se conservan únicamente en el navegador.
+1. **[Leer el manual de producto](docs/product/manual-producto-qida-growth-intelligence.md).** Explica la idea, las partes del producto, cómo se combinan los datos, las métricas previstas, la planificación y los límites de la propuesta.
+2. **[Explorar la demostración](https://haykbit.github.io/qida-growth-intelligence/).** Permite recorrer las landings, las oportunidades y la medición con los datos preparados para la prueba.
+3. **[Abrir la presentación](docs/product/qida-growth-intelligence.pptx).** Resume el producto, el método de medición y el plan de ejecución para presentarlo en una entrevista.
+
+La demostración utiliza una captura reproducible de datos sintéticos guardada en JSON. No contiene información real de familias ni cuidadoras. Las decisiones y actas creadas durante la visita se conservan únicamente en el navegador.
 
 ## Qué permite revisar
 
@@ -21,10 +25,6 @@ La demostración de GitHub Pages funciona con una captura reproducible de datos 
 - Las tablas y la lógica que producen las métricas relevantes.
 
 La aplicación diferencia siempre entre descripción, atribución y evidencia causal. Las puntuaciones sirven para ordenar revisiones; no son predicciones estadísticas.
-
-## Documento de producto
-
-El [documento de producto](docs/product/manual-producto-qida-growth-intelligence.md) explica la propuesta de forma ejecutiva: idea, partes del producto, datos, lógica de las métricas, planificación y límites.
 
 ## Cómo está construido
 
