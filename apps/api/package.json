@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.1.0",
+    "@qida/analytics": "workspace:*",
     "@qida/contracts": "workspace:*",
     "cors": "^2.8.5",
     "express": "^4.21.2",

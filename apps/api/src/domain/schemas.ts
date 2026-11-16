@@ -1,4 +1,4 @@
-import { filterSchema, landingDraftRequestSchema, paginationSchema } from "@qida/contracts";
+import { filterSchema, landingDecisionRequestSchema, landingDraftRequestSchema, paginationSchema } from "@qida/contracts";
 import { z } from "zod";
 import type { PageRequest, StrategyAssumptions } from "./types.js";
 
@@ -25,7 +25,7 @@ export const createLandingSchema = landingDraftRequestSchema.extend({
   municipalityId: z.string().trim().min(1).max(32),
   service: z.string().trim().min(1).max(100),
 });
-
+export const recordLandingDecisionSchema = landingDecisionRequestSchema;
 export const reviewLandingSchema = z.object({ reviewerNote: z.string().trim().max(500).optional() }).strict();
 export const approveLandingSchema = z.object({
   approver: z.string().trim().min(2).max(100),
@@ -47,6 +47,7 @@ export const strategyQuerySchema = z.object({
   sqlToAltaRate: z.coerce.number().min(0).max(1).optional(),
   capacityUtilization: z.coerce.number().min(0).max(1).optional(),
   months: z.coerce.number().int().min(1).max(24).default(6),
+  marketLimit: z.coerce.number().int().min(1).max(30).default(10),
 }).transform((value): StrategyAssumptions => {
   const defaults = scenarioDefaults[value.scenario];
   return {
@@ -56,6 +57,7 @@ export const strategyQuerySchema = z.object({
     sqlToAltaRate: value.sqlToAltaRate ?? defaults.sqlToAltaRate,
     capacityUtilization: value.capacityUtilization ?? defaults.capacityUtilization,
     months: value.months,
+    marketLimit: value.marketLimit,
   };
 });
 

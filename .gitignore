@@ -11,4 +11,6 @@ test-results/
 .DS_Store
 work/
 outputs/
+output/
+tmp/
 

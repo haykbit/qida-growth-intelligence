@@ -1,3 +1,6 @@
+import { weeklyNoteSchema } from "@qida/contracts";
+import { z } from "zod";
+import { AppError } from "../../lib/errors.js";
 import { Router } from "express";
 import type { GrowthRepository } from "../../domain/types.js";
 import type { StrategyAssumptions } from "../../domain/types.js";
@@ -17,5 +20,17 @@ export function analyticsRouter(repository: GrowthRepository): Router {
   }));
   router.get("/workbench", asyncHandler(async (_request, response) => { response.json(await repository.workbench()); }));
   router.get("/governance", asyncHandler(async (_request, response) => { response.json(await repository.governance()); }));
+  router.get("/planning", asyncHandler(async (_request, response) => { response.json(await repository.planning()); }));
+  const weeklyDate = z.object({ date: z.string().date() });
+  router.get("/planning/weekly/:date", asyncHandler(async (request, response) => {
+    const { date } = parseWith(weeklyDate, request.params);
+    response.json(await repository.weeklyHistory(date));
+  }));
+  router.post("/planning/weekly/:date", asyncHandler(async (request, response) => {
+    const { date } = parseWith(weeklyDate, request.params);
+    const note = parseWith(weeklyNoteSchema, request.body);
+    if (note.date !== date) throw new AppError(400, "DATE_MISMATCH", "La fecha del acta no coincide.");
+    response.status(201).json(await repository.saveWeekly(note));
+  }));
   return router;
 }

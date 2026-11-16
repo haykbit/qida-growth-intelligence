@@ -15,7 +15,7 @@ spec:
         - name: migrate-and-seed
           image: qida-api
           imagePullPolicy: IfNotPresent
-          command: ["sh", "-c", "pnpm db:migrate && pnpm db:seed"]
+          command: ["sh", "-c", "pnpm db:migrate && pnpm exec tsx prisma/seed/startup.ts"]
           env:
             - name: DATABASE_URL
               valueFrom: { secretKeyRef: { name: postgres, key: DATABASE_URL } }
@@ -29,7 +29,7 @@ spec:
               valueFrom: { secretKeyRef: { name: postgres, key: DATABASE_URL } }
             - { name: PORT, value: "3000" }
             - { name: CORS_ORIGIN, value: "http://localhost:5173" }
-            - { name: SEED_VERSION, value: "qida-synthetic-v1" }
+            - { name: SEED_VERSION, value: "qida-synthetic-v2" }
           ports:
             - { name: http, containerPort: 3000 }
           readinessProbe:

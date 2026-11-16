@@ -11,12 +11,14 @@ function monthKey(date: Date): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-export function validateSyntheticDataset(dataset: SyntheticDataset, expectedMonthlySql?: number): DatasetValidation {
+export function validateSyntheticDataset(dataset: SyntheticDataset, expectedMonthlySqlBaseline?: number): DatasetValidation {
   const errors: string[] = [];
   const warnings: string[] = [];
   const opportunitiesByLead = new Map(dataset.opportunities.map((row) => [row.leadId, row]));
   const landingsByUrl = new Map(dataset.landings.map((row) => [row.url, row]));
   const municipalitiesById = new Map(dataset.municipalities.map((row) => [row.municipioId, row]));
+  const sqlEventOpportunities = new Set(dataset.events.filter((row) => row.eventType === "sql_qualified" && row.opportunityId !== null).map((row) => row.opportunityId as string));
+  const altaEventOpportunities = new Set(dataset.events.filter((row) => row.eventType === "alta_completed" && row.opportunityId !== null).map((row) => row.opportunityId as string));
 
   for (const lead of dataset.leads) {
     if (lead.esSql && lead.fechaSql === null) errors.push(`${lead.leadId}: SQL without fecha_sql`);
@@ -26,6 +28,16 @@ export function validateSyntheticDataset(dataset: SyntheticDataset, expectedMont
     if (lead.fechaAlta !== null && (lead.fechaSql === null || lead.fechaAlta < lead.fechaSql)) errors.push(`${lead.leadId}: fecha_alta before SQL`);
     if (lead.esAlta && !opportunitiesByLead.has(lead.leadId)) errors.push(`${lead.leadId}: alta without care opportunity`);
     if (lead.tipoContacto === "cuidadora_empleo" && opportunitiesByLead.has(lead.leadId)) errors.push(`${lead.leadId}: caregiver contact became family opportunity`);
+    if (lead.tipoContacto === "familia_cuidado") {
+      const opportunity = opportunitiesByLead.get(lead.leadId);
+      if (opportunity === undefined) errors.push(`${lead.leadId}: family lead without care opportunity`);
+      else {
+        if (opportunity.sqlAt?.getTime() !== lead.fechaSql?.getTime()) errors.push(`${lead.leadId}: SQL timestamp differs from its opportunity`);
+        if (opportunity.altaAt?.getTime() !== lead.fechaAlta?.getTime()) errors.push(`${lead.leadId}: alta timestamp differs from its opportunity`);
+        if (lead.esSql && !sqlEventOpportunities.has(opportunity.opportunityId)) errors.push(`${lead.leadId}: SQL missing its journey event`);
+        if (lead.esAlta && !altaEventOpportunities.has(opportunity.opportunityId)) errors.push(`${lead.leadId}: alta missing its journey event`);
+      }
+    }
   }
 
   for (const opportunity of dataset.opportunities) {
@@ -43,13 +55,17 @@ export function validateSyntheticDataset(dataset: SyntheticDataset, expectedMont
 
   const monthlySql = new Map<string, number>();
   for (const lead of dataset.leads) {
-    if (lead.esSql && lead.tipoContacto === "familia_cuidado") {
-      const key = monthKey(lead.fechaCreacion);
-      monthlySql.set(key, (monthlySql.get(key) ?? 0) + 1);
-    }
+    if (lead.tipoContacto !== "familia_cuidado") continue;
+    const key = monthKey(lead.fechaCreacion);
+    monthlySql.set(key, (monthlySql.get(key) ?? 0) + (lead.esSql ? 1 : 0));
   }
-  if (expectedMonthlySql !== undefined) {
-    for (const [month, count] of monthlySql) if (count !== expectedMonthlySql) errors.push(`${month}: expected ${expectedMonthlySql} SQL, got ${count}`);
+  if (expectedMonthlySqlBaseline !== undefined) {
+    const minimum = Math.floor(expectedMonthlySqlBaseline * 0.55);
+    const maximum = Math.ceil(expectedMonthlySqlBaseline * 1.45);
+    for (const [month, count] of monthlySql) {
+      if (count < minimum || count > maximum) errors.push(`${month}: ${count} SQL falls outside the realistic baseline range ${minimum}-${maximum}`);
+    }
+    if (monthlySql.size > 1 && new Set(monthlySql.values()).size === 1) errors.push("Monthly SQL cohorts must vary around the configured baseline");
   }
 
   const scenarioCodes = new Set(dataset.scenarios.map((row) => row.code));

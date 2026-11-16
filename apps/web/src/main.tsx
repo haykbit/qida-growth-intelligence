@@ -1,30 +1,39 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { TooltipProvider } from "@qida/ui";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, createHashRouter, Navigate, RouterProvider } from "react-router-dom";
 import { AppLayout } from "./components/layout";
-import { DataQualityPage } from "./pages/data-quality";
-import { ExperimentDetailPage, ExperimentsPage } from "./pages/experiments";
-import { FunnelPage } from "./pages/funnel";
-import { JourneyDetailPage, JourneysPage } from "./pages/journeys";
-import { LandingsPage } from "./pages/landings";
+import { DataSchemaPage } from "./pages/data-schema";
+import { LandingDemoPage } from "./pages/landing-demo";
+import { LandingObservatoryPage, LandingRecordPage } from "./pages/landing-observatory";
+import { MeasurementCenterPage } from "./pages/measurement-center";
 import { NotFoundPage } from "./pages/not-found";
 import { OpportunitiesPage, OpportunityDetailPage } from "./pages/opportunities";
-import { OverviewPage } from "./pages/overview";
-import { PaidMediaPage } from "./pages/paid-media";
-import { SeoPage } from "./pages/seo";
-import { ArchitecturePage } from "./pages/architecture";
-import { CaseStudyPage } from "./pages/case-study";
-import { StrategyPage } from "./pages/strategy";
-import { WorkbenchPage } from "./pages/workbench";
+import { PlanningPage } from "./pages/planning";
 import { FilterProvider } from "./state/filters";
 import "./styles.css";
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false } } });
-const router = createBrowserRouter([{ path: "/", element: <AppLayout />, children: [
-  { index: true, element: <OverviewPage /> }, { path: "opportunities", element: <OpportunitiesPage /> }, { path: "opportunities/:municipalityId/:service", element: <OpportunityDetailPage /> }, { path: "journeys", element: <JourneysPage /> }, { path: "journeys/:opportunityId", element: <JourneyDetailPage /> }, { path: "funnel", element: <FunnelPage /> }, { path: "landings", element: <LandingsPage /> }, { path: "seo", element: <SeoPage /> }, { path: "paid-media", element: <PaidMediaPage /> }, { path: "experiments", element: <ExperimentsPage /> }, { path: "experiments/:experimentId", element: <ExperimentDetailPage /> }, { path: "data-quality", element: <DataQualityPage /> }, { path: "strategy", element: <StrategyPage /> }, { path: "workbench", element: <WorkbenchPage /> }, { path: "architecture", element: <ArchitecturePage /> }, { path: "case-study", element: <CaseStudyPage /> }, { path: "*", element: <NotFoundPage /> },
-]}]);
+const routes = [
+  { path: "/", element: <AppLayout />, children: [
+    { index: true, element: <LandingObservatoryPage /> },
+    { path: "landing", element: <LandingRecordPage /> },
+    { path: "measurement", element: <MeasurementCenterPage /> },
+    { path: "planning", element: <PlanningPage /> },
+    { path: "data-model", element: <DataSchemaPage /> },
+    { path: "plays", element: <Navigate replace to="/" /> },
+    { path: "plays/:municipalityId/:service", element: <Navigate replace to="/" /> },
+    { path: "opportunities", element: <OpportunitiesPage /> },
+    { path: "opportunities/:municipalityId/:service", element: <OpportunityDetailPage /> },
+    { path: "landings", element: <Navigate replace to="/" /> },
+    { path: "learning", element: <Navigate replace to="/measurement" /> },
+    { path: "*", element: <NotFoundPage /> },
+  ] },
+  { path: "/demo/:municipalityId/:service", element: <LandingDemoPage /> },
+];
+const router = import.meta.env.VITE_STATIC_DEMO === "true" ? createHashRouter(routes) : createBrowserRouter(routes);
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Root element not found");
-createRoot(root).render(<StrictMode><QueryClientProvider client={queryClient}><FilterProvider><RouterProvider router={router} /></FilterProvider></QueryClientProvider></StrictMode>);
+createRoot(root).render(<StrictMode><QueryClientProvider client={queryClient}><TooltipProvider delayDuration={250}><FilterProvider><RouterProvider router={router} /></FilterProvider></TooltipProvider></QueryClientProvider></StrictMode>);

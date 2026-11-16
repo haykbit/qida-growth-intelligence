@@ -7,12 +7,29 @@ import type { JsonValue, SyntheticDataset } from "./types.js";
 
 const SERVICES = ["cuidado_personas_mayores", "acompanamiento", "ayuda_domicilio"] as const;
 const CHANNELS = ["paid_search", "paid_social", "organic", "direct", "referral", "phone"] as const;
+const CHANNEL_MIX = ["organic", "organic", "paid_search", "paid_search", "direct", "phone", "referral", "paid_social"] as const;
+const MONTHLY_LEAD_SEASONALITY = [0.96, 0.93, 0.99, 1.03, 1.07, 1.04, 0.97, 0.81, 1.13, 1.09, 1.02, 0.9] as const;
+const MONTHLY_SQL_SEASONALITY = [0.98, 0.97, 1.01, 1.03, 1.02, 0.99, 0.95, 0.88, 1.06, 1.04, 1, 0.93] as const;
+const CHANNEL_SQL_RATE: Record<(typeof CHANNELS)[number], number> = {
+  paid_search: 0.62,
+  paid_social: 0.47,
+  organic: 0.68,
+  direct: 0.58,
+  referral: 0.78,
+  phone: 0.74,
+};
+const SERVICE_SQL_MODIFIER: Record<(typeof SERVICES)[number], number> = {
+  cuidado_personas_mayores: 1.06,
+  acompanamiento: 0.93,
+  ayuda_domicilio: 1,
+};
 const MS_DAY = 86_400_000;
 
 const addDays = (date: Date, days: number): Date => new Date(date.getTime() + days * MS_DAY);
 const addMinutes = (date: Date, minutes: number): Date => new Date(date.getTime() + minutes * 60_000);
 const startOfUtcMonth = (date: Date): Date => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 const round = (value: number, digits = 2): number => Number(value.toFixed(digits));
+const clamp = (value: number, minimum: number, maximum: number): number => Math.min(maximum, Math.max(minimum, value));
 const slug = (value: string): string => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
 function monthsBetween(start: Date, end: Date): Date[] {
@@ -228,46 +245,72 @@ export function generateSyntheticDataset(config: SeedConfig): SyntheticDataset {
   };
 
   for (const [monthIndex, month] of months.entries()) {
-    const familyNonSql = Math.round(config.monthlySqlTarget * 0.55);
-    const caregiverContacts = Math.max(20, Math.round(config.monthlySqlTarget * 0.08));
-    const monthlyLeadCount = config.monthlySqlTarget + familyNonSql + caregiverContacts;
+    const leadSeasonality = MONTHLY_LEAD_SEASONALITY[month.getUTCMonth()] ?? 1;
+    const sqlSeasonality = MONTHLY_SQL_SEASONALITY[month.getUTCMonth()] ?? 1;
+    const gradualGrowth = 0.96 + monthIndex * 0.004;
+    const monthlyNoise = 0.97 + random.next() * 0.06;
+    const monthlyFamilyLeadCount = Math.max(12, Math.round(config.monthlySqlTarget * 1.62 * leadSeasonality * gradualGrowth * monthlyNoise));
+    const caregiverContacts = Math.max(4, Math.round(config.monthlySqlTarget * 0.08 * leadSeasonality * gradualGrowth));
+    const monthlyLeadCount = monthlyFamilyLeadCount + caregiverContacts;
+    const scenarioALeads = Math.max(1, Math.round(config.monthlySqlTarget * 0.012));
+    const scenarioBLeads = Math.max(1, Math.round(config.monthlySqlTarget * 0.035));
+    const scenarioCLeads = Math.max(1, Math.round(config.monthlySqlTarget * 0.06));
+    const scenarioDLeads = Math.max(1, Math.round(config.monthlySqlTarget * 0.0125));
     for (let monthlyIndex = 0; monthlyIndex < monthlyLeadCount; monthlyIndex += 1) {
-      const isCaregiver = monthlyIndex >= config.monthlySqlTarget + familyNonSql;
-      const isSql = !isCaregiver && monthlyIndex < config.monthlySqlTarget;
+      const isCaregiver = monthlyIndex >= monthlyFamilyLeadCount;
       let municipalityIndex = random.integer(0, Math.max(0, config.demandMunicipalityCount - 1));
-      if (isSql && monthlyIndex < 12) municipalityIndex = 0; // A: deliberately few SQL despite very high demand.
-      else if (isSql && monthlyIndex < 82) municipalityIndex = 1; // B: demand exists but capacity is constrained.
-      else if (isSql && monthlyIndex < 202) municipalityIndex = 2; // C: high SQL volume.
-      else if (isSql && monthlyIndex < 227) municipalityIndex = 3; // D: low demand, strong conversion.
-      if (!isCaregiver && monthlyIndex === config.monthlySqlTarget + familyNonSql - 1) municipalityIndex = 8; // I duplicate fixture.
+      if (!isCaregiver && monthlyIndex < scenarioALeads) municipalityIndex = 0; // A: high demand with deliberately weak qualification.
+      else if (!isCaregiver && monthlyIndex < scenarioALeads + scenarioBLeads) municipalityIndex = 1; // B: capacity constrained.
+      else if (!isCaregiver && monthlyIndex < scenarioALeads + scenarioBLeads + scenarioCLeads) municipalityIndex = 2; // C: strong qualification, weak alta.
+      else if (!isCaregiver && monthlyIndex < scenarioALeads + scenarioBLeads + scenarioCLeads + scenarioDLeads) municipalityIndex = 3; // D: low demand, strong conversion.
+      if (!isCaregiver && monthlyIndex === monthlyFamilyLeadCount - 1) municipalityIndex = 8; // I duplicate fixture.
       const municipality = municipalityRows[municipalityIndex];
       if (municipality === undefined) throw new Error("Generated lead references a missing municipality");
       const leadId = `lead-${String(leadSequence).padStart(7, "0")}`;
       leadSequence += 1;
-      const createdAt = timestampInMonth(month, 2 + (monthlyIndex % 26), 8 + (monthlyIndex % 10));
-      const duplicate: boolean = !isCaregiver && monthlyIndex === config.monthlySqlTarget + familyNonSql - 1 && previousFamilyPerson !== null;
+      const createdAt = addMinutes(timestampInMonth(month, random.integer(1, 28), random.integer(7, 20)), random.integer(0, 59));
+      const duplicate: boolean = !isCaregiver && monthlyIndex === monthlyFamilyLeadCount - 1 && previousFamilyPerson !== null;
       const personId: string = duplicate && previousFamilyPerson !== null ? previousFamilyPerson : `person-${String(leadSequence).padStart(7, "0")}`;
       if (!isCaregiver) previousFamilyPerson = personId;
       if (duplicate) duplicatePersonId = personId;
-      const service = SERVICES[(monthlyIndex + monthIndex) % SERVICES.length] as string;
-      const channel = CHANNELS[(monthlyIndex + municipalityIndex) % CHANNELS.length] as string;
+      const service = SERVICES[(monthlyIndex + monthIndex) % SERVICES.length] as (typeof SERVICES)[number];
+      const channel = random.pick(CHANNEL_MIX);
       const landing = landings.find((row) => row.municipioId === municipality.municipioId) ?? null;
       const unattributed = !isCaregiver && monthlyIndex % 37 === 0;
-      const sqlAt = isSql ? addMinutes(createdAt, 30 + (monthlyIndex % 6) * 180) : null;
-      let altaProbability = 0.24;
+      let sqlProbability = CHANNEL_SQL_RATE[channel] * SERVICE_SQL_MODIFIER[service] * sqlSeasonality;
+      if (!municipality.tieneCobertura) sqlProbability *= 0.55;
+      else if (municipality.cuidadorasDisponibles30d < 4) sqlProbability *= 0.82;
+      if (municipalityIndex === 0) sqlProbability *= 0.32;
+      if (municipalityIndex === 2) sqlProbability *= 1.28;
+      if (municipalityIndex === 3) sqlProbability *= 1.18;
+      const selectedForSql = !isCaregiver && random.boolean(clamp(sqlProbability, 0.05, 0.92));
+      const maxSqlDelayHours = channel === "phone" ? 48 : channel === "referral" ? 72 : 168;
+      const sqlDelayHours = 1 + Math.round((random.next() ** 2) * maxSqlDelayHours);
+      const sqlCandidateAt = selectedForSql ? addMinutes(createdAt, sqlDelayHours * 60 + random.integer(0, 59)) : null;
+      const pendingSql = sqlCandidateAt !== null && sqlCandidateAt > config.simulationDate;
+      const sqlAt = sqlCandidateAt !== null && !pendingSql ? sqlCandidateAt : null;
+      const isSql = sqlAt !== null;
+      let altaProbability = service === "cuidado_personas_mayores" ? 0.27 : service === "acompanamiento" ? 0.2 : 0.23;
+      if (channel === "referral") altaProbability *= 1.12;
+      if (channel === "paid_social") altaProbability *= 0.84;
       if (!municipality.tieneCobertura) altaProbability = 0.025;
       else if (municipality.cuidadorasDisponibles30d < 4) altaProbability = 0.08;
       if (municipalityIndex === 2) altaProbability = 0.07;
       if (municipalityIndex === 3) altaProbability = 0.58;
       if (month.getUTCMonth() === 7) altaProbability *= 0.86; // Shared August seasonality, not an experiment effect.
+      if (month.getUTCMonth() === 11) altaProbability *= 0.92;
       if (month >= experimentStart && municipalityIndex >= 20 && municipalityIndex < 40 && municipalityIndex % 2 === 0) altaProbability *= 1.45;
       if (month >= experimentStart && municipalityIndex >= 60 && municipalityIndex < 80 && municipalityIndex % 2 === 0) altaProbability *= 0.55;
-      const altaCandidate = isSql && sqlAt !== null && random.boolean(altaProbability) ? addDays(sqlAt, 2 + (monthlyIndex % 25)) : null;
+      const maxAltaDelayDays = service === "acompanamiento" ? 38 : service === "ayuda_domicilio" ? 48 : 58;
+      const altaDelayDays = 3 + Math.round((random.next() ** 1.35) * maxAltaDelayDays);
+      const altaCandidate = isSql && sqlAt !== null && random.boolean(clamp(altaProbability, 0.01, 0.8)) ? addDays(sqlAt, altaDelayDays) : null;
       const altaAt = altaCandidate !== null && altaCandidate <= config.simulationDate ? altaCandidate : null;
       const isAlta = altaAt !== null;
       const discardReason = isAlta || isCaregiver
         ? null
-        : !municipality.tieneCobertura
+        : pendingSql
+          ? "pendiente_cualificacion"
+          : !municipality.tieneCobertura
           ? "sin_cobertura"
           : municipality.cuidadorasDisponibles30d < 4
             ? "sin_capacidad"
@@ -304,9 +347,21 @@ export function generateSyntheticDataset(config: SeedConfig): SyntheticDataset {
         continue;
       }
 
+      if (sourceSystem !== "hubspot") {
+        identities.push({
+          identityId: `hubspot-identity-${String(leadSequence).padStart(7, "0")}`,
+          personId,
+          sourceSystem: "hubspot",
+          sourceIdentifier: `hubspot-contact-${leadId}`,
+          matchMethod: "explicit_crm_contact_id",
+          ambiguous: false,
+          createdAt,
+        });
+      }
+
       const opportunityId = `opp-${String(opportunitySequence).padStart(7, "0")}`;
       opportunitySequence += 1;
-      const status = isAlta ? "alta" : isSql ? "sql" : "discarded";
+      const status = isAlta ? "alta" : isSql ? "sql" : pendingSql ? "open" : "discarded";
       opportunities.push({ opportunityId, personId, municipioId: municipality.municipioId, servicio: service, createdAt, status, leadId, sqlAt, altaAt });
       const sessionId = unattributed ? null : `session-${leadId}`;
       const campaign = channel.startsWith("paid") ? (channel === "paid_search" ? "SEA-LOCAL-02" : "SOC-LOCAL-01") : null;
@@ -332,7 +387,7 @@ export function generateSyntheticDataset(config: SeedConfig): SyntheticDataset {
       pushEvent({ personId, opportunityId, sessionId, eventType: "lead_created", sourceSystem, occurredAt: createdAt, channel, campaign, landingUrl: landing?.url ?? null, metadata: { observed: true } });
       if (sqlAt !== null) pushEvent({ personId, opportunityId, sessionId, eventType: "sql_qualified", sourceSystem: "hubspot", occurredAt: sqlAt, channel: "crm", campaign: null, landingUrl: null, metadata: { observed: true } });
       if (altaAt !== null) pushEvent({ personId, opportunityId, sessionId, eventType: "alta_completed", sourceSystem: "odoo", occurredAt: altaAt, channel: "crm", campaign: null, landingUrl: null, metadata: { observed: true } });
-      else if (!isSql) pushEvent({ personId, opportunityId, sessionId, eventType: "opportunity_discarded", sourceSystem: "hubspot", occurredAt: addMinutes(createdAt, 90), channel: "crm", campaign: null, landingUrl: null, metadata: { reason: discardReason ?? "unknown" } });
+      else if (!isSql && !pendingSql) pushEvent({ personId, opportunityId, sessionId, eventType: "opportunity_discarded", sourceSystem: "hubspot", occurredAt: addMinutes(createdAt, 90), channel: "crm", campaign: null, landingUrl: null, metadata: { reason: discardReason ?? "unknown" } });
 
       if (monthIndex === months.length - 1 && monthlyIndex === monthlyLeadCount - caregiverContacts - 2) {
         incompleteEventId = pushEvent({ personId: null, opportunityId: null, sessionId: "late-session-fixture", eventType: "page_view", sourceSystem: "web", occurredAt: createdAt, channel: "unknown", campaign: "misattributed-campaign", landingUrl: landing?.url ?? null, metadata: { ingestedLate: true, ingestionDelayHours: 72, attributionError: true } });
@@ -414,6 +469,27 @@ export function generateSyntheticDataset(config: SeedConfig): SyntheticDataset {
       updatedAt: landing.fechaPublicacion ?? generatedAt,
     });
     auditLogs.push({ auditId: `audit-${String(index).padStart(4, "0")}`, action: status === "published" ? "landing.published" : "landing.draft_created", entityType: "landing", entityId: landing.url, actorRole: status === "published" ? "reviewer" : "growth_analyst", requestId: null, metadata: { synthetic: true }, createdAt: landing.fechaPublicacion ?? generatedAt });
+  }
+
+  const seededLandingDecisions = [
+    { landingIndex: 4, decision: "iterate", hypothesis: "Probar una propuesta de valor más directa y un botón principal visible al abrir la página para reducir la fuga entre sesión y lead.", primaryMetric: "session_to_lead", guardrailMetric: "lead_to_sql", note: "Tráfico suficiente y captación por debajo de la cartera seleccionada." },
+    { landingIndex: 5, decision: "keep", hypothesis: "Mantener la propuesta actual mientras se valida una captación orgánica mayor sin deteriorar la calidad del lead.", primaryMetric: "session_to_lead", guardrailMetric: "lead_to_sql", note: "Conversión eficiente con volumen todavía limitado." },
+    { landingIndex: 7, decision: "keep", hypothesis: "Conservar la versión y ampliar la muestra antes de atribuir el resultado observado al contenido de la landing.", primaryMetric: "lead_to_sql", guardrailMetric: "sql_to_alta", note: "Resultado favorable, todavía descriptivo." },
+    { landingIndex: 1, decision: "stop", hypothesis: "Detener inversión incremental hasta que la capacidad operativa vuelva a superar el umbral de elegibilidad.", primaryMetric: "sql_to_alta", guardrailMetric: "caregiver_capacity", note: "La demanda no debe crecer sin capacidad para atenderla." },
+  ] as const;
+  for (const [index, seededDecision] of seededLandingDecisions.entries()) {
+    const landing = landings[seededDecision.landingIndex];
+    if (landing === undefined) continue;
+    auditLogs.push({
+      auditId: `audit-decision-${String(index + 1).padStart(4, "0")}`,
+      action: "landing.decision_recorded",
+      entityType: "landing",
+      entityId: landing.url,
+      actorRole: "growth_manager",
+      requestId: null,
+      metadata: { decision: seededDecision.decision, hypothesis: seededDecision.hypothesis, primaryMetric: seededDecision.primaryMetric, guardrailMetric: seededDecision.guardrailMetric, note: seededDecision.note },
+      createdAt: addDays(config.simulationDate, -28 + index * 6),
+    });
   }
 
   const scenarios: SyntheticDataset["scenarios"] = [

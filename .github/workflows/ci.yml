@@ -40,4 +40,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: Build GitHub Pages mode
+        run: pnpm --filter @qida/web build
+        env:
+          VITE_STATIC_DEMO: "true"
+          VITE_BASE_PATH: /qida-growth-intelligence/
 

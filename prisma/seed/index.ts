@@ -1,3 +1,4 @@
+import { seedDecisionExamples } from "./decision-examples.js";
 import { Prisma, PrismaClient } from "@prisma/client";
 import { configFromEnvironment } from "./config.js";
 import { generateSyntheticDataset } from "./generate.js";
@@ -58,6 +59,7 @@ async function seed(): Promise<void> {
     await tx.landingWorkflow.createMany({ data: dataset.workflows.map((row) => ({ ...row, blocks: row.blocks as Prisma.InputJsonValue, content: row.content as Prisma.InputJsonValue, validationIssues: row.validationIssues as Prisma.InputJsonValue })) });
     await tx.auditLog.createMany({ data: dataset.auditLogs.map((row) => ({ ...row, metadata: row.metadata as Prisma.InputJsonValue })) });
     await tx.syntheticScenario.createMany({ data: dataset.scenarios.map((row) => ({ ...row, metadata: row.metadata as Prisma.InputJsonValue })) });
+    await seedDecisionExamples(tx);
     await tx.seedRun.create({ data: dataset.seedRun });
   }, { timeout: 180_000, maxWait: 10_000 });
 

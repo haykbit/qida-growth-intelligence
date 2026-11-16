@@ -23,11 +23,11 @@ services:
       DATABASE_URL: postgresql://qida:qida_local@postgres:5432/qida_growth?schema=public
       PORT: "3000"
       CORS_ORIGIN: http://localhost:5173
-      SEED_VERSION: qida-synthetic-v1
+      SEED_VERSION: qida-synthetic-v2
     depends_on:
       postgres:
         condition: service_healthy
-    command: sh -c "pnpm db:migrate && pnpm db:seed && pnpm --filter @qida/api dev"
+    command: sh -c "pnpm db:migrate && pnpm exec tsx prisma/seed/startup.ts && pnpm --filter @qida/api dev"
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 5s

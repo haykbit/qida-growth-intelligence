@@ -12,6 +12,9 @@ Base path: `/api/v1`. Dates are ISO-8601. Money is numeric EUR. Rates are decima
 | GET | `/journeys/:opportunityId` | Ordered events, identities, duplicate links, attribution views |
 | GET | `/funnels` | Channel/service/municipality/cohort conversion and time-to-stage |
 | GET | `/landings` | Landing inventory and performance |
+| GET | `/landing-insights` | Portfolio combining traffic, attributed CRM outcomes, operational eligibility and diagnosis |
+| GET | `/landing-insights/:url` | Monthly funnel, benchmarks, related experiments and decision history |
+| POST | `/landing-insights/:url/decisions` | Persist a human keep, iterate or stop decision in the audit trail |
 | POST | `/landings/drafts` | Deterministic safe local draft |
 | POST | `/landings/:url/review` | Validate and set pending review |
 | POST | `/landings/:url/approve` | Local role-gated human approval |
@@ -20,8 +23,9 @@ Base path: `/api/v1`. Dates are ISO-8601. Money is numeric EUR. Rates are decima
 | GET | `/ads` | Platform and CRM-reconciled paid-media performance |
 | GET | `/experiments` | Experiment registry and evaluated results |
 | GET | `/experiments/:id` | Assignments, series, DiD diagnostics and limitations |
+| GET | `/learning` | Experiment results and versioned human landing decisions for the learning view |
 | GET | `/data-quality` | Freshness, identity, duplicates, integrity, missingness, discrepancies, immature cohorts |
-| GET | `/strategy` | Prioritized/rejected bets, scenario assumptions, incremental impact, owners, 90-day and six-month roadmap |
+| GET | `/strategy` | Prioritized/rejected bets, versioned planning arithmetic, scenario ranges, owners, 90-day and six-month roadmap |
 | GET | `/workbench` | Three curated read-only SQL analyses with results, interpretation and recommended decisions |
 | GET | `/governance` | Architecture flow, ownership, integration mode, validation and monitoring controls |
 | GET | `/filters` | Valid global filter options |
@@ -29,5 +33,5 @@ Base path: `/api/v1`. Dates are ISO-8601. Money is numeric EUR. Rates are decima
 
 Errors use `{ "error": { "code": string, "message": string, "details"?: unknown, "requestId": string } }`. Mutations return an audit identifier. Shared transport shapes live in `@qida/contracts`.
 
-Workbench SQL is curated server-side and read-only; clients cannot submit arbitrary SQL. Strategy response values are planning assumptions or synthetic demonstration outputs and carry an explicit evidence label.
+Workbench SQL is curated server-side and read-only; clients cannot submit arbitrary SQL. Strategy response values are planning assumptions over persisted synthetic demand, not incremental estimates or causal forecasts. The response exposes the formula version, included market count, conservative/base/optimistic ranges and exclusions.
 

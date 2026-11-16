@@ -7,6 +7,11 @@ import { asyncHandler, parseWith } from "../../lib/http.js";
 export function experimentsRouter(repository: GrowthRepository): Router {
   const router = Router();
   router.get("/experiments", asyncHandler(async (request, response) => { response.json(await repository.experiments(parseListQuery(request.query))); }));
+  router.get("/learning", asyncHandler(async (_request, response) => { response.json(await repository.learning()); }));
+  router.get("/experiments/:id/sql", asyncHandler(async (request, response) => {
+    const { id } = parseWith(idParamsSchema, request.params);
+    response.json(await repository.experimentSqlResult(id));
+  }));
   router.get("/experiments/:id", asyncHandler(async (request, response) => {
     const { id } = parseWith(idParamsSchema, request.params);
     const result = await repository.experiment(id);

@@ -1,6 +1,8 @@
+import type { SqlResult, WeeklyNote } from "@qida/contracts";
 import type {
   JourneyDetail,
   JourneySummary,
+  LandingDecisionRequest,
   LandingDraftRequest,
   OpportunityDetail,
   OpportunityRow,
@@ -83,6 +85,55 @@ export type LandingCommandResult = {
   auditId: string;
 };
 
+export type LandingDecisionKind = "keep" | "iterate" | "stop";
+export type LandingDiagnosis = {
+  decision: LandingDecisionKind;
+  headline: string;
+  rationale: string[];
+  recommendedAction: string;
+  primaryMetric: "session_to_lead" | "lead_to_sql" | "sql_to_alta";
+  guardrailMetric: "lead_to_sql" | "sql_to_alta" | "caregiver_capacity";
+  evidenceLevel: "descriptive" | "attributed" | "quasi_experimental";
+};
+export type LandingInsightSummary = LandingRecord & {
+  leads: number;
+  phoneClicks: number;
+  averagePosition: number | null;
+  rates: { sessionToLead: number; leadToSql: number; sqlToAlta: number; organicCtr: number };
+  benchmark: { sessionToLead: number; leadToSql: number; sqlToAlta: number };
+  operations: { coverage: boolean; caregiversAvailable: number; eligible: boolean };
+  opportunityScore: number | null;
+  diagnosis: LandingDiagnosis;
+  evaluation: {
+    overall: number;
+    version: "landing-evaluator-v1";
+    dimensions: Array<{ key: "visibility" | "acquisition" | "quality" | "operability"; label: string; score: number; explanation: string }>;
+  };
+};
+export type LandingPortfolio = Paginated<LandingInsightSummary> & {
+  totals: { landings: number; published: number; sessions: number; leads: number; sql: number; altas: number };
+};
+export type LandingDecisionRecord = LandingDecisionRequest & {
+  resultSnapshot?: SqlResult;
+  id: string;
+  version: number;
+  actorRole: string;
+  createdAt: string;
+};
+export type LandingInsightDetail = LandingInsightSummary & {
+  monthly: Array<{ period: string; sessions: number; forms: number; phoneClicks: number; leads: number; sql: number; altas: number; sessionToLead: number; leadToSql: number }>;
+  experiments: ExperimentSummary[];
+  decisions: LandingDecisionRecord[];
+  caveats: string[];
+};
+export type LearningDecision = LandingDecisionRecord & { url: string; municipality: string | null; service: string | null };
+export type LearningResponse = {
+  experiments: ExperimentSummary[];
+  decisions: LearningDecision[];
+  totals: { experiments: number; positive: number; inconclusive: number; negative: number; decisions: number };
+  caveats: string[];
+};
+
 export type LandingReviewInput = { reviewerNote?: string | undefined };
 export type LandingApprovalInput = { approver: string; note?: string | undefined };
 
@@ -149,7 +200,7 @@ export type DataQualityResponse = {
   integrity: Array<{ check: string; failures: number; severity: "info" | "warning" | "error" }>;
   missingness: Array<{ field: string; missing: number; total: number; rate: number }>;
   discrepancies: Array<{ metric: string; platform: number; crm: number; difference: number }>;
-  immatureCohorts: number;
+  pendingMaturitySql: number;
   limitations: string[];
   monitoringSignals?: Array<{ signal: string; value: number; unit: "count"; source: string }>;
 };
@@ -161,6 +212,7 @@ export type StrategyAssumptions = {
   sqlToAltaRate: number;
   capacityUtilization: number;
   months: number;
+  marketLimit: number;
 };
 
 export type StrategyBet = {
@@ -187,8 +239,40 @@ export type StrategyResponse = {
   label: "Synthetic planning demonstration — not a forecast";
   baseline: { sqlPerMonth: 2000; source: "planning_brief"; observedFilteredSql: number };
   assumptions: StrategyAssumptions;
-  scenarios: Record<"conservative" | "base" | "optimistic", Omit<StrategyAssumptions, "scenario" | "months">>;
+  scenarios: Record<"conservative" | "base" | "optimistic", Omit<StrategyAssumptions, "scenario" | "months" | "marketLimit">>;
+  planningModel: {
+    version: string;
+    formula: string;
+    candidateRowsEvaluated: number;
+    eligibleMarketsInCandidateSet: number;
+    marketsIncluded: number;
+    exclusions: string[];
+  };
   scenarioProjection: { sql: number; altas: number; periodMonths: number };
+  impactRange: {
+    sql: { min: number; max: number };
+    altas: { min: number; max: number };
+    periodMonths: number;
+    scenarioValues: Record<"conservative" | "base" | "optimistic", { sql: number; altas: number }>;
+  };
+  enablingInitiatives: Array<{
+    name: string;
+    directScenarioSql: 0;
+    directScenarioAltas: 0;
+    value: string;
+  }>;
+  portfolioInitiatives: Array<{
+    id: "local_landings" | "qualification" | "paid_reallocation" | "traceability";
+    rank: number;
+    name: string;
+    outcome: "sql" | "altas" | "enabler";
+    evidence: "planning_assumption" | "enabling_initiative";
+    formula: string;
+    inputs: string[];
+    scenarioValues: Record<"conservative" | "base" | "optimistic", number>;
+    range: { min: number; max: number };
+    periodMonths: number;
+  }>;
   prioritizedBets: StrategyBet[];
   rejectedBets: StrategyBet[];
   milestones: { first90Days: string[]; sixMonths: string[] };
@@ -196,15 +280,34 @@ export type StrategyResponse = {
 };
 
 export type WorkbenchQuery = {
-  id: "municipality_prioritization" | "landing_cohort_outcomes" | "quality_and_losses";
+  id:
+    | "opportunity_score"
+    | "landing_performance"
+    | "landing_monthly_funnel"
+    | "experiment_effect"
+    | "traceability_coverage"
+    | "quality_controls";
+  area: "Oportunidades" | "Landings" | "Medición" | "Calidad";
   title: string;
-  objective: string;
-  sql: string;
+  question: string;
+  grain: string;
+  evidence: "descriptive" | "attribution" | "quasi_experimental" | "quality";
+  implementation: { endpoint: string; method: string };
+  statements: Array<{ title: string; purpose: string; sql: string; parameters: Array<{ name: string; value: string }> }>;
   dataUsed: string[];
+  joins: Array<{ left: string; right: string; on: string; purpose: string }>;
+  metrics: Array<{
+    name: string;
+    definition: string;
+    calculation: string;
+    calculatedIn: "sql" | "application";
+    displayedAs: string;
+  }>;
+  shownIn: Array<{ page: string; component: string }>;
   resultRows: Array<Record<string, string | number | boolean | null>>;
-  interpretation: string;
-  recommendedDecision: string;
-  proposedExtensionsUsed: string[];
+  resultDescription: string;
+  exclusions: string[];
+  caveats: string[];
 };
 
 export type WorkbenchResponse = {
@@ -216,7 +319,7 @@ export type WorkbenchResponse = {
 
 export type GovernanceResponse = {
   product: string;
-  architectureStages: Array<{ stage: number; name: string; purpose: string; inputs: string[]; outputs: string[] }>;
+  architectureStages: Array<{ stage: number; name: string; purpose: string; owner: string; status: "existing" | "demo" | "proposed"; inputs: string[]; outputs: string[] }>;
   ownership: Array<{ domain: string; owner: string; paths: string[]; tools: string[] }>;
   integrations: Array<{ name: string; mode: "existing" | "proposed" | "simulated"; boundary: string }>;
   controls: {
@@ -226,6 +329,51 @@ export type GovernanceResponse = {
     privacy: string;
     evidenceLabels: Array<{ label: "correlation" | "attribution" | "causal"; meaning: string }>;
   };
+};
+
+export type PlanningRestrictionId =
+  | "no_prices"
+  | "unique_qida_value"
+  | "privacy_consent"
+  | "marketing_approval"
+  | "no_health_claims"
+  | "capacity_before_demand";
+
+export type PlanningResponse = {
+  version: string;
+  startDate: string;
+  endDate: string;
+  totalDays: 90;
+  decisionMetric: string;
+  phases: Array<{
+    id: "prepare" | "launch" | "exposure" | "maturation";
+    name: string;
+    startDay: number;
+    endDay: number;
+    outcome: string;
+    owner: string;
+  }>;
+  restrictions: Array<{
+    id: PlanningRestrictionId;
+    rule: string;
+    evidence: string;
+    owner: string;
+  }>;
+  meetings: Array<{
+    id: string;
+    name: string;
+    category: "working" | "control" | "approval" | "decision";
+    cadence: string;
+    dates: string[];
+    owner: string;
+    attendees: string[];
+    purpose: string;
+    inputs: string[];
+    agenda: Array<{ title: string; minutes: number; content: string }>;
+    decisions: string[];
+    outputs: string[];
+    restrictionIds: PlanningRestrictionId[];
+  }>;
 };
 
 export type GrowthRepository = {
@@ -238,6 +386,9 @@ export type GrowthRepository = {
   journey(opportunityId: string): Promise<JourneyDetail | null>;
   funnels(filters: Filters): Promise<FunnelsResponse>;
   landings(input: PageRequest): Promise<Paginated<LandingRecord>>;
+  landingInsights(input: PageRequest): Promise<LandingPortfolio>;
+  landingInsight(url: string, filters: Filters): Promise<LandingInsightDetail | null>;
+  recordLandingDecision(url: string, input: LandingDecisionRequest, role: string, requestId: string): Promise<LandingDecisionRecord>;
   createLandingDraft(input: LandingDraftRequest, requestId: string): Promise<LandingCommandResult>;
   reviewLanding(url: string, input: LandingReviewInput, requestId: string): Promise<LandingCommandResult>;
   approveLanding(url: string, input: LandingApprovalInput, role: string, requestId: string): Promise<LandingCommandResult>;
@@ -246,8 +397,13 @@ export type GrowthRepository = {
   ads(filters: Filters): Promise<{ rows: AdsRow[]; caveats: string[] }>;
   experiments(input: PageRequest): Promise<Paginated<ExperimentSummary>>;
   experiment(id: string): Promise<ExperimentDetail | null>;
+  learning(): Promise<LearningResponse>;
+  experimentSqlResult(id: string): Promise<SqlResult>;
+  weeklyHistory(date: string): Promise<WeeklyNote[]>;
+  saveWeekly(note: WeeklyNote): Promise<WeeklyNote>;
   dataQuality(): Promise<DataQualityResponse>;
   strategy(assumptions: StrategyAssumptions): Promise<StrategyResponse>;
   workbench(): Promise<WorkbenchResponse>;
   governance(): Promise<GovernanceResponse>;
+  planning(): Promise<PlanningResponse>;
 };

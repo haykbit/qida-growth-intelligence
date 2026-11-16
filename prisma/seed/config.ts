@@ -1,4 +1,4 @@
-export const GENERATOR_VERSION = "qgi-synthetic-v1.0.0";
+export const GENERATOR_VERSION = "qgi-synthetic-v2.0.0";
 
 export type SeedConfig = {
   seed: number;
