@@ -248,9 +248,9 @@ styles.add(
         backColor=SOFT_GRAY,
         borderColor=LINE,
         borderWidth=0.5,
-        borderPadding=3 * mm,
-        spaceBefore=1.5 * mm,
-        spaceAfter=3 * mm,
+        borderPadding=4 * mm,
+        spaceBefore=4 * mm,
+        spaceAfter=5 * mm,
     )
 )
 styles.add(
