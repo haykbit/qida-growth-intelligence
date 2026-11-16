@@ -6,7 +6,7 @@ Documento de producto para la prueba técnica
 
 Este documento presenta Qida Growth Intelligence como respuesta a una pregunta concreta: una vez que Qida dispone de un motor de datos municipal y de una fábrica de landings, ¿cómo puede convertir esos activos en más aprendizaje y mejores decisiones de crecimiento?
 
-La respuesta no consiste en reconstruir lo que ya existe. Consiste en añadir una capa de producto que conecte cada landing con los datos que justificaron su creación, con el resultado que produjo y con la decisión tomada después. El documento está pensado para leerse en unos diez minutos y sigue seis bloques de contenido: la idea, las partes del producto, la data, la medición, la planificación y los límites de la propuesta.
+La respuesta no consiste en reconstruir lo que ya existe. Consiste en añadir una capa de producto que conecte cada landing con los datos que justificaron su creación, con el resultado que produjo y con la decisión tomada después.
 
 | Sección | Pregunta que responde |
 | --- | --- |
@@ -52,7 +52,7 @@ La inteligencia artificial puede ayudar a resumir señales, redactar borradores 
 
 ## 3. Las diferentes partes del producto
 
-El producto está organizado alrededor de un recorrido sencillo. Una persona empieza viendo el portfolio de landings, abre una URL para comprender su rendimiento, consulta oportunidades cuando necesita priorizar, revisa medición cuando existe un cambio y utiliza el plan de 90 días para coordinar el trabajo. En cualquier momento puede abrir Modelo de datos para comprobar de dónde sale una métrica.
+Una persona empieza viendo el portfolio de landings, abre una URL para comprender su rendimiento, consulta oportunidades cuando necesita priorizar, revisa medición cuando existe un cambio y utiliza el plan de 90 días para coordinar el trabajo. En cualquier momento puede abrir Modelo de datos para comprobar de dónde sale una métrica.
 
 ### 3.1 Landings
 
@@ -72,7 +72,7 @@ Medición reúne experimentos, calidad del enlace entre web y CRM, madurez de la
 
 ### 3.4 Plan de 90 días
 
-Esta vista convierte la estrategia en operación. Presenta fases, reuniones, restricciones y actas semanales. Cada sesión tiene entradas, agenda, decisiones esperadas, responsable y próxima revisión. El calendario incluye trabajo de desarrollo, calidad de datos, capacidad operativa, aprobación de Marketing y decisiones de los días 30, 60 y 90.
+La vista presenta fases, reuniones, restricciones y actas semanales. Cada sesión tiene entradas, agenda, decisiones esperadas, responsable y próxima revisión. El calendario incluye trabajo de desarrollo, calidad de datos, capacidad operativa, aprobación de Marketing y decisiones de los días 30, 60 y 90.
 
 ### 3.5 Modelo de datos
 
@@ -110,7 +110,7 @@ Las nueve tablas fuente de la propuesta mantienen los conceptos del anexo: munic
 
 ### 4.1 Lógica de las tres lecturas principales
 
-La aplicación no necesita enseñar el código con el que se consultan los datos. Lo importante es que una persona pueda entender qué información se combina, qué reglas se aplican y por qué el resultado aparece en una pantalla. Hay tres lecturas especialmente importantes: seleccionar dónde investigar, explicar el rendimiento de una landing y medir un cambio.
+Hay tres lecturas especialmente importantes: seleccionar dónde investigar, explicar el rendimiento de una landing y medir un cambio.
 
 #### Seleccionar municipios y servicios que merece la pena investigar
 
@@ -156,8 +156,6 @@ publicar una versión identificable y registrar la auditoría
 ## 5. Métricas previstas
 
 La métrica que decide la primera apuesta es SQL familiares maduros por municipio y semana. Se elige porque está más cerca del valor comercial que una sesión o un formulario, pero madura antes que el alta. Las altas se mantienen como resultado final y se leen cuando la cohorte ha tenido tiempo suficiente para contratar.
-
-El árbol de métricas evita optimizar una sola cifra. La visibilidad explica si Google muestra la página. La captación mide si la visita se convierte en contacto. La calidad indica si ese contacto llega a SQL. El resultado comercial observa altas. La operabilidad comprueba si Qida puede atender el incremento.
 
 | Nivel | Métricas | Función en la decisión |
 | --- | --- | --- |
@@ -206,10 +204,10 @@ Tras validar el primer piloto, el segundo trimestre ampliaría la muestra y conv
 
 ## 7. Límites, restricciones y conclusión
 
-La demostración prueba que se puede representar un ciclo coherente desde el dato hasta la decisión. Utiliza datos sintéticos reproducibles y landings de ejemplo. No demuestra que una página real de Qida haya generado más SQL ni que los umbrales elegidos sean correctos para producción.
+Los valores mostrados sirven para explicar el funcionamiento del producto. No representan resultados reales de Qida ni validan los umbrales propuestos.
 
 La versión real no publicaría precios ni afirmaciones sanitarias. Ninguna familia o cuidadora puede identificarse. Las transcripciones y testimonios necesitan privacidad y consentimiento. Marketing aprueba todo lo que afecte a marca o posicionamiento. Los municipios sin capacidad quedan fuera aunque tengan demanda. La IA redacta o resume dentro de límites, pero no decide qué publicar ni puede inventar evidencias.
 
 Para pasar a producción faltaría conectar Databricks, Strapi y CRM, añadir autenticación y permisos, calibrar reglas con históricos reales, completar inferencia estadística y convertir los controles de publicación en verificaciones auditables.
 
-La idea final es sencilla: el motor explica el contexto, la fábrica produce la landing y Qida Growth Intelligence conecta esa landing con su resultado y con el aprendizaje siguiente. El valor no está en mostrar más datos, sino en hacer que cada cambio pueda entenderse, medirse y convertirse en una decisión responsable.
+Qida Growth Intelligence relaciona cada landing con el contexto que la originó, su resultado y las decisiones posteriores. El valor no está en mostrar más datos, sino en hacer que cada cambio pueda entenderse, medirse y convertirse en una decisión responsable.
