@@ -36,6 +36,11 @@ services:
       start_period: 60s
     ports:
       - "3000:3000"
+    volumes:
+      - ../apps/api:/app/apps/api
+      - ../packages/analytics:/app/packages/analytics
+      - ../packages/contracts:/app/packages/contracts
+      - ../prisma:/app/prisma
 
   web:
     build:
@@ -43,6 +48,7 @@ services:
       dockerfile: infra/docker/web.Dockerfile
     environment:
       VITE_API_URL: http://localhost:3000/api/v1
+      VITE_USE_POLLING: "true"
     depends_on:
       api:
         condition: service_healthy
@@ -53,6 +59,10 @@ services:
       retries: 12
     ports:
       - "5173:5173"
+    volumes:
+      - ../apps/web:/app/apps/web
+      - ../packages/contracts:/app/packages/contracts
+      - ../packages/ui:/app/packages/ui
 
 volumes:
   qida-postgres:

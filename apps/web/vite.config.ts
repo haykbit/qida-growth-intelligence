@@ -7,6 +7,10 @@ export default defineConfig({
   server: {
     allowedHosts: [".trycloudflare.com"],
     port: 5173,
+    watch: {
+      usePolling: process.env.VITE_USE_POLLING === "true",
+      interval: 150,
+    },
     proxy: { "/api": { target: process.env.VITE_API_PROXY ?? "http://localhost:3000", changeOrigin: true } },
   },
 });
