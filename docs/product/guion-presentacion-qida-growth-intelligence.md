@@ -2,145 +2,100 @@
 
 Duración prevista: 11 minutos, aproximadamente un minuto por diapositiva.
 
-Este texto está preparado como apoyo oral. Conviene explicar las ideas con naturalidad en lugar de leer cada frase literalmente. Los datos de la demostración son sintéticos y las cifras de impacto son hipótesis de planificación.
+Este guion acompaña a `qida-growth-intelligence.pptx`. Cada diapositiva enlaza con una parte concreta del manual de producto. No hace falta leer el texto literalmente: sirve para mantener el argumento, explicar las cifras con precisión y pasar de una idea a la siguiente.
 
 ## Diapositiva 1. Qida Growth Intelligence
 
-**Objetivo:** presentar la propuesta y situarla sobre los activos que Qida ya tiene.
+**Referencia en el manual:** secciones 1 y 2, «Índice y propósito» y «Presentación de la idea».
 
-**Qué explicar:**
+Qida ya dispone de un motor que reúne datos por municipio y de una fábrica que utiliza esa información para crear landings locales. La propuesta comienza después de publicar. Qida Growth Intelligence conecta cada landing con los datos que justificaron su creación, con el tráfico y los resultados comerciales que produjo y con las decisiones tomadas por el equipo. No sustituye al motor ni reconstruye la fábrica. Añade la parte que falta para poder investigar el rendimiento, medir los cambios y conservar lo aprendido. La unidad de trabajo es una URL concreta, con su municipio, servicio, versión e historial.
 
-Qida ya dispone de dos activos importantes: un motor que reúne información por municipio y una fábrica que utiliza esos datos para crear landings locales. Mi propuesta parte de ese trabajo y se centra en lo que ocurre después de publicar. Qida Growth Intelligence es una capa de medición y decisión que conecta cada landing con los datos que justificaron su creación, con el resultado que produce y con las decisiones que toma el equipo. La aplicación que voy a enseñar no pretende sustituir al motor ni volver a construir la fábrica. Su función es cerrar el ciclo para que Marketing, Growth, Data y Operaciones puedan saber qué páginas funcionan, cuáles necesitan revisión y qué aprendizajes deben volver a los sistemas existentes.
-
-**Idea que debe quedar clara:** la propuesta amplía los dos productos existentes y cubre la fase posterior a la publicación.
-
-**Transición:** primero voy a explicar dónde encaja esta tercera pieza.
+**Transición:** primero voy a situar esta tercera pieza junto a los dos productos existentes.
 
 ## Diapositiva 2. Qida Growth Intelligence cierra el ciclo
 
-**Objetivo:** diferenciar claramente los tres productos.
+**Referencia en el manual:** sección 2, «Presentación de la idea».
 
-**Qué explicar:**
+El motor de datos reúne demanda, capacidad, actividad comercial y voz del cliente. La fábrica transforma esas señales en páginas locales que Marketing revisa antes de publicar. Growth Intelligence utiliza lo que ocurre después: relaciona la versión publicada con tráfico, CRM y capacidad operativa. Así el equipo puede registrar si mantiene una landing, la modifica, la pausa o amplía su uso. La decisión queda vinculada a la evidencia que la originó y el aprendizaje puede volver al motor y a la fábrica. El objetivo no es añadir otro dashboard, sino cerrar el recorrido entre datos, publicación, resultado y siguiente decisión.
 
-El motor de datos reúne demanda local, capacidad disponible, actividad comercial y voz del cliente. La fábrica de landings transforma esas señales en páginas locales que Marketing puede revisar y publicar. Ambos productos generan valor, pero todavía queda una pregunta abierta: qué ha ocurrido después con cada página. Growth Intelligence relaciona la versión publicada con el tráfico, el CRM y la capacidad operativa. Esto permite registrar una decisión basada en datos: mantener la landing, modificarla, pausarla o ampliar su uso. El aprendizaje no termina en un dashboard. Vuelve al motor y a la fábrica para mejorar la siguiente decisión. Así, una landing deja de ser solo una URL publicada y pasa a ser una unidad de aprendizaje con contexto, resultado e historial.
-
-**Idea que debe quedar clara:** el nuevo producto convierte el resultado de las landings en aprendizaje reutilizable.
-
-**Transición:** para conseguirlo, todas las páginas siguen el mismo recorrido trazable.
+**Transición:** ese ciclo se puede entender como cuatro etapas que comparten los mismos identificadores.
 
 ## Diapositiva 3. Cuatro etapas con una misma trazabilidad
 
-**Objetivo:** explicar el recorrido completo desde los datos hasta la decisión.
+**Referencia en el manual:** secciones 2.1 y 4, «La primera apuesta» y «La data».
 
-**Qué explicar:**
+La primera etapa reúne las señales: demanda de búsqueda, capacidad, actividad comercial y necesidades expresadas por las familias. La segunda identifica la landing generada por municipio, servicio, idioma y versión. La tercera mide lo que ocurre tras publicarla: visitas, formularios, leads, SQL y altas. Un SQL es un contacto familiar que Comercial considera cualificado. La cuarta etapa compara el resultado, revisa las restricciones y registra una decisión. Las cuatro etapas conservan URL, versión, municipio, servicio y fecha. Esto evita mezclar periodos o atribuir resultados a una página que todavía no estaba publicada.
 
-El flujo tiene cuatro etapas. Primero aparecen las señales: demanda de búsqueda, capacidad, actividad comercial y necesidades expresadas por las familias. Después, la fábrica genera una versión concreta de la landing, identificada por municipio, servicio e idioma. La tercera etapa mide lo que ocurre tras la publicación, enlazando tráfico, formularios, leads cualificados por Comercial, o SQL, y altas. Finalmente, el equipo revisa el resultado y registra una decisión. Lo importante es que las cuatro etapas comparten identificadores y fechas. Podemos saber qué versión estaba publicada, qué municipio cubría, qué servicio ofrecía y qué evidencia se utilizó para decidir. Esa trazabilidad evita mezclar versiones o atribuir resultados a una página que todavía no estaba activa.
+**Transición:** la siguiente diapositiva muestra cómo se organizan técnicamente esas fuentes.
 
-**Idea que debe quedar clara:** cada decisión conserva el origen de los datos y la versión de landing evaluada.
+## Diapositiva 4. Arquitectura de datos
 
-**Transición:** ahora podemos ver cómo llegan esas fuentes al producto sin perder su significado.
+**Referencia en el manual:** secciones 4 y 4.2, «La data» y «Arquitectura y control de la IA».
 
-## Diapositiva 4. Del origen al componente visible
+La arquitectura tiene cuatro pasos. Primero llegan las fuentes: motor municipal, demanda de búsqueda, voz del cliente, competencia, landings, Search Console, sesiones web, publicidad y CRM. Después Databricks unifica y valida los datos, y los organiza por municipio, servicio, URL y fecha. En el tercer paso esas tablas se transforman en métricas comunes: embudo, oportunidad, resultados de experimentos y trazabilidad entre web y CRM. La aplicación consume esas métricas en tres pantallas principales: Landings, Oportunidades y Medición. La idea importante es que el producto no inventa cifras ni crea una fuente paralela; muestra transformaciones definidas y reproducibles sobre los sistemas existentes.
 
-**Objetivo:** explicar la arquitectura y las responsabilidades de los equipos.
-
-**Qué explicar:**
-
-El producto no crea una nueva fuente de verdad. Databricks mantiene los procesos y controles, y las nueve tablas fuente conservan su definición original. Search Console aporta visibilidad orgánica. La web aporta sesiones y eventos. HubSpot y Odoo aportan leads, SQL y altas. Aircall, los datos públicos y la capacidad operativa completan el contexto. La tabla `ads_diario` conecta cada campaña de pago con una landing y una fecha, para comparar inversión y clics con resultados enlazados al CRM. Sobre estas fuentes se construye una capa semántica con métricas y reglas comunes, y la aplicación las muestra de forma entendible. Además, hay revisiones humanas: Marketing valida contenido y SEO, Operaciones confirma cobertura y Data controla calidad e identidad.
-
-**Idea que debe quedar clara:** la aplicación organiza fuentes existentes y mantiene controles humanos antes de actuar.
-
-**Transición:** con esa base podemos leer el rendimiento completo de una landing.
+**Transición:** con esa arquitectura podemos leer una landing completa sin saltar entre herramientas.
 
 ## Diapositiva 5. Cómo leer el rendimiento de una landing
 
-**Objetivo:** explicar la pantalla principal y la nueva lectura de campañas de pago.
+**Referencia en el manual:** secciones 3.1, 4.1 y 5, «Landings», «Lógica de las métricas» y «Métricas previstas».
 
-**Qué explicar:**
+La ficha comienza por el origen y el volumen. Reúne la visibilidad orgánica de Search Console, las campañas que llevaron tráfico, las sesiones de la web y los resultados confirmados en CRM. Después presenta el embudo para localizar la diferencia: impresiones a clic, sesión a lead, lead a SQL y SQL a alta. Finalmente compara la URL con páginas equivalentes durante la misma ventana. La conversión declarada por una plataforma publicitaria se mantiene separada de los SQL y altas del CRM. Esto permite distinguir una señal de campaña de un resultado comercial confirmado y evita sumar como si fueran la misma cosa.
 
-La unidad principal del producto es una landing concreta. En el listado se comparan páginas equivalentes y, al abrir una, se ve su recorrido completo. La primera lectura es el origen y el volumen: qué tráfico llegó desde buscadores o campañas y cuántas sesiones terminaron enlazadas con leads, SQL y altas. En campañas de pago se separan los datos de la plataforma publicitaria de los resultados confirmados en CRM, porque una conversión de Google Ads no equivale necesariamente a un SQL comercial. La segunda lectura es la conversión y permite localizar en qué paso se pierde demanda. La tercera compara la página con otras landings durante la misma ventana temporal. La pantalla aporta el contexto necesario para investigar, pero no decide automáticamente qué cambiar.
-
-**Idea que debe quedar clara:** la ficha conecta tráfico orgánico, pago, comportamiento web y resultado comercial por URL.
-
-**Transición:** cuando hay muchas páginas, necesitamos ordenar cuáles merece la pena investigar primero.
+**Transición:** cuando existen muchas páginas, necesitamos ordenar cuáles merece la pena investigar primero.
 
 ## Diapositiva 6. Qué significa una oportunidad
 
-**Objetivo:** explicar la puntuación y evitar interpretarla como una predicción.
+**Referencia en el manual:** secciones 3.2 y 4.1, «Oportunidades» y «Seleccionar municipios y servicios».
 
-**Qué explicar:**
+Oportunidades analiza cada combinación de municipio y servicio. La prioridad reúne demanda de búsqueda, brecha de captación, capacidad, voz del cliente y conversión histórica. Cada factor aporta una parte de la puntuación. La elegibilidad responde a otra pregunta: si existen datos propios, cobertura del servicio, histórico suficiente y al menos ocho cuidadoras disponibles. Una puntuación alta no predice el éxito de una landing y tampoco autoriza automáticamente una prueba. Sirve para ordenar la investigación. Desde la oportunidad se puede abrir el desglose del cálculo y la landing que vería una familia, de modo que la señal numérica siempre conserva su contexto.
 
-Oportunidades combina municipio y servicio para ordenar los casos que merece la pena revisar. La puntuación reúne demanda, brecha de captación, capacidad, voz del cliente y conversión histórica. Cada factor se normaliza, se multiplica por su peso y aporta puntos al total. Esta puntuación no predice que una landing vaya a funcionar. Solo organiza señales conocidas. Después aparece la elegibilidad, que comprueba si existen datos propios suficientes, cobertura del servicio, histórico y cuidadoras disponibles. Un municipio puede tener mucha demanda y aun así no ser apto para una prueba si Qida no puede atenderla. Finalmente, la trazabilidad permite abrir la landing y ver las evidencias y reglas que originaron la puntuación.
-
-**Idea que debe quedar clara:** prioridad y capacidad para actuar son dos preguntas diferentes.
-
-**Transición:** una oportunidad selecciona dónde investigar, pero la medición determina si el cambio produjo una mejora.
+**Transición:** seleccionar una oportunidad indica dónde probar; Medición indica qué ocurrió después.
 
 ## Diapositiva 7. Cómo interpretar un resultado
 
-**Objetivo:** distinguir un cambio observado de una evidencia razonable de efecto.
+**Referencia en el manual:** secciones 3.3, 4.1 y 5.1, «Medición», «Medir el efecto de un cambio» y «Cómo separar señal y causalidad».
 
-**Qué explicar:**
+Una subida después de modificar una landing no demuestra por sí sola que el cambio la haya causado. El plan compara municipios que reciben la nueva versión con municipios equivalentes que conservan la anterior. Se calcula el cambio de cada grupo durante las mismas fechas y se descuenta el cambio del grupo de comparación. La métrica comercial principal son los SQL familiares elegibles por municipio y semana completa. Antes de decidir se revisan la trazabilidad web–CRM, las semanas disponibles, el tamaño de la muestra, la evolución previa y posibles desplazamientos desde teléfono o campañas. Si esos controles no son suficientes, la aplicación muestra el resultado como inconcluso.
 
-Que una métrica suba después de modificar una landing no demuestra por sí solo que el cambio sea la causa. La propuesta compara municipios que reciben la nueva versión con municipios equivalentes que mantienen la anterior. Después calcula cuánto cambió cada grupo durante las mismas fechas y resta ambos cambios. Esta comparación ayuda a controlar estacionalidad y movimientos generales del canal. La demo permite enseñar formularios por sesión, pero la métrica que decide el plan es el número de SQL familiares elegibles por municipio y semana completa. Antes de interpretar el resultado también se comprueba la trazabilidad, que el periodo de observación esté completo y que no existan fallos de integridad. Si faltan datos o los grupos ya evolucionaban de forma distinta, el resultado se presenta como inconcluso.
-
-**Idea que debe quedar clara:** la plataforma muestra cuándo existe evidencia suficiente y cuándo todavía no se puede decidir.
-
-**Transición:** esa metodología se aplica mediante una primera ejecución limitada a 90 días.
+**Transición:** esta metodología se prueba primero mediante un plan limitado de 90 días.
 
 ## Diapositiva 8. La prueba avanza por hitos
 
-**Objetivo:** presentar la primera apuesta como un proyecto controlado.
+**Referencia en el manual:** secciones 3.4 y 6, «Plan de 90 días» y «Planificación del proyecto».
 
-**Qué explicar:**
+Los primeros 14 días sirven para acordar la hipótesis, validar el tracking, confirmar la capacidad y establecer una línea base reproducible. Entre los días 15 y 28 se preparan las versiones y se publica una primera ola limitada. Entre los días 29 y 56 se vigilan exposición, indexación, integridad de los eventos y capacidad operativa. Entre los días 57 y 90 se completa el seguimiento y se calcula el resultado. Los hitos de los días 30, 60 y 90 permiten revisar el avance y registrar una decisión. Continuar, modificar o parar depende de la métrica y de los controles, no solo de que un número haya subido.
 
-Los primeros 90 días sirven para comprobar si podemos mejorar landings elegibles y medir el resultado con confianza. Durante los primeros 14 días se acuerdan la hipótesis, el tracking, la métrica y los municipios aptos. Entre los días 15 y 28 se publica una primera ola pequeña, aprobada y trazable. Entre los días 29 y 56 se vigila que la exposición sea estable, que los eventos lleguen y que la capacidad no empeore. En la última fase se completa la ventana de observación y se prepara la decisión. Cada etapa termina con una salida verificable antes de continuar. Los hitos de los días 30, 60 y 90 permiten corregir el experimento sin esperar al final si aparece un problema de datos, publicación o capacidad.
-
-**Idea que debe quedar clara:** el plan reduce riesgo mediante fases, criterios de salida y revisiones intermedias.
-
-**Transición:** para que el plan funcione, cada equipo necesita una reunión con un propósito específico.
+**Transición:** para ejecutar ese plan, cada equipo necesita una cadencia y una responsabilidad claras.
 
 ## Diapositiva 9. Un ciclo de trabajo con decisiones registradas
 
-**Objetivo:** explicar cómo se coordina el trabajo entre equipos.
+**Referencia en el manual:** sección 6.1, «Equipos y reuniones».
 
-**Qué explicar:**
+Growth mantiene las hipótesis y prioridades. Marketing aprueba el mensaje, la marca y el SEO. Data certifica las fuentes, los cálculos y la calidad. MarTech instrumenta, versiona y publica. Operaciones confirma cobertura y capacidad, y Comercial ayuda a interpretar SQL, descartes y altas. Desarrollo y la revisión de datos se realizan semanalmente; la demo de producto, cada dos semanas; y cada versión necesita aprobación antes de publicarse. Los días 30, 60 y 90 se revisa la decisión de cartera. Cada reunión deja responsables, incidencias, acuerdos y una próxima revisión vinculados con la landing correspondiente.
 
-La cadencia evita que el análisis dependa de conversaciones aisladas. Desarrollo revisa semanalmente avances, incidencias técnicas y bloqueos. Data y Operaciones revisan también cada semana la calidad, la cobertura y la capacidad para atender nueva demanda. Cada dos semanas se hace una demo del producto con resultados visibles. Marketing aprueba cada versión antes de publicarla, y en los días 30, 60 y 90 se toman las decisiones de cartera. Todas las reuniones escriben sobre un registro común: tareas, incidencias, acuerdos, responsable y próxima revisión. Jira y Slack ayudan a coordinar el trabajo, pero la decisión debe quedar vinculada a la landing y a la evidencia dentro del producto. Así se puede reconstruir qué se decidió y por qué.
+**Transición:** el manual también cuantifica qué impacto podrían tener las primeras apuestas durante seis meses.
 
-**Idea que debe quedar clara:** las reuniones producen decisiones y responsables, no solo actualizaciones de estado.
+## Diapositiva 10. Impacto estimado a seis meses
 
-**Transición:** si el piloto funciona, esta disciplina permite ampliar el producto durante los seis meses siguientes.
+**Referencia en el manual:** sección 2.2, «Prioridad y orden de magnitud».
 
-## Diapositiva 10. Seis meses para validar y escalar
+Estas cifras son escenarios de planificación calculados con datos sintéticos; no representan resultados reales de Qida. Para landings locales elegibles, el manual estima 83,2 SQL en el escenario conservador, 232,8 en el base y 538,6 en el optimista. El punto de partida son 5.280 búsquedas mensuales en diez municipios. Para mejorar la conversión de SQL a alta, los escenarios son 120,7, 241,3 y 362 altas, usando como referencia 2.011 SQL familiares en los últimos 30 días. Para reasignar inversión de pago, se estiman 191,4, 382,8 y 574,2 SQL adicionales, a partir de 638 SQL mensuales enlazados con campañas. La trazabilidad se valora con cero resultados directos porque mejora la medición sin crear SQL ni altas nuevos.
 
-**Objetivo:** presentar el horizonte completo sin tratar las estimaciones como resultados reales.
-
-**Qué explicar:**
-
-El primer mes establece definiciones y calidad. El segundo publica la primera ola controlada. El tercero permite leer cohortes con suficiente seguimiento. En el cuarto mes se aplican los cambios que hayan mostrado una señal útil. El quinto busca patrones que puedan repetirse y el sexto decide qué capacidades pasan a producción. Las cifras inferiores son hipótesis de impacto para ordenar apuestas, no resultados de Qida: estiman posibles mejoras en SQL procedentes de landings elegibles, en conversión de SQL a alta y en reasignación de captación. Antes de convertirlas en un forecast habría que recalcularlas con tráfico real, tiempos comerciales y límites operativos. Solo se escala un aprendizaje cuando supera los criterios de medición, calidad y capacidad.
-
-**Idea que debe quedar clara:** el crecimiento se apoya en aprendizajes validados, no en publicar más páginas por defecto.
-
-**Transición:** cierro resumiendo qué demuestra la entrega y qué quedaría para producción.
+**Transición:** termino conectando la aplicación, el manual y el camino necesario para llegar a producción.
 
 ## Diapositiva 11. Producto, método y plan de ejecución
 
-**Objetivo:** cerrar la presentación y conectar los entregables.
+**Referencia en el manual:** secciones 6 y 7, «Planificación del proyecto» y «Límites, restricciones y conclusión».
 
-**Qué explicar:**
+La aplicación demuestra el recorrido completo: seleccionar una oportunidad, abrir una landing, revisar su embudo, relacionarla con campañas y CRM, medir un cambio y registrar una decisión. El manual documenta el producto, la lógica de los datos, las métricas, las estimaciones y la planificación. La presentación resume ese contenido para discutirlo en una entrevista. Para llevar la propuesta a producción todavía habría que conectar Databricks, Strapi y CRM, añadir autenticación y permisos, calibrar las reglas con históricos reales y convertir los controles en verificaciones auditables. La entrega demuestra un producto y también una forma concreta de trabajar durante los primeros seis meses.
 
-La entrega combina tres niveles. La aplicación funcional demuestra cómo una landing queda vinculada con datos, campañas, resultados, experimentos y decisiones. El manual explica el producto con más profundidad, incluyendo las métricas, los límites y la planificación. La presentación resume el relato para discutirlo con los equipos. El repositorio conserva además la API, el modelo de datos, las reglas analíticas y las pruebas, aunque GitHub Pages utilice datos locales para que la demo sea accesible. Para llevarlo a producción habría que conectar las fuentes reales, añadir permisos, calibrar las reglas con históricos de Qida y convertir los controles en validaciones auditables. La aportación principal es un método para decidir qué mantener, qué modificar y qué escalar después de publicar una landing.
+**Cierre sugerido:** a partir de aquí puedo enseñar la demo o profundizar en la medición, la arquitectura y el plan de ejecución.
 
-**Idea que debe quedar clara:** la propuesta incluye un producto demostrable y un camino concreto hacia producción.
+## Recordatorios antes de presentar
 
-**Cierre sugerido:** esta es la base de Qida Growth Intelligence. A partir de aquí puedo enseñar la demo o profundizar en la medición, la arquitectura o el plan de ejecución.
-
-## Recordatorios para la presentación
-
-- No presentes los datos de la demo como resultados reales de Qida.
-- Cuando aparezca SQL, aclara que significa un lead familiar cualificado por el equipo comercial.
-- Explica que la puntuación de oportunidad ordena señales y no predice el resultado.
-- Separa las conversiones declaradas por la plataforma publicitaria de los SQL y altas confirmados en CRM.
-- Presenta las cifras de seis meses como hipótesis que deben recalcularse con datos reales.
-- Si falta tiempo, conserva las diapositivas 2, 5, 7, 8 y 11, porque contienen el argumento principal.
+- Las cifras de la demostración son sintéticas y las estimaciones de seis meses son hipótesis de planificación.
+- SQL significa contacto familiar cualificado por el equipo comercial.
+- La puntuación de Oportunidades ordena señales; no predice el resultado ni decide por el equipo.
+- Las conversiones publicitarias y los resultados confirmados en CRM se muestran por separado.
+- La capacidad local, la privacidad, el consentimiento y la aprobación de Marketing limitan qué se publica y dónde se prueba.
