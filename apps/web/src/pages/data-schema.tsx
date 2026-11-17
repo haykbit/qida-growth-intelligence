@@ -643,6 +643,13 @@ function QueryExplorer({ data }: { data: WorkbenchData }) {
                 </TabsTrigger>
                 <TabsTrigger
                   className="gap-2 rounded-none border-b-2 border-transparent px-5 py-3 data-[state=active]:border-primary data-[state=active]:shadow-none"
+                  value="sql"
+                >
+                  <Braces className="size-4" />
+                  SQL
+                </TabsTrigger>
+                <TabsTrigger
+                  className="gap-2 rounded-none border-b-2 border-transparent px-5 py-3 data-[state=active]:border-primary data-[state=active]:shadow-none"
                   value="result"
                 >
                   <TableProperties className="size-4" />
@@ -791,6 +798,42 @@ function QueryExplorer({ data }: { data: WorkbenchData }) {
               </TabsContent>
 
               <TabsContent
+                className="m-0 flex flex-col gap-5 p-5"
+                value="sql"
+              >
+                <Alert>
+                  <AlertDescription>
+                    Consultas de solo lectura que combinan las tablas y
+                    producen esta métrica. Los parámetros corresponden al
+                    ejemplo ejecutado en la demo.
+                  </AlertDescription>
+                </Alert>
+                {selected.statements.map((statement, index) => (
+                  <Card key={`${selected.id}-${statement.title}`}>
+                    <CardHeader>
+                      <Badge>{`Consulta ${index + 1}`}</Badge>
+                      <CardTitle>{statement.title}</CardTitle>
+                      <CardDescription>{statement.purpose}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-4">
+                      {statement.parameters.length ? (
+                        <div className="flex flex-wrap gap-2">
+                          {statement.parameters.map((parameter) => (
+                            <Badge key={parameter.name} tone="neutral">
+                              {parameter.name}: {parameter.value}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : null}
+                      <pre className="max-h-[32rem] overflow-auto rounded-md border bg-muted p-4 text-xs leading-5">
+                        <code>{statement.sql}</code>
+                      </pre>
+                    </CardContent>
+                  </Card>
+                ))}
+              </TabsContent>
+
+              <TabsContent
                 className="m-0 flex flex-col gap-4 p-5"
                 value="result"
               >
@@ -922,7 +965,7 @@ export function DataSchemaPage() {
               [
                 ["flow", "Flujo"],
                 ["tables", "Tablas"],
-                ["queries", "Lógica"],
+                ["queries", "Consultas"],
                 ["quality", "Calidad"],
               ] as const
             ).map(([value, label]) => (
