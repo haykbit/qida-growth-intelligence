@@ -8,6 +8,7 @@ La documentación está separada por finalidad para que el evaluador pueda elegi
 | --- | --- |
 | [Documento de producto](product/manual-producto-qida-growth-intelligence.md) | Comprender la propuesta completa en una lectura ejecutiva |
 | [Presentación](product/qida-growth-intelligence.pptx) | Soporte visual editable |
+| [Guion de presentación](product/guion-presentacion-qida-growth-intelligence.md) | Preparar una explicación oral de un minuto por diapositiva |
 
 ## Arquitectura
 
